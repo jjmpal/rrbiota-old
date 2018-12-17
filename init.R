@@ -16,3 +16,6 @@ install.packages("dplyr")
 
 install.packages("ggplot2")
 install.packages("tidyr")
+
+install.packages("Rcpp")
+install.packages("rmarkdown")
