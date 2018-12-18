@@ -9,23 +9,59 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## R Markdown
+```{r libraries}
+library(dplyr)
+library(phyloseq)
+library(microbiome)
+```
 
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+```{r data}
+pseq <- readRDS("data/phfinrisk_genus_all_drop50k_2018-11-16.RDs")
+```
 
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+Pseq has readcount `r readcount(pseq)`.
 
 ```{r cars}
-summary(cars)
+print(pseq)
+summarize_phyloseq(pseq)
+meta <- meta(pseq)
+taxonomy <- tax_table(pseq)
+otu.absolute <- abundances(pseq)
+otu.relative <- abundances(pseq, "compositional")
+
+df <- psmelt(pseq)
+head(sample_names(pseq))
+sample_sums(pseq)
+s <- rownames(subset(meta(pseq), nationality == "AFR" & sex == "Female"))
+prune_samples(s, pseq)
+
+sample_variables(pseq)
+
+# Calculate diversity for samples
+div <- alpha(pseq, index = "shannon")
+
+# Assign the estimated diversity to sample metadata
+sample_data(pseq)$diversity <- div
+
+n <- ntaxa(pseq)
+topx <- top_taxa(pseq, n = 10)
+ranks <- rank_names(pseq)  # Taxonomic levels
+taxa  <- taxa(pseq)        # Taxa names at the analysed level
+pseq.bac <- subset_taxa(pseq, Phylum == "Bacteroidetes")
+# List of Genera in the Bacteroideted Phylum
+taxa <- map_levels(NULL, "Phylum", "Genus", pseq)$Bacteroidetes
+
+# With given taxon names
+ex2 <- prune_taxa(taxa, pseq)
+
+# Taxa with positive sum across samples
+ex3 <- prune_taxa(taxa_sums(pseq) > 0 , pseq)
+
+head(get_taxa_unique(pseq, "Phylum"))
+
+samplename <- sample_names(pseq)[[1]]
+
+# Pick abundances for a particular taxon
+tax.abundances <- abundances(pseq)[, samplename]
 ```
-
-## Including Plots
-
-You can also embed plots, for example:
-
-```{r pressure, echo=FALSE}
-plot(pressure)
-```
-
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
 
