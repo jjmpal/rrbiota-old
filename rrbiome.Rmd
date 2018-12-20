@@ -25,6 +25,7 @@ library(tidyr)
 library(vegan)
 library(reshape)
 library(ggpmisc)
+library(Maaslin)
 
 ```
 
@@ -195,28 +196,32 @@ gplots::heatmap.2(dist.matrix,
 
 Mallin lasku Adoniksella
 
-```{r adonis}
-
-if (!file.exists("rds/phf.adonis.rds")) {
-    phf.adonis <- adonis(dist.matrix ~ BL_AGE + SEX + MAP,
-                         data = meta(pseq_filtered),
-                         permutations = 99)
-    saveRDS(phf.adonis, file = "rds/phf.adonis.rds")
-} else {
-    phf.adonis <- readRDS("rds/phf.adonis.rds")
-}
-
-phf.adonis$aov.tab %>% as.data.frame %>% kable
-
+```{r adonis1}
+adonis(dist.matrix ~ MAP, 
+       data = meta(pseq_filtered),
+       permutations = 99)$aov.tab %>%
+                            as.data.frame %>%
+                            kable
 ```
 
-# PCA
-
-```{r pca}
-pseq.clr <- microbiome::transform(pseq_filtered, "clr")
-X <- as.matrix(t(abundances(pseq.clr)))
-prcomp <- stats::prcomp(X)
+```{r adonis2}
+adonis(dist.matrix ~ BL_AGE + SEX + MAP,
+       data = meta(pseq_filtered),
+       permutations = 99)$aov.tab %>%
+                            as.data.frame %>%
+                            kable
 ```
+
+```{r adonis3}
+adonis(dist.matrix ~ MAP + BL_AGE + SEX + BMI + CURR_SMOKE + Q57X + BP_TREAT,
+       data = meta(pseq_filtered),
+       permutations = 99)$aov.tab %>%
+                            as.data.frame %>%
+                            kable
+```
+
+
+
 
 ```{r pca labels}
 percentage <- round(prcomp$sdev/sum(prcomp$sdev) * 100, 2)
@@ -253,3 +258,77 @@ ggplot((cbind(meta(pseq_filtered), prcomp$x[,1:2]) %>%
     ggplot2::theme_minimal() 
 
 ```
+
+# Genus
+
+Aaron work-december-2018 prepare_maaslin_input.R
+
+```{r prepare maaslin}
+
+pheno <- t(meta(sample_data(pseq_filtered)))
+sample.ids <- colnames(pheno)
+phfg.pseq.rel <- microbiome::transform(pseq_filtered, "compositional")
+abud.rel <- abundances(phfg.pseq.rel)
+
+rownames(abud.rel) <- sapply(rownames(abud.rel),
+                             function (genus) gsub("(.*) \\(+(.+)\\)", '\\1.\\2', genus))
+
+merged <- rbind(sample.ids, pheno, abud.rel)
+write.table(t(merged), file="merged_phfinrisk_genus.tsv", sep='\t', 
+            quote=FALSE, row.names=FALSE, col.names=TRUE)
+
+variables <- rownames(pheno)
+variables_wo_ctrls <- variables[!variables %in% c("BL_AGE","BMI","SEX")]
+data <- file("maaslin_config.config" , open='wt')
+pcl.contents <- c("Matrix: Metadata",
+                  paste(c("Read_PCL_Rows: BL_AGE,BMI,SEX",variables_wo_ctrls), collapse=","),
+                  "",
+                  "Matrix: Adundance",
+                  "Read_PCL_Rows: Archaea.Archaea-")
+writeLines(pcl.contents, con=data)
+close(data)
+```
+
+```{r run maaslin, eval = FALSE} 
+Maaslin("merged_phfinrisk_genus.tsv",
+        "maaslin",
+        strInputConfig = "maaslin_config.config",
+        strModelSelection="none",
+        dSignificanceLevel = 1.0, 
+        fAllvAll = TRUE,
+        strForcedPredictors = c("BL_AGE", "BMI", "SEX"))
+
+```
+
+Data framen luku *comp_maaslin_results_from_single_job.R* ja plottaus käyttäen *comp_maaslin_plots.R* ja *edgeR_plot_functions.R*.
+
+
+```{r Reading maaslins output}
+
+maas.results.df <- read.table("maaslin/merged_phfinrisk_genus.txt", header=TRUE, sep='\t')
+maas.results.df[,'Covariate'] <- maas.results.df[,'Variable']
+maas.results.df <- merge(maas.results.df,
+                         names.dset[,c('Covariate','Category', 'Name')],
+                         by=c('Covariate'))
+
+maas.results.df[,'Maaslin.Q.value'] <- maas.results.df[,'Q.value']
+maas.results.df[,'Qval'] <- p.adjust(maas.results.df[,'P.value'], method="BH")
+maas.results.df[,'beta'] <- maas.results.df[,'Coefficient']
+maas.results.df.signf <- dplyr::filter(maas.results.df, Qval < 0.05)
+
+```
+
+```{r scatter plots}
+sysm.signf.features <- maas.results.df.signf %>% dplyr::filter(Covariate == "SYSTM") %>% pull(Feature)
+```
+
+
+```{r maaslin plots, fig.width = 10, fig.height = 4, dpi = 300}
+source("edgeR_plot_functions.R")
+
+plot_maaslin_heatmap_final(maas.results.df.signf,
+                      xlab.text="Genera",
+                      beta.maxabs=max(abs(maas.results.df.signf[,'beta'])))
+
+```
+
