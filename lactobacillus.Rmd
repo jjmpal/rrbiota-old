@@ -1,0 +1,55 @@
+
+---
+title: "Hypertension and microbiome"
+author: "Joonatan Palmu"
+date: "`r format(Sys.time(), '%d.%m.%Y')`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(include = TRUE, echo = TRUE, message = FALSE, results='asis', cache=TRUE, warning=FALSE)
+knitr::opts_chunk$set(cache.path = 'cache/', output.dir="cache/",
+                      file.path = 'cache/', fig.path = 'cache/')
+```
+
+Importing libraries
+
+```{r libraries}
+
+library(dplyr)
+library(tibble)
+library(phyloseq)
+library(microbiome)
+library(finriskmetagcommon)
+library(knitr)
+library(tidyr)
+library(vegan)
+library(reshape)
+library(ggpmisc)
+library(Maaslin)
+
+```
+
+```{r data}
+
+pseq <- readRDS("data/phfinrisk_genus_all_drop50k_2018-11-16.RDs")
+
+```
+
+
+```{r}
+summarize_phyloseq(pseq_filtered)
+ntaxa(pseq_filtered)
+pseq_filtered %>% taxa() %>% sort
+phfg.pseq.rel %>% rank_names()
+subset_taxa(pseq_filtered, Genus == "Lac")
+taxa_unique(phfg.pseq.rel, "Phylum")
+abundances(phfg.pseq.rel)
+
+```
+
+```{r}
+
+taxa <- names(subset_taxa(pseq.s, Genus=="Lactobacillus"))
+
+```

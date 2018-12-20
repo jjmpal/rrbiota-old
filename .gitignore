@@ -8,3 +8,6 @@ data
 rds/
 cache/
 packrat/lib*/
+maaslin/
+*.config
+*.tsv
