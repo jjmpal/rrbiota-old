@@ -23,6 +23,8 @@ library(finriskmetagcommon)
 library(knitr)
 library(tidyr)
 library(vegan)
+library(reshape)
+library(ggpmisc)
 
 ```
 
@@ -59,11 +61,9 @@ Loading descriptions for clinical data
 
 ```{r variables}
 
-if (!exists('phfinrisk_metadatadesc')) {
-  # this is a hand-compiled data.frame that contains metadata information for variables utilized in our analyses
-  data("phfinrisk_metadatadesc", package="finriskmetagcommon")
-}
-names.dset <- filter(phfinrisk_metadatadesc, Ignored.Covariate.in.Cross.Sectional.Analysis.Aaro20181115==0)
+data("phfinrisk_metadatadesc", package="finriskmetagcommon")
+names.dset <- filter(phfinrisk_metadatadesc,
+                     Ignored.Covariate.in.Cross.Sectional.Analysis.Aaro20181115==0)
 
 ```
 
@@ -128,12 +128,24 @@ dset.alpha <- merge(dset, alphadiversity, by=0, all=TRUE)
 
 ```
 
-```{r alpha diversity scatterplot, fig.width=8, fig.height=4}
+```{r alpha diversity scatterplot, fig.width=10, fig.height=4}
 
-ggplot(dset.alpha, aes(x=diversities_shannon, y=MAP)) +
-    geom_point(size=1, shape=1) +
-    coord_fixed() +
+ggplot((dset.alpha %>%
+        select(BL_AGE, BMI, SYSTM, DIASM, PULSEPRESSURE, MAP, SEX, diversities_shannon) %>%
+        gather(Covariate, Value, -SEX, -diversities_shannon)), 
+       aes(x=diversities_shannon, y=Value)) +
+    facet_wrap(~Covariate, ncol=4, scales = "free") +
+    geom_point(size=0.1, shape=1, aes(colour = SEX)) +
+    geom_smooth(method=lm, se=TRUE, size=0.5, color = 'Black') +
+    stat_poly_eq(formula = "y ~ x",
+                 aes(label = paste(..eq.label.., ..rr.label.., sep = "~~~")),
+                 label.y = 0,
+                 parse = TRUE,
+                 size = 3) +   
+    ylim(0, 200) +
     ggplot2::theme_minimal() 
+
+
 ```
 
 Linear models
@@ -150,7 +162,7 @@ lm(MAP ~ BL_AGE + SEX + BMI + CURR_SMOKE + Q57X + BP_TREAT + diversities_shannon
 
 # Beta diversity
 
-Matriisin teko _bc_dissimilarity_matrix.R ja käyttö comp_adonis_covariates.R
+Beetadiversiteetti-matriisin lasku. Tiedosista comp_bc_dissimilarity_matrix.R ja käyttö comp_adonis_covariates.R.
 
 ```{r vegdist}
 
@@ -164,18 +176,31 @@ if (!file.exists("rds/bray.dist.m.rds")) {
     bray.dist.m <- readRDS("rds/bray.dist.m.rds")
 }
 
-```
-
-```{r adonis}
-
-attr(bray.dist.m, "method")
 dist.matrix <- as.matrix(bray.dist.m)
 attr(dist.matrix, "method") <- "bray"
 
+```
+
+```{r beta hclust, fig.width = 5, fig.height = 4, dpi = 300}
+gplots::heatmap.2(dist.matrix,
+                  distfun = dist,
+                  trace = "none",
+                  hclustfun = hclust,
+                  key.title = NA,
+                  dendrogram = "column",
+                  density.info = "none",
+                  labRow = NA,
+                  labCol = NA)
+```	
+
+Mallin lasku Adoniksella
+
+```{r adonis}
+
 if (!file.exists("rds/phf.adonis.rds")) {
-phf.adonis <- adonis(dist.matrix ~ BL_AGE + SEX + MAP,
-                     data = meta(pseq_filtered),
-                     permutations = 99)
+    phf.adonis <- adonis(dist.matrix ~ BL_AGE + SEX + MAP,
+                         data = meta(pseq_filtered),
+                         permutations = 99)
     saveRDS(phf.adonis, file = "rds/phf.adonis.rds")
 } else {
     phf.adonis <- readRDS("rds/phf.adonis.rds")
@@ -185,10 +210,46 @@ phf.adonis$aov.tab %>% as.data.frame %>% kable
 
 ```
 
-```{r beta heatmap, eval = FALSE}
+# PCA
+
+```{r pca}
+pseq.clr <- microbiome::transform(pseq_filtered, "clr")
+X <- as.matrix(t(abundances(pseq.clr)))
+prcomp <- stats::prcomp(X)
+```
+
+```{r pca labels}
+percentage <- round(prcomp$sdev/sum(prcomp$sdev) * 100, 2)
+pca.labels <- paste0(colnames(prcomp$x), " (", paste0(as.character(percentage), "%", ")"))
+```
+
+```{r PCA plots categorical, fig.width = 10, fig.height = 10, dpi = 300}
+ggplot((cbind(meta(pseq_filtered), prcomp$x[,1:2]) %>%
+        select(PC1, PC2, BP_TREAT, CURR_SMOKE, DIAB, BL_USE_RX_C09, Q57X,
+               BL_USE_RX_C03, BL_USE_RX_C07, BL_USE_RX_C08, HYPERTENSION, SEX) %>%
+        gather(Covariate, Value, -PC1, -PC2)), 
+       aes(x=PC1, y=PC2)) +
+    facet_wrap(~Covariate, ncol=2, scales = "free") +
+    geom_point(aes(color = Value), size = 0.5) +
+    scale_color_brewer(palette="Dark2") +
+    xlab(pca.labels[1]) +
+    ylab(pca.labels[2]) +
+    ggplot2::theme_minimal() 
+
+```
 
 
-ggplot(data = dist.matrix, aes(x = metrics, y = teams)) +
-      geom_tile(aes(fill = performance)) 
+```{r PCA plots continuous, fig.width = 10, fig.height = 10, dpi = 300}
+
+ggplot((cbind(meta(pseq_filtered), prcomp$x[,1:2]) %>%
+        select(PC1, PC2, BL_AGE, SYSTM, DIASM, BMI, MAP, PULSEPRESSURE) %>%
+        gather(Covariate, Value, -PC1, -PC2)), 
+       aes(x=PC1, y=PC2)) +
+    facet_wrap(~Covariate, ncol=2, scales = "free") +
+    geom_point(aes(color = Value), size = 0.5) +
+    scale_color_gradientn(colours = rainbow(12)) +
+    xlab(pca.labels[1]) +
+    ylab(pca.labels[2]) +
+    ggplot2::theme_minimal() 
 
 ```
