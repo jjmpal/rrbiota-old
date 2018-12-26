@@ -1,4 +1,3 @@
-
 ---
 title: "Hypertension and microbiome"
 author: "Joonatan Palmu"
@@ -35,7 +34,6 @@ library(Maaslin)
 pseq <- readRDS("data/phfinrisk_genus_all_drop50k_2018-11-16.RDs")
 
 ```
-
 
 ```{r}
 summarize_phyloseq(pseq_filtered)

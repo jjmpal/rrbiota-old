@@ -5,6 +5,7 @@ date: "`r format(Sys.time(), '%d.%m.%Y')`"
 output: html_document
 ---
 
+
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(include = TRUE, echo = TRUE, message = FALSE, results='asis', cache=TRUE, warning=FALSE)
 knitr::opts_chunk$set(cache.path = 'cache/', output.dir="cache/",
@@ -14,7 +15,6 @@ knitr::opts_chunk$set(cache.path = 'cache/', output.dir="cache/",
 Importing libraries
 
 ```{r libraries}
-
 library(dplyr)
 library(tibble)
 library(phyloseq)
@@ -26,11 +26,9 @@ library(vegan)
 library(reshape)
 library(ggpmisc)
 library(Maaslin)
-
 ```
 
 ```{r functions, include = FALSE}
-
 print.dset <- function(dset) {
     dset %>%
         gather(Covariate, Value) %>%
@@ -52,26 +50,20 @@ print.dset <- function(dset) {
 Loading phyloseq object
 
 ```{r data}
-
 pseq <- readRDS("data/phfinrisk_genus_all_drop50k_2018-11-16.RDs")
-
 ```
 
 Loading descriptions for clinical data
 
-
 ```{r variables}
-
 data("phfinrisk_metadatadesc", package="finriskmetagcommon")
 names.dset <- filter(phfinrisk_metadatadesc,
                      Ignored.Covariate.in.Cross.Sectional.Analysis.Aaro20181115==0)
-
 ```
 
 Filtering clinical data
 
 ```{r filtering}
-
 dset <- meta(pseq) %>%
     tibble::rownames_to_column(var = "rowname") %>%
     dplyr::select(rowname, DNA_OK, MEN, BL_AGE, SYSTM, DIASM, BP_TREAT, BMI, CURR_SMOKE, DIAB, BL_USE_RX_C09,
@@ -86,7 +78,6 @@ dset <- meta(pseq) %>%
     tibble::column_to_rownames(var = "rowname")
 
 print.dset(dset)
-
 ```
 
 Continuous variables
@@ -112,10 +103,8 @@ ggplot((dset %>%
 ```
 
 ```{r Updating meta data}
-
 pseq_filtered <- pseq
 sample_data(pseq_filtered) <- sample_data(dset)
-
 ```
 
 # Alpha diversity
@@ -368,3 +357,7 @@ plot_maaslin_heatmap_final(maas.results.df.signf,
 
 ```
 
+
+```{r scp html}
+system('scp rrbiome.html utu:articletwo')
+```

@@ -11,3 +11,4 @@ packrat/lib*/
 maaslin/
 *.config
 *.tsv
+reports/
