@@ -220,13 +220,7 @@ calculateglm(dset.alpha, modelstring = "%s ~ BL_AGE + SEX + diversities_shannon"
 
 Beetadiversiteetti-matriisin lasku. Tiedosista *comp_bc_dissimilarity_matrix.R* ja käyttö *comp_adonis_covariates.R*.
 
-```{r vegdist}
-calculate.beta.matrix <- function(pseq) {
-    compositional.profile <- microbiome::transform(pseq, 'compositional')
-    otu <- microbiome::abundances(compositional.profile)
-    vegan::vegdist(t(otu), method="bray")
-}
-
+```{r matrix calculation}
 if (!file.exists("rds/bray.dist.m.species.rds") || !file.exists("rds/bray.dist.m.genus.rds") {
     bray.dist.m.species <- calculate.beta.matrix(pseq.species)
     saveRDS(bray.dist.m.species, file = "rds/bray.dist.m.species.rds")
@@ -235,7 +229,6 @@ if (!file.exists("rds/bray.dist.m.species.rds") || !file.exists("rds/bray.dist.m
 } else {
     bray.dist.m.species  <- readRDS("rds/bray.dist.m.species.rds")
     bray.dist.m.genus <- readRDS("rds/bray.dist.m.genus.rds")
-}
 }
 ```
 
