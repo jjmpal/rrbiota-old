@@ -170,7 +170,7 @@ ggplot((dset.alpha, aes(x=diversities_shannon, y=MAP)) +
 
 
 
-```{r alpha diversity scatterplot, fig.width=10, fig.height=4}
+```{r alpha diversity scatterplot, fig.width=10, fig.height=4, eval = FALSE}
 ggplot((dset.alpha %>%
         select(BL_AGE, BMI, SYSTM, DIASM, PULSEPRESSURE, MAP, SEX, diversities_shannon) %>%
         gather(Covariate, Value, -SEX, -diversities_shannon)), 
@@ -189,7 +189,7 @@ ggplot((dset.alpha %>%
 
 Linear models
 
-```{r lm model}
+```{r lm model, eval = FALSE}
 lm(MAP ~ diversities_shannon, data=dset.alpha) %>%
     summary(.) %>% coef %>% kable(., digits=4)
 lm(MAP ~ BL_AGE + SEX + diversities_shannon, data=dset.alpha) %>%
@@ -203,7 +203,7 @@ lm(MAP ~ BL_AGE + SEX + BMI + CURR_SMOKE + Q57X + diversities_shannon, data=dset
 
 Beetadiversiteetti-matriisin lasku. Tiedosista comp_bc_dissimilarity_matrix.R ja käyttö comp_adonis_covariates.R.
 
-```{r vegdist}
+```{r vegdist, eval = FALSE}
 
 phf_profile.rel <- microbiome::transform(pseq_filtered, 'compositional')
 otu <- microbiome::abundances(phf_profile.rel)
@@ -220,7 +220,7 @@ attr(dist.matrix, "method") <- "bray"
 
 ```
 
-```{r beta hclust, fig.width = 5, fig.height = 4, dpi = 300}
+```{r beta hclust, fig.width = 5, fig.height = 4, dpi = 300, eval = FALSE}
 gplots::heatmap.2(dist.matrix,
                   distfun = dist,
                   trace = "none",
@@ -234,7 +234,7 @@ gplots::heatmap.2(dist.matrix,
 
 Mallin lasku Adoniksella
 
-```{r adonis1}
+```{r adonis1, eval = FALSE}
 adonis(dist.matrix ~ MAP, 
        data = meta(pseq_filtered),
        permutations = 99)$aov.tab %>%
@@ -242,7 +242,7 @@ adonis(dist.matrix ~ MAP,
                             kable
 ```
 
-```{r adonis2}
+```{r adonis2, eval = FALSE}
 adonis(dist.matrix ~ BL_AGE + SEX + MAP,
        data = meta(pseq_filtered),
        permutations = 99)$aov.tab %>%
@@ -250,7 +250,7 @@ adonis(dist.matrix ~ BL_AGE + SEX + MAP,
                             kable
 ```
 
-```{r adonis3}
+```{r adonis3, eval = FALSE}
 adonis(dist.matrix ~ MAP + BL_AGE + SEX + BMI + CURR_SMOKE + Q57X + BP_TREAT,
        data = meta(pseq_filtered),
        permutations = 99)$aov.tab %>%
@@ -260,18 +260,18 @@ adonis(dist.matrix ~ MAP + BL_AGE + SEX + BMI + CURR_SMOKE + Q57X + BP_TREAT,
 
 # PCA
 
-```{r pca}
+```{r pca, eval = FALSE}
 pseq.clr <- microbiome::transform(pseq_filtered, "clr")
 X <- as.matrix(t(abundances(pseq.clr)))
 prcomp <- stats::prcomp(X)
 ```
 
-```{r pca labels}
+```{r pca labels, eval = FALSE}
 percentage <- round(prcomp$sdev/sum(prcomp$sdev) * 100, 2)
 pca.labels <- paste0(colnames(prcomp$x), " (", paste0(as.character(percentage), "%", ")"))
 ```
 
-```{r PCA plots categorical, fig.width = 10, fig.height = 10, dpi = 300}
+```{r PCA plots categorical, fig.width = 10, fig.height = 10, dpi = 300, eval = FALSE}
 ggplot((cbind(meta(pseq_filtered), prcomp$x[,1:2]) %>%
         select(PC1, PC2, BP_TREAT, CURR_SMOKE, DIAB, BL_USE_RX_C09, Q57X,
                BL_USE_RX_C03, BL_USE_RX_C07, BL_USE_RX_C08, HYPERTENSION, SEX) %>%
@@ -287,7 +287,7 @@ ggplot((cbind(meta(pseq_filtered), prcomp$x[,1:2]) %>%
 ```
 
 
-```{r PCA plots continuous, fig.width = 10, fig.height = 10, dpi = 300}
+```{r PCA plots continuous, fig.width = 10, fig.height = 10, dpi = 300,  eval = FALSE}
 
 ggplot((cbind(meta(pseq_filtered), prcomp$x[,1:2]) %>%
         select(PC1, PC2, BL_AGE, SYSTM, DIASM, BMI, MAP, PULSEPRESSURE) %>%
@@ -306,7 +306,7 @@ ggplot((cbind(meta(pseq_filtered), prcomp$x[,1:2]) %>%
 
 Aaron work-december-2018 *prepare_maaslin_input.R*
 
-```{r prepare maaslin}
+```{r prepare maaslin, eval = FALSE}
 
 pheno <- t(meta(sample_data(pseq_filtered)))
 sample.ids <- colnames(pheno)
@@ -347,7 +347,7 @@ Maaslin("merged_phfinrisk_genus.tsv",
 Data framen luku *comp_maaslin_results_from_single_job.R* ja plottaus käyttäen *comp_maaslin_plots.R* ja *edgeR_plot_functions.R*.
 
 
-```{r Reading maaslins output}
+```{r Reading maaslins output, eval = FALSE}
 
 maas.results.df <- read.table("maaslin/merged_phfinrisk_genus.txt", header=TRUE, sep='\t')
 maas.results.df[,'Covariate'] <- maas.results.df[,'Variable']
@@ -362,7 +362,7 @@ maas.results.df.signf <- dplyr::filter(maas.results.df, Qval < 0.05)
 
 ```
 
-```{r scatter plots}
+```{r scatter plots, eval = FALSE}
 
 sysm.signf.features <- maas.results.df.signf %>%
     dplyr::filter(Covariate == "SYSTM") %>%
@@ -372,7 +372,7 @@ sysm.signf.features <- maas.results.df.signf %>%
 df.merged <- t(merged) %>% as.data.frame
 ```
 
-```{r maaslin scatter plot, fig.width = 10, fig.height = 20, dpi = 300}
+```{r maaslin scatter plot, fig.width = 10, fig.height = 20, dpi = 300, eval = FALSE}
 
 #df.merged %>% pull("Rikenella.Bacteria") %>% as.character I%>% as.numeric %>% sqrt %>% asin
 
