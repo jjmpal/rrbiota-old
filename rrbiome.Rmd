@@ -70,6 +70,15 @@ meta.merge.alphadiversity <- function(pseq, index = "shannon") {
         dplyr::rename(Sample_ID = Row.names) %>%
             dplyr::mutate(BL_AGE_GROUP = group_age(BL_AGE))
 }
+
+calculate.beta.matrix <- function(pseq) {
+    compositional.profile <- microbiome::transform(pseq, 'compositional')
+    otu <- microbiome::abundances(compositional.profile)
+    bray.dist.m <- vegan::vegdist(t(otu), method="bray")
+    dist.matrix <- as.matrix(bray.dist.m)
+    attr(dist.matrix, "method") <- "bray"
+    dist.matrix
+}
 ```
 
 Loading descriptions for clinical data
@@ -230,11 +239,6 @@ if (!file.exists("rds/bray.dist.m.species.rds") || !file.exists("rds/bray.dist.m
     bray.dist.m.species  <- readRDS("rds/bray.dist.m.species.rds")
     bray.dist.m.genus <- readRDS("rds/bray.dist.m.genus.rds")
 }
-```
-
-```{r temp}
-dist.matrix <- as.matrix(bray.dist.m)
-attr(dist.matrix, "method") <- "bray"
 ```
 
 ```{r beta hclust, fig.width = 5, fig.height = 4, dpi = 300, eval = FALSE}
