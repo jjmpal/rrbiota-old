@@ -220,21 +220,28 @@ calculateglm(dset.alpha, modelstring = "%s ~ BL_AGE + SEX + diversities_shannon"
 
 Beetadiversiteetti-matriisin lasku. Tiedosista *comp_bc_dissimilarity_matrix.R* ja käyttö *comp_adonis_covariates.R*.
 
-```{r vegdist, eval = FALSE}
-
-phf_profile.rel <- microbiome::transform(pseq_filtered, 'compositional')
-otu <- microbiome::abundances(phf_profile.rel)
-
-if (!file.exists("rds/bray.dist.m.rds")) {
-    bray.dist.m <- vegdist(t(otu), method="bray")
-    saveRDS(bray.dist.m, file = "rds/bray.dist.m.rds")
-} else {
-    bray.dist.m <- readRDS("rds/bray.dist.m.rds")
+```{r vegdist}
+calculate.beta.matrix <- function(pseq) {
+    compositional.profile <- microbiome::transform(pseq, 'compositional')
+    otu <- microbiome::abundances(compositional.profile)
+    vegan::vegdist(t(otu), method="bray")
 }
 
+if (!file.exists("rds/bray.dist.m.species.rds") || !file.exists("rds/bray.dist.m.genus.rds") {
+    bray.dist.m.species <- calculate.beta.matrix(pseq.species)
+    saveRDS(bray.dist.m.species, file = "rds/bray.dist.m.species.rds")
+    bray.dist.m.genus <- calculate.beta.matrix(pseq.genus)
+    saveRDS(bray.dist.m.genus, file = "rds/bray.dist.m.genus.rds")
+} else {
+    bray.dist.m.species  <- readRDS("rds/bray.dist.m.species.rds")
+    bray.dist.m.genus <- readRDS("rds/bray.dist.m.genus.rds")
+}
+}
+```
+
+```{r temp}
 dist.matrix <- as.matrix(bray.dist.m)
 attr(dist.matrix, "method") <- "bray"
-
 ```
 
 ```{r beta hclust, fig.width = 5, fig.height = 4, dpi = 300, eval = FALSE}
