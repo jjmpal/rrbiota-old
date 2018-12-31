@@ -57,7 +57,7 @@ filter.phenotype.data <- function(pseq,
                       MAP = 2./3.*DIASM + 1./3.*SYSTM) %>%
  #       dplyr::filter(DNA_OK == 1) %>%
         stats::na.omit() %>%
-        dplyr::select(-MEN, -DNA_OK) %>%
+        dplyr::select(-MEN, -DNA_OK, -BP_TREAT) %>%
         tibble::remove_rownames() %>%
         tibble::column_to_rownames(var = "rowname")
 ```
@@ -84,9 +84,8 @@ dset.genus <- filter.phenotype.data(pseq.genus)
 dset.species <- filter.phenotype.data(pseq.species)
 ```
 
-Phenotypical data between genus and species all.equal `r
-isTRUE(all.equal(dset.genus, dset.species))`. Dimension for data
-frames are `r dim(dset.genus)` and `r dim(dset.species)`.
+Phenotypical data between genus and species all.equal `r isTRUE(all.equal(dset.genus, dset.species))`. Dimension for data
+frames are (`r dim(dset.genus)`) and (`r dim(dset.species)`).
 
 Updating phyloseq objects
 
@@ -97,11 +96,11 @@ pseq.species <- sample_data(dset.species)
 
 # How large subgroups are?
 
-Number of participants in each combination of categorical variables
+Number of participants in each combination of all categorical variables
 
 ```{r numbers by group}
 dset.species %>%
-    group_by(SEX, BP_TREAT, CURR_SMOKE,  HYPERTENSION, Q57X,
+    group_by(SEX, CURR_SMOKE,  HYPERTENSION, Q57X,
              BL_USE_RX_C09, BL_USE_RX_C03, BL_USE_RX_C07, BL_USE_RX_C08) %>%
     select(-SYSTM, -DIASM, -BL_AGE, -BMI, -PULSEPRESSURE, -MAP) %>%
     summarise(n = n()) %>%
@@ -109,14 +108,21 @@ dset.species %>%
     kable            
 ```
 
-Number of particiapants in each combination of subset of categorical variables
+Number of particiapants in each combination after combining RR
+medication and exercice to binomial variables.
 
 ```{r numbers by group reduced}
-dset.species %>% group_by(SEX, BP_TREAT, CURR_SMOKE,  HYPERTENSION) %>%
-    select(SEX, BP_TREAT, CURR_SMOKE, HYPERTENSION) %>%
+dset.species %>%
+    mutate(ANYDRUG = ifelse(BL_USE_RX_C09  == 1 | BL_USE_RX_C03 == 1 |
+                            BL_USE_RX_C07 == 1  | BL_USE_RX_C08 == 1, 1, 0),
+           EXERCICE = ifelse(Q57X == 1, 0, 1)) %>%
+    group_by(SEX, CURR_SMOKE,  HYPERTENSION, ANYDRUG, EXERCICE) %>%
+    select(SEX, CURR_SMOKE, HYPERTENSION, EXERCICE) %>%
     summarise(n = n()) %>%
     arrange(desc(n)) %>%
     kable
+
+dset.species %>% pull(Q57X) %>% summary
 ```
 
 # Alpha diversity
@@ -157,7 +163,7 @@ lm(MAP ~ diversities_shannon, data=dset.alpha) %>%
     summary(.) %>% coef %>% kable(., digits=4)
 lm(MAP ~ BL_AGE + SEX + diversities_shannon, data=dset.alpha) %>%
     summary(.) %>% coef %>% kable(., digits=4)
-lm(MAP ~ BL_AGE + SEX + BMI + CURR_SMOKE + Q57X + BP_TREAT + diversities_shannon, data=dset.alpha) %>%
+lm(MAP ~ BL_AGE + SEX + BMI + CURR_SMOKE + Q57X + diversities_shannon, data=dset.alpha) %>%
     summary(.) %>% coef %>% kable(., digits=4)
 
 ```
@@ -267,7 +273,7 @@ ggplot((cbind(meta(pseq_filtered), prcomp$x[,1:2]) %>%
 
 # Genus
 
-Aaron work-december-2018 prepare_maaslin_input.R
+Aaron work-december-2018 *prepare_maaslin_input.R*
 
 ```{r prepare maaslin}
 
@@ -370,6 +376,6 @@ plot_maaslin_heatmap_final(maas.results.df.signf,
 ```
 
 
-```{r scp html}
+```{r scp html, cache = FALSE}
 system('scp rrbiome.html utu:articletwo')
 ```
