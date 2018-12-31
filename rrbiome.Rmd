@@ -151,7 +151,7 @@ Dset with alpha diversity
 dset.alpha <- meta.merge.alphadiversity(pseq.species)
 ```
 
-Scatterplots for alpha diversity by age group and sex
+Scatterplots for alpha diversity by age group and sex.
 
 ```{r alpha-MAP scatter plots, fig.width=10, fig.height=15}
 ggplot(dset.alpha %>% mutate(SEX = ifelse(SEX == 0, "Male", "Female")), aes(x=diversities_shannon, y=MAP)) +
@@ -167,8 +167,6 @@ ggplot(dset.alpha %>% mutate(SEX = ifelse(SEX == 0, "Male", "Female")), aes(x=di
     ylim(0, 200) +
     ggplot2::theme_minimal() 
 ```
-
-Linear models
 
 ```{r function for glm calculation, include = FALSE}
 calculateglm <- function(dset,
@@ -192,11 +190,22 @@ calculateglm <- function(dset,
 }
 ```
 
-```{r calculate alpha models}
-calculateglm(as.data.frame(dset.alpha), modelstring = "%s ~ BL_AGE + SEX + BMI + CURR_SMOKE + Q57X + DIAB + BL_USE_RX_C03 + BL_USE_RX_C07 + BL_USE_RX_C08 + BL_USE_RX_C09  + diversities_shannon") %>%
+Calculating linear models for alpha diversity.
+
+```{r calculate full alpha model}
+calculateglm(dset.alpha, modelstring = "%s ~ BL_AGE + SEX + BMI + CURR_SMOKE + Q57X + DIAB + BL_USE_RX_C03 + BL_USE_RX_C07 + BL_USE_RX_C08 + BL_USE_RX_C09  + diversities_shannon") %>%
     select(response, estimate, std.error, conf.low, conf.high, p.value) %>%
     kable(.)
 ```
+
+Calculating linear model using binomial variable for exercice and medication
+
+```{r calculate full alpha model}
+calculateglm(dset.alpha, modelstring = "%s ~ BL_AGE + SEX + BMI + CURR_SMOKE + ANYEXERCICE + DIAB + ANYDRUG  + diversities_shannon") %>%
+    select(response, estimate, std.error, conf.low, conf.high, p.value) %>%
+    kable(.)
+```
+
 
 # Beta diversity
 
