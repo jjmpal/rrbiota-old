@@ -20,6 +20,7 @@ library(phyloseq)
 library(microbiome)
 library(finriskmetagcommon)
 library(knitr)
+library(kableExtra)
 library(tidyr)
 library(vegan)
 library(reshape)
@@ -63,6 +64,13 @@ filter.phenotype.data <- function(pseq,
         dplyr::select(-MEN, -DNA_OK) %>%
         tibble::remove_rownames() %>%
         tibble::column_to_rownames(var = "rowname")
+
+meta.merge.alphadiversity <- function(pseq, index = "shannon") {
+    alphadiversity  <- microbiome::global(pseq, index = index)
+    base::merge(meta(pseq), alphadiversity, by=0, all=TRUE) %>%
+        dplyr::rename(Sample_ID = Row.names) %>%
+            dplyr::mutate(BL_AGE_GROUP = group_age(dset.alpha$BL_AGE))
+}
 ```
 
 Loading descriptions for clinical data
@@ -94,8 +102,8 @@ frames are (`r dim(dset.genus)`) and (`r dim(dset.species)`).
 Updating phyloseq objects
 
 ```{r updating phyloseq objects}
-pseq.genus <- sample_data(dset.genus)
-pseq.species <- sample_data(dset.species)
+sample_data(pseq.genus) <- sample_data(dset.genus)
+sample_data(pseq.species) <- sample_data(dset.species)
 ```
 
 # How large subgroups are?
@@ -130,24 +138,39 @@ Contigency table for RR mediaction.
 tbl <- table(dset.species$BP_TREAT, dset.species$ANYDRUG)
 colnames(tbl) <- c("ANYDRUG 0", "ANYDRUG 1")
 rownames(tbl) <- c("BP_TREAT 0", "BP_TREAT 1")
-tbl %>% kable(.)
+tbl %>%
+    kable(.) %>%
+    kable_styling(full_width = F) %>%
+    column_spec(1, bold = T)
 ```
 
-\xi^2-test for medication `r format.pval(chisq.test(dset.species$BP_TREAT, dset.species$ANYDRUG, correct=FALSE)$p.value)`.
+$\chi^2$-test for medication `r format.pval(chisq.test(dset.species$BP_TREAT, dset.species$ANYDRUG, correct=FALSE)$p.value)`.
 
-
+# Alpha diversity
 
 Dset with alpha diversity
 
 ```{r alpha diversity}
-
-alphadiversity <- microbiome::global(pseq_filtered, index="shannon")
-dset.alpha <- merge(dset, alphadiversity, by=0, all=TRUE)
-
+dset.alpha <- meta.merge.alphadiversity(pseq.species)
 ```
 
-```{r alpha diversity scatterplot, fig.width=10, fig.height=4}
+```{r alpha-MAP scatter plots, fig.width=10, fig.height=4}
+ggplot((dset.alpha, aes(x=diversities_shannon, y=MAP)) +
+    facet_wrap(BL_AGE_GROUP, ncol=4, scales = "free") +
+    geom_point(size=0.1, shape=1, aes(colour = SEX)) +
+    geom_smooth(method=lm, se=TRUE, size=0.5, color = 'Black') +
+    stat_poly_eq(formula = "y ~ x",
+                 aes(label = paste(..eq.label.., ..rr.label.., sep = "~~~")),
+                 label.y = 0,
+                 parse = TRUE,
+                 size = 3) +   
+    ylim(0, 200) +
+    ggplot2::theme_minimal() 
+```
 
+
+
+```{r alpha diversity scatterplot, fig.width=10, fig.height=4}
 ggplot((dset.alpha %>%
         select(BL_AGE, BMI, SYSTM, DIASM, PULSEPRESSURE, MAP, SEX, diversities_shannon) %>%
         gather(Covariate, Value, -SEX, -diversities_shannon)), 
@@ -162,8 +185,6 @@ ggplot((dset.alpha %>%
                  size = 3) +   
     ylim(0, 200) +
     ggplot2::theme_minimal() 
-
-
 ```
 
 Linear models
@@ -371,8 +392,4 @@ ggplot(df.merged %>%
                  parse = TRUE,
                  size = 3) +   
     ggplot2::theme_minimal() 
-
-
-```{r scp html, cache = FALSE}
-system('scp rrbiome.html utu:articletwo')
 ```
