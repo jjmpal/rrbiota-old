@@ -128,7 +128,7 @@ Contigency table for RR mediaction. P-value for chi-squared test is
 `r chisq.test(dset.species$BP_TREAT, dset.species$ANYDRUG, correct=FALSE)$p.value %>% format.pval`.
 
 ```{r self vs registered medication}
-table(dset.species$BP_TREAT, dset.species$ANYDRUG)
+table(dset.species$BP_TREAT, dset.species$ANYDRUG) %>% kable
 ```
 
 
