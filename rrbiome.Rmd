@@ -69,7 +69,7 @@ meta.merge.alphadiversity <- function(pseq, index = "shannon") {
     alphadiversity  <- microbiome::global(pseq, index = index)
     base::merge(meta(pseq), alphadiversity, by=0, all=TRUE) %>%
         dplyr::rename(Sample_ID = Row.names) %>%
-            dplyr::mutate(BL_AGE_GROUP = group_age(dset.alpha$BL_AGE))
+            dplyr::mutate(BL_AGE_GROUP = group_age(BL_AGE))
 }
 ```
 
