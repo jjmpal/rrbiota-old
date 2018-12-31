@@ -20,7 +20,6 @@ library(phyloseq)
 library(microbiome)
 library(finriskmetagcommon)
 library(knitr)
-library(kableExtra)
 library(tidyr)
 library(vegan)
 library(reshape)
@@ -139,9 +138,7 @@ tbl <- table(dset.species$BP_TREAT, dset.species$ANYDRUG)
 colnames(tbl) <- c("ANYDRUG 0", "ANYDRUG 1")
 rownames(tbl) <- c("BP_TREAT 0", "BP_TREAT 1")
 tbl %>%
-    kable(.) %>%
-    kable_styling(full_width = F) %>%
-    column_spec(1, bold = T)
+    kable(.)
 ```
 
 $\chi^2$-test for medication `r format.pval(chisq.test(dset.species$BP_TREAT, dset.species$ANYDRUG, correct=FALSE)$p.value)`.
@@ -173,7 +170,7 @@ ggplot(dset.alpha %>% mutate(SEX = ifelse(SEX == 0, "Male", "Female")), aes(x=di
 
 Linear models
 
-```{r lm model}
+```{r function for glm calculation, include = FALSE}
 calculateglm <- function(dset,
                          responses = list(model_1 = "MAP", model_2 = "SYSTM", model_3 = "DIASM",
                                           model_4 = "PULSEPRESSURE", model_5 = "HYPERTENSION"),
@@ -193,21 +190,17 @@ calculateglm <- function(dset,
         dplyr::mutate(conf.low = estimate - qnorm(1- 0.05/2) * std.error,
                       conf.high = estimate + qnorm(1- 0.05/2) * std.error)
 }
+```
 
+```{r calculate alpha models}
 calculateglm(as.data.frame(dset.alpha), modelstring = "%s ~ BL_AGE + SEX + BMI + CURR_SMOKE + Q57X + DIAB + BL_USE_RX_C03 + BL_USE_RX_C07 + BL_USE_RX_C08 + BL_USE_RX_C09  + diversities_shannon") %>%
-    select(response, estimate, conf.low, conf.high, p.value) %>%
-    kable
-
-#lm(MAP ~ BL_AGE + SEX + BMI + CURR_SMOKE + Q57X + DIAB + BL_USE_RX_C03 + BL_USE_RX_C07 + BL_USE_RX_C08 + BL_USE_RX_C09  + diversities_shannon, data = dset.alpha) %>% summary()
-
-
-###%>% kable(., digits=4)
-
+    select(response, estimate, std.error, conf.low, conf.high, p.value) %>%
+    kable(.)
 ```
 
 # Beta diversity
 
-Beetadiversiteetti-matriisin lasku. Tiedosista comp_bc_dissimilarity_matrix.R ja käyttö comp_adonis_covariates.R.
+Beetadiversiteetti-matriisin lasku. Tiedosista *comp_bc_dissimilarity_matrix.R* ja käyttö *comp_adonis_covariates.R*.
 
 ```{r vegdist, eval = FALSE}
 
