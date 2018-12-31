@@ -154,10 +154,11 @@ Dset with alpha diversity
 dset.alpha <- meta.merge.alphadiversity(pseq.species)
 ```
 
-```{r alpha-MAP scatter plots, fig.width=10, fig.height=4}
+```{r alpha-MAP scatter plots, fig.width=10, fig.height=15}
 ggplot(dset.alpha %>% mutate(SEX = ifelse(SEX == 0, "Male", "Female")), aes(x=diversities_shannon, y=MAP)) +
     facet_wrap(~BL_AGE_GROUP + SEX, ncol=2, scales = "free") +
     geom_point(size=0.1, shape=1, aes(colour = ANYDRUG)) +
+    scale_colour_manual(values = c("red","blue", "green")) +
     geom_smooth(method=lm, se=TRUE, size=0.5, color = 'Black') +
     stat_poly_eq(formula = "y ~ x",
                  aes(label = paste(..eq.label.., ..rr.label.., sep = "~~~")),
