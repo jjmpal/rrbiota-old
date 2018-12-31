@@ -112,7 +112,7 @@ Number of participants in each combination of all categorical variables
 
 ```{r numbers by group}
 dset.species %>%
-    group_by(SEX, CURR_SMOKE,  HYPERTENSION, Q57X,
+    group_by(SEX, CURR_SMOKE,  HYPERTENSION, Q57X, DIAB,
              BL_USE_RX_C09, BL_USE_RX_C03, BL_USE_RX_C07, BL_USE_RX_C08) %>%
     summarise(n = n()) %>%
     arrange(desc(n)) %>%
@@ -124,7 +124,7 @@ medication and exercice to binomial variables.
 
 ```{r numbers by group reduced}
 dset.species %>%
-     group_by(SEX, CURR_SMOKE,  HYPERTENSION, ANYDRUG, ANYEXERCICE) %>%
+     group_by(SEX, CURR_SMOKE,  HYPERTENSION, DIAB, ANYDRUG, ANYEXERCICE) %>%
     summarise(n = n()) %>%
     arrange(desc(n)) %>%
     kable
@@ -154,6 +154,8 @@ Dset with alpha diversity
 dset.alpha <- meta.merge.alphadiversity(pseq.species)
 ```
 
+Scatterplots for alpha diversity by age group and sex
+
 ```{r alpha-MAP scatter plots, fig.width=10, fig.height=15}
 ggplot(dset.alpha %>% mutate(SEX = ifelse(SEX == 0, "Male", "Female")), aes(x=diversities_shannon, y=MAP)) +
     facet_wrap(~BL_AGE_GROUP + SEX, ncol=2, scales = "free") +
@@ -169,34 +171,37 @@ ggplot(dset.alpha %>% mutate(SEX = ifelse(SEX == 0, "Male", "Female")), aes(x=di
     ggplot2::theme_minimal() 
 ```
 
-
-
-```{r alpha diversity scatterplot, fig.width=10, fig.height=4, eval = FALSE}
-ggplot((dset.alpha %>%
-        select(BL_AGE, BMI, SYSTM, DIASM, PULSEPRESSURE, MAP, SEX, diversities_shannon) %>%
-        gather(Covariate, Value, -SEX, -diversities_shannon)), 
-       aes(x=diversities_shannon, y=Value)) +
-    facet_wrap(~Covariate, ncol=4, scales = "free") +
-    geom_point(size=0.1, shape=1, aes(colour = SEX)) +
-    geom_smooth(method=lm, se=TRUE, size=0.5, color = 'Black') +
-    stat_poly_eq(formula = "y ~ x",
-                 aes(label = paste(..eq.label.., ..rr.label.., sep = "~~~")),
-                 label.y = 0,
-                 parse = TRUE,
-                 size = 3) +   
-    ylim(0, 200) +
-    ggplot2::theme_minimal() 
-```
-
 Linear models
 
-```{r lm model, eval = FALSE}
-lm(MAP ~ diversities_shannon, data=dset.alpha) %>%
-    summary(.) %>% coef %>% kable(., digits=4)
-lm(MAP ~ BL_AGE + SEX + diversities_shannon, data=dset.alpha) %>%
-    summary(.) %>% coef %>% kable(., digits=4)
-lm(MAP ~ BL_AGE + SEX + BMI + CURR_SMOKE + Q57X + diversities_shannon, data=dset.alpha) %>%
-    summary(.) %>% coef %>% kable(., digits=4)
+```{r lm model}
+calculateglm <- function(dset,
+                         responses = list(model_1 = "MAP", model_2 = "SYSTM", model_3 = "DIASM",
+                                          model_4 = "PULSEPRESSURE", model_5 = "HYPERTENSION"),
+                         min_n_for_continuous = 10,
+                         modelstring = "%s ~ AGE + sex") {
+    glmlist <- lapply(responses, function(response) {
+        fo.family <- ifelse(length(unique(pull(dset, response)))>min_n_for_continuous, stats::gaussian, stats::binomial)
+        fo <- sprintf(modelstring, response)
+        stats::glm(formula = as.formula(fo), family = fo.family, data = dset) %>%
+            broom::tidy() %>%
+                dplyr::filter(grepl("diversities_", term)) %>%
+                dplyr::mutate(response = response, fo = fo) %>%
+                dplyr::select(-term)
+    })
+    data.table::rbindlist(test, id = "model_name") %>%
+        as.data.frame %>%
+        dplyr::mutate(conf.low = estimate - qnorm(1- 0.05/2) * std.error,
+                      conf.high = estimate + qnorm(1- 0.05/2) * std.error)
+}
+
+calculateglm(as.data.frame(dset.alpha), modelstring = "%s ~ BL_AGE + SEX + BMI + CURR_SMOKE + Q57X + DIAB + BL_USE_RX_C03 + BL_USE_RX_C07 + BL_USE_RX_C08 + BL_USE_RX_C09  + diversities_shannon") %>%
+    select(response, estimate, conf.low, conf.high, p.value) %>%
+    kable
+
+#lm(MAP ~ BL_AGE + SEX + BMI + CURR_SMOKE + Q57X + DIAB + BL_USE_RX_C03 + BL_USE_RX_C07 + BL_USE_RX_C08 + BL_USE_RX_C09  + diversities_shannon, data = dset.alpha) %>% summary()
+
+
+###%>% kable(., digits=4)
 
 ```
 
