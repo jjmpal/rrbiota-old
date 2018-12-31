@@ -200,7 +200,7 @@ calculateglm(dset.alpha, modelstring = "%s ~ BL_AGE + SEX + BMI + CURR_SMOKE + Q
 
 Calculating linear model using binomial variable for exercice and medication
 
-```{r calculate full alpha model}
+```{r calculate binomial alpha model}
 calculateglm(dset.alpha, modelstring = "%s ~ BL_AGE + SEX + BMI + CURR_SMOKE + ANYEXERCICE + DIAB + ANYDRUG  + diversities_shannon") %>%
     select(response, estimate, std.error, conf.low, conf.high, p.value) %>%
     kable(.)
