@@ -124,12 +124,16 @@ dset.species %>%
 
 # Self reported vs. registered medication
 
-Contigency table for RR mediaction. P-value for chi-squared test is
-`r format.pval(chisq.test(dset.species$BP_TREAT, dset.species$ANYDRUG, correct=FALSE)$p.value)`.
+Contigency table for RR mediaction. 
 
 ```{r self vs registered medication}
-table(dset.species$BP_TREAT, dset.species$ANYDRUG) %>% kable
+tbl <- table(dset.species$BP_TREAT, dset.species$ANYDRUG)
+colnames(tbl) <- c("ANYDRUG 0", "ANYDRUG 1")
+rownames(tbl) <- c("BP_TREAT 0", "BP_TREAT 1")
+tbl %>% kable(.)
 ```
+
+\xi^2-test for medication `r format.pval(chisq.test(dset.species$BP_TREAT, dset.species$ANYDRUG, correct=FALSE)$p.value)`.
 
 
 
