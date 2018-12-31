@@ -84,7 +84,8 @@ dset.genus <- filter.phenotype.data(pseq.genus)
 dset.species <- filter.phenotype.data(pseq.species)
 ```
 
-Phenotypical data between genus and species all.equal `r isTRUE(all.equal(dset.genus, dset.species))`. Dimension for data
+Phenotypical data between genus and species all.equal `r 
+isTRUE(all.equal(dset.genus, dset.species))`. Dimension for data
 frames are (`r dim(dset.genus)`) and (`r dim(dset.species)`).
 
 Updating phyloseq objects
@@ -125,7 +126,6 @@ dset.species %>%
 dset.species %>% pull(Q57X) %>% summary
 ```
 
-# Alpha diversity
 
 Dset with alpha diversity
 
@@ -374,7 +374,6 @@ plot_maaslin_heatmap_final(maas.results.df.signf,
                       beta.maxabs=max(abs(maas.results.df.signf[,'beta'])))
 
 ```
-
 
 ```{r scp html, cache = FALSE}
 system('scp rrbiome.html utu:articletwo')
