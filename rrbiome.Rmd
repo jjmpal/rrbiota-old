@@ -50,14 +50,17 @@ filter.phenotype.data <- function(pseq,
                                                "BL_USE_RX_C07", "BL_USE_RX_C08"))
     meta(pseq) %>%
         tibble::rownames_to_column(var = "rowname") %>%
-        dplyr::select(rowname, included) %>%
-        dplyr::mutate(PULSEPRESSURE = SYSTM - DIASM,
-                      HYPERTENSION = factor(ifelse(SYSTM >= 140 | DIASM >= 90 | BP_TREAT == 1, 1, 0)),
+        dplyr::select(rowname, included) %>% 
+        dplyr::mutate(ANYDRUG = factor(ifelse(BL_USE_RX_C03  == 1 | BL_USE_RX_C07 == 1 |
+                                       BL_USE_RX_C08 == 1  | BL_USE_RX_C09 == 1, 1, 0)),
+                      ANYEXERCICE = factor(ifelse(Q57X == 1, 0, 1)),
+                      PULSEPRESSURE = SYSTM - DIASM,
+                      HYPERTENSION = factor(ifelse(SYSTM >= 140 | DIASM >= 90 | ANYDRUG == 1, 1, 0)),
                       SEX = factor(ifelse(MEN == "Female", 1, 0)),
                       MAP = 2./3.*DIASM + 1./3.*SYSTM) %>%
  #       dplyr::filter(DNA_OK == 1) %>%
         stats::na.omit() %>%
-        dplyr::select(-MEN, -DNA_OK, -BP_TREAT) %>%
+        dplyr::select(-MEN, -DNA_OK) %>%
         tibble::remove_rownames() %>%
         tibble::column_to_rownames(var = "rowname")
 ```
@@ -103,7 +106,6 @@ Number of participants in each combination of all categorical variables
 dset.species %>%
     group_by(SEX, CURR_SMOKE,  HYPERTENSION, Q57X,
              BL_USE_RX_C09, BL_USE_RX_C03, BL_USE_RX_C07, BL_USE_RX_C08) %>%
-    select(-SYSTM, -DIASM, -BL_AGE, -BMI, -PULSEPRESSURE, -MAP) %>%
     summarise(n = n()) %>%
     arrange(desc(n)) %>%
     kable            
@@ -114,17 +116,21 @@ medication and exercice to binomial variables.
 
 ```{r numbers by group reduced}
 dset.species %>%
-    mutate(ANYDRUG = ifelse(BL_USE_RX_C09  == 1 | BL_USE_RX_C03 == 1 |
-                            BL_USE_RX_C07 == 1  | BL_USE_RX_C08 == 1, 1, 0),
-           EXERCICE = ifelse(Q57X == 1, 0, 1)) %>%
-    group_by(SEX, CURR_SMOKE,  HYPERTENSION, ANYDRUG, EXERCICE) %>%
-    select(SEX, CURR_SMOKE, HYPERTENSION, EXERCICE) %>%
+     group_by(SEX, CURR_SMOKE,  HYPERTENSION, ANYDRUG, ANYEXERCICE) %>%
     summarise(n = n()) %>%
     arrange(desc(n)) %>%
     kable
-
-dset.species %>% pull(Q57X) %>% summary
 ```
+
+# Self reported vs. registered medication
+
+Contigency table for RR mediaction. P-value for chi-squared test is
+`r chisq.test(dset.species$BP_TREAT, dset.species$ANYDRUG, correct=FALSE)$p.value %>% format.pval`.
+
+```{r self vs registered medication}
+table(dset.species$BP_TREAT, dset.species$ANYDRUG)
+```
+
 
 
 Dset with alpha diversity
