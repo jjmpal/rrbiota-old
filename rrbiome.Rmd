@@ -5,7 +5,6 @@ date: "`r format(Sys.time(), '%d.%m.%Y')`"
 output: html_document
 ---
 
-
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(include = TRUE, echo = TRUE, message = FALSE, results='asis', cache=TRUE, warning=FALSE)
 knitr::opts_chunk$set(cache.path = 'cache/', output.dir="cache/",
@@ -44,13 +43,13 @@ print.dset <- function(dset) {
             mutate_if(is.numeric, round, 2) %>%
             kable
 }
-
 ```
 
 Loading phyloseq object
 
 ```{r data}
-pseq <- readRDS("data/phfinrisk_genus_all_drop50k_2018-11-16.RDs")
+pseq.genus <- readRDS("data/phfinrisk_genus_all_drop50k_2018-11-16.RDs")
+pseq.species <- readRDS("data/phfinrisk_species_ok_drop50k_2018-11-16.RDs")
 ```
 
 Loading descriptions for clinical data
