@@ -155,8 +155,7 @@ dset.alpha <- meta.merge.alphadiversity(pseq.species)
 ```
 
 ```{r alpha-MAP scatter plots, fig.width=10, fig.height=4}
-ggplot((dset.alpha %>% mutate(SEX = factor(ifelse(SEX == 0, "Male", "Female")))),
-       aes(x=diversities_shannon, y=MAP)) +
+ggplot(dset.alpha %>% mutate(SEX = ifelse(SEX == 0, "Male", "Female")), aes(x=diversities_shannon, y=MAP)) +
     facet_wrap(~BL_AGE_GROUP + SEX, ncol=2, scales = "free") +
     geom_point(size=0.1, shape=1, aes(colour = ANYDRUG)) +
     geom_smooth(method=lm, se=TRUE, size=0.5, color = 'Black') +
