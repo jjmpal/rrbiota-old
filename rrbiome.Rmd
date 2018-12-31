@@ -180,7 +180,7 @@ calculateglm <- function(dset,
                          min_n_for_continuous = 10,
                          modelstring = "%s ~ AGE + sex") {
     glmlist <- lapply(responses, function(response) {
-        fo.family <- ifelse(length(unique(pull(dset, response)))>min_n_for_continuous, stats::gaussian, stats::binomial)
+        fo.family <- ifelse(length(unique(pull(dset, response))) > min_n_for_continuous, stats::gaussian, stats::binomial)
         fo <- sprintf(modelstring, response)
         stats::glm(formula = as.formula(fo), family = fo.family, data = dset) %>%
             broom::tidy() %>%
@@ -188,7 +188,7 @@ calculateglm <- function(dset,
                 dplyr::mutate(response = response, fo = fo) %>%
                 dplyr::select(-term)
     })
-    data.table::rbindlist(test, id = "model_name") %>%
+    data.table::rbindlist(glmlist, id = "model_name") %>%
         as.data.frame %>%
         dplyr::mutate(conf.low = estimate - qnorm(1- 0.05/2) * std.error,
                       conf.high = estimate + qnorm(1- 0.05/2) * std.error)
