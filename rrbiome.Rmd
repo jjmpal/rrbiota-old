@@ -243,7 +243,7 @@ if (!file.exists("rds/bray.dist.m.species.rds") || !file.exists("rds/bray.dist.m
 
 Mallin lasku Adoniksella
 
-```{r function for adnois calculation, include = FALSE}
+```{r function for adnoiscalculation, include = FALSE}
 calculateadonis <- function(dset,
                             matrix,
                             responses = list(model_1 = "MAP", model_2 = "SYSTM", model_3 = "DIASM",
@@ -251,11 +251,11 @@ calculateadonis <- function(dset,
                             covariates = "BL_AGE + SEX",
                             modelstring = "matrix ~ %s + %s",
                             npermutations = 99) {
-    glmlist <- lapply(responses, function(response) {
+    glmlist <- mclapply(responses, function(response) {
         fo <- as.formula(sprintf(modelstring, response, covariates))
         ad <- adonis(fo, data = dset, permutations = npermutations)
         ad$aov.tab %>% as.data.frame
-    }) 
+    }, mc.cores = lenfth(responses)) 
 }
 ```
 
