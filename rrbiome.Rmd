@@ -254,9 +254,10 @@ calculateadonis <- function(dset,
     ret  <- mclapply(responses, function(response) {
         fo <- as.formula(sprintf(modelstring, response, covariates))
         ad <- adonis(fo, data = dset, permutations = npermutations)
-        ad$aov.tab %>% as.data.frame %>%
-            tibble::rownames_to_column(var = "response") %>%
-            dplyr::mutate(fo = fo)
+        ad$aov.tab %>%
+            as.data.frame %>%
+            tibble::rownames_to_column(var = "term") %>%
+            dplyr::mutate(response = response, fo = fo)
     }, mc.cores = length(responses))
     data.table::rbindlist(ret, id = "model_name") 
 }
