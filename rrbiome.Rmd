@@ -243,7 +243,7 @@ if (!file.exists("rds/bray.dist.m.species.rds") || !file.exists("rds/bray.dist.m
 
 Mallin lasku Adoniksella
 
-```{r function for glm calculation, include = FALSE}
+```{r function for adnois calculation, include = FALSE}
 calculateadonis <- function(dset,
                             matrix,
                             responses = list(model_1 = "MAP", model_2 = "SYSTM", model_3 = "DIASM",
