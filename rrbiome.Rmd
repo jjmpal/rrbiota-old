@@ -9,6 +9,8 @@ output: html_document
 knitr::opts_chunk$set(include = TRUE, echo = TRUE, message = FALSE, results='asis', cache=TRUE, warning=FALSE)
 knitr::opts_chunk$set(cache.path = 'cache/', output.dir="cache/",
                       file.path = 'cache/', fig.path = 'cache/')
+
+dir.create("rds/", showWarnings = FALSE)
 ```
 
 Importing libraries
@@ -279,24 +281,9 @@ if (!file.exists("rds/adonis.species.rds")) {
 
 
 ```{r adonis3, eval = FALSE}
- adonis.species <- calculateadonis(dset = meta(pseq.species),
-                    matrix = bray.dist.m.species,
-                    covariates = "BL_AGE + SEX",
-                    npermutations = 2)
-
- adonis.species
- 
-
-ret <- list(model_1 = adonis.species$model_1 %>% tibble::rownames_to_column(var = "response"),
-     model_2 =  adonis.species$model_2 %>% tibble::rownames_to_column(var = "response"))
-
-data.table::rbindlist(ret, id = "model_name") %>%
-    dplyr::filter(response %in% list(a = "MAP", b = "SYSTM"))
-
-
- 
-
-    })
+ adonis.species %>%
+    select(response, SumsOfSqs, MeanSqs, F.Model, R2, "Pr(>F)") %>%
+    kable(.)
 ```
 
 # PCA
