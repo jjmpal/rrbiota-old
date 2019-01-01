@@ -25,6 +25,7 @@ library(vegan)
 library(reshape)
 library(ggpmisc)
 library(Maaslin)
+library(parallel)
 ```
 
 ```{r functions, include = FALSE}
@@ -58,8 +59,7 @@ filter.phenotype.data <- function(pseq,
                       HYPERTENSION = factor(ifelse(SYSTM >= 140 | DIASM >= 90 | ANYDRUG == 1, 1, 0)),
                       SEX = factor(ifelse(MEN == "Female", 1, 0)),
                       MAP = 2./3.*DIASM + 1./3.*SYSTM) %>%
- #       dplyr::filter(DNA_OK == 1) %>%
-        stats::na.omit() %>%
+         stats::na.omit() %>%
         dplyr::select(-MEN, -DNA_OK) %>%
         tibble::remove_rownames() %>%
         tibble::column_to_rownames(var = "rowname")
@@ -255,7 +255,7 @@ calculateadonis <- function(dset,
         fo <- as.formula(sprintf(modelstring, response, covariates))
         ad <- adonis(fo, data = dset, permutations = npermutations)
         ad$aov.tab %>% as.data.frame
-    }, mc.cores = lenfth(responses)) 
+    }, mc.cores = length(responses)) 
 }
 ```
 
@@ -272,9 +272,14 @@ if (!file.exists("rds/adonis.species.rds")) {
 ```                     
 
 
-```{r adonis3}
+```{r adonis3, eval = FALSE}
 
 ret
+
+ adonis.species <- calculateadonis(dset = meta(pseq.species),
+                    matrix = bray.dist.m.species,
+                    covariates = "BL_AGE + SEX",
+                    npermutations = 92)
 
 adonis(bray.dist.m.species ~ MAP + BL_AGE + SEX + BMI + CURR_SMOKE + Q57X + DIAB + BL_USE_RX_C03 + BL_USE_RX_C07 + BL_USE_RX_C08 + BL_USE_RX_C09,
        data = meta(pseq.species),
