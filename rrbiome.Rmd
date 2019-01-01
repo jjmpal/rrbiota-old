@@ -182,7 +182,7 @@ calculateglm <- function(dset,
                          responses = list(model_1 = "MAP", model_2 = "SYSTM", model_3 = "DIASM",
                                           model_4 = "PULSEPRESSURE", model_5 = "HYPERTENSION"),
                          min_n_for_continuous = 10,
-                         modelstring = "%s ~ AGE + sex") {
+                         modelstring = "%s ~ BL_AGE + SEX") {
     glmlist <- lapply(responses, function(response) {
         fo.family <- ifelse(length(unique(pull(dset, response))) > min_n_for_continuous, stats::gaussian, stats::binomial)
         fo <- sprintf(modelstring, response)
@@ -229,7 +229,7 @@ calculateglm(dset.alpha, modelstring = "%s ~ BL_AGE + SEX + diversities_shannon"
 
 Beetadiversiteetti-matriisin lasku. Tiedosista *comp_bc_dissimilarity_matrix.R* ja käyttö *comp_adonis_covariates.R*.
 
-```{r matrix calculation}
+```{r matrix calculation, cache = FALSE}
 if (!file.exists("rds/bray.dist.m.species.rds") || !file.exists("rds/bray.dist.m.genus.rds")) {
     bray.dist.m.species <- calculate.beta.matrix(pseq.species)
     saveRDS(bray.dist.m.species, file = "rds/bray.dist.m.species.rds")
@@ -241,42 +241,56 @@ if (!file.exists("rds/bray.dist.m.species.rds") || !file.exists("rds/bray.dist.m
 }
 ```
 
-```{r beta hclust, fig.width = 5, fig.height = 4, dpi = 300, eval = FALSE}
-gplots::heatmap.2(dist.matrix,
-                  distfun = dist,
-                  trace = "none",
-                  hclustfun = hclust,
-                  key.title = NA,
-                  dendrogram = "column",
-                  density.info = "none",
-                  labRow = NA,
-                  labCol = NA)
-```	
-
 Mallin lasku Adoniksella
 
-```{r adonis1, eval = FALSE}
-adonis(dist.matrix ~ MAP, 
-       data = meta(pseq_filtered),
-       permutations = 99)$aov.tab %>%
-                            as.data.frame %>%
-                            kable
+```{r function for glm calculation, include = FALSE}
+calculateadonis <- function(dset,
+                            matrix,
+                            responses = list(model_1 = "MAP", model_2 = "SYSTM", model_3 = "DIASM",
+                                          model_4 = "PULSEPRESSURE", model_5 = "HYPERTENSION"),
+                            covariates = "BL_AGE + SEX",
+                            modelstring = "matrix ~ %s + %s",
+                            npermutations = 99) {
+    glmlist <- lapply(responses, function(response) {
+        fo <- as.formula(sprintf(modelstring, response, covariates))
+        ad <- adonis(fo, data = dset, permutations = npermutations)
+        ad$aov.tab %>% as.data.frame
+    }) 
+}
 ```
 
-```{r adonis2, eval = FALSE}
-adonis(dist.matrix ~ BL_AGE + SEX + MAP,
-       data = meta(pseq_filtered),
-       permutations = 99)$aov.tab %>%
-                            as.data.frame %>%
-                            kable
-```
+ ```{r adonis calculation, cache = FALSE}
+if (!file.exists("rds/adonis.species.rds")) {
+    adonis.species <- calculateadonis(dset = meta(pseq.species),
+                    matrix = bray.dist.m.species,
+                    covariates = "BL_AGE + SEX + BMI + CURR_SMOKE + Q57X + DIAB + BL_USE_RX_C03 + BL_USE_RX_C07 + BL_USE_RX_C08 + BL_USE_RX_C09",
+                    npermutations = 99)
+     saveRDS(adonis.species, file = "rds/adonis.species.rds")
+} else {
+     adonis.species  <- readRDS("rds/adonis.species.rds")
+}
+```                     
 
-```{r adonis3, eval = FALSE}
-adonis(dist.matrix ~ MAP + BL_AGE + SEX + BMI + CURR_SMOKE + Q57X + BP_TREAT,
-       data = meta(pseq_filtered),
-       permutations = 99)$aov.tab %>%
+
+```{r adonis3}
+
+ret
+
+adonis(bray.dist.m.species ~ MAP + BL_AGE + SEX + BMI + CURR_SMOKE + Q57X + DIAB + BL_USE_RX_C03 + BL_USE_RX_C07 + BL_USE_RX_C08 + BL_USE_RX_C09,
+       data = meta(pseq.species),
+       permutations = 2)$aov.tab %>%
                             as.data.frame %>%
                             kable
+
+ glmlist <- lapply(responses, function(response) {
+        fo.family <- ifelse(length(unique(pull(dset, response))) > min_n_for_continuous, stats::gaussian, stats::binomial)
+        fo <- sprintf(modelstring, response)
+        stats::glm(formula = as.formula(fo), family = fo.family, data = dset) %>%
+            broom::tidy() %>%
+                dplyr::filter(grepl("diversities_", term)) %>%
+                dplyr::mutate(response = response, fo = fo) %>%
+                dplyr::select(-term)
+    })
 ```
 
 # PCA
