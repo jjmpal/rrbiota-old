@@ -252,14 +252,16 @@ calculateadonis <- function(dset,
                             modelstring = "matrix ~ %s + %s",
                             npermutations = 99) {
     ret  <- mclapply(responses, function(response) {
-        fo <- as.formula(sprintf(modelstring, response, covariates))
-        ad <- adonis(fo, data = dset, permutations = npermutations)
+        fo <- sprintf(modelstring, response, covariates)
+        ad <- adonis(as.formula(fo), data = dset, permutations = npermutations)
         ad$aov.tab %>%
             as.data.frame %>%
             tibble::rownames_to_column(var = "term") %>%
             dplyr::mutate(response = response, fo = fo)
-    }, mc.cores = length(responses))
-    data.table::rbindlist(ret, id = "model_name") 
+      }, mc.cores = length(responses))
+    data.table::rbindlist(ret, id = "model_name") %>%
+        dplyr::filter(term %in% responses) %>%
+            dplyr::select(-term)
 }
 ```
 
@@ -277,14 +279,19 @@ if (!file.exists("rds/adonis.species.rds")) {
 
 
 ```{r adonis3, eval = FALSE}
-adonis.species %>%
-    broom::tidy()
+ adonis.species <- calculateadonis(dset = meta(pseq.species),
+                    matrix = bray.dist.m.species,
+                    covariates = "BL_AGE + SEX",
+                    npermutations = 2)
+
+ adonis.species
+ 
 
 ret <- list(model_1 = adonis.species$model_1 %>% tibble::rownames_to_column(var = "response"),
      model_2 =  adonis.species$model_2 %>% tibble::rownames_to_column(var = "response"))
 
 data.table::rbindlist(ret, id = "model_name") %>%
-    dplyr::filter(response %in% c("MAP", "SYSTM"))
+    dplyr::filter(response %in% list(a = "MAP", b = "SYSTM"))
 
 
  
