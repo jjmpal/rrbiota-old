@@ -321,19 +321,21 @@ Aaron work-december-2018 *prepare_maaslin_input.R*
 prepare.maaslin <- function (pseq,
                              tsvfile = "merged_phfinrisk_genus.tsv",
                              conffile = "maaslin_config.config",
-                             includedvars = c("BL_AGE", "BMI", "SEX")) {
+                             includedvars = c("BL_AGE", "BMI", "SEX"),
+                             readpclrows = "Archaea.Archaea-") {
     pheno <- t(microbiome::meta(phyloseq::sample_data(pseq)))
     sample.ids <- colnames(pheno)
     phfg.pseq.rel <- microbiome::transform(pseq, "compositional")
     abud.rel <- abundances(phfg.pseq.rel)
-    rownames(abud.rel) <- sapply(rownames(abud.rel), function (genus) gsub("(.*) \\(+(.+)\\)", '\\1.\\2', genus))
+    rownames(abud.rel) <- sapply(rownames(abud.rel),
+                                 function (genus) gsub("(.*) \\(+(.+)\\)", '\\1.\\2', genus))
     write.table(t(rbind(sample.ids, pheno, abud.rel)), file = tsvfile, sep='\t', quote=FALSE, row.names=FALSE, col.names=TRUE)
     data <- file(conffile , open='wt')
     pcl.contents <- c("Matrix: Metadata",
                       paste(c("Read_PCL_Rows: ", paste(includedvars, collapse=",")), collapse = ""),
                       "",
                       "Matrix: Adundance",
-                      "Read_PCL_Rows: Archaea.Archaea-")
+                      paste("Read_PCL_Rows:", readpclrows))
     writeLines(pcl.contents, con=data)
     close(data)
 }
@@ -442,4 +444,25 @@ abud.rel.lacto %>%
                        zeros = n - nonzeros)) %>%
     arrange(zeros) %>%
     kable
+```
+
+```{r lactobacillus scatterplot}
+df.merged.lacto <-  merge.pheno.abu(pseq.lacto)
+
+colnames(df.merged.lacto)
+
+prepare.maaslin(pseq.lacto,
+                 tsvfile = "maaslin_lacto_merged_phfinrisk_genus.tsv",
+                conffile = "maaslin_lacto_config.config",
+                includedvars = c("MAP", "SYSTM", "DIASM", "PULSEPRESSURE", "HYPERTENSION", maaslin.force.vars),
+                readpclrows = "-MAP")
+
+Maaslin("maaslin_lacto_merged_phfinrisk_genus.tsv",
+        "maaslin_lacto",
+        strInputConfig = "maaslin_lacto_config.config",
+        strModelSelection="none",
+        dSignificanceLevel = 1.0, 
+        fAllvAll = TRUE,
+        strForcedPredictors = maaslin.force.vars)
+
 ```
