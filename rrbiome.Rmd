@@ -67,6 +67,46 @@ calculate.beta.matrix <- function(pseq) {
     attr(dist.matrix, "method") <- "bray"
     dist.matrix
 }
+
+calculateadonis <- function(dset,
+                            matrix,
+                            responses = list(model_1 = "MAP", model_2 = "SYSTM", model_3 = "DIASM",
+                                          model_4 = "PULSEPRESSURE", model_5 = "HYPERTENSION"),
+                            covariates = "BL_AGE + SEX",
+                            modelstring = "matrix ~ %s + %s",
+                            npermutations = 99) {
+    ret  <- mclapply(responses, function(response) {
+        fo <- sprintf(modelstring, response, covariates)
+        ad <- adonis(as.formula(fo), data = dset, permutations = npermutations)
+        ad$aov.tab %>%
+            as.data.frame %>%
+            tibble::rownames_to_column(var = "term") %>%
+            dplyr::mutate(response = response, fo = fo)
+      }, mc.cores = length(responses))
+    data.table::rbindlist(ret, id = "model_name") %>%
+        dplyr::filter(term %in% responses) %>%
+            dplyr::select(-term)
+}
+
+calculateglm <- function(dset,
+                         responses = list(model_1 = "MAP", model_2 = "SYSTM", model_3 = "DIASM",
+                                          model_4 = "PULSEPRESSURE", model_5 = "HYPERTENSION"),
+                         min_n_for_continuous = 10,
+                         modelstring = "%s ~ BL_AGE + SEX") {
+    glmlist <- lapply(responses, function(response) {
+        fo.family <- ifelse(length(unique(pull(dset, response))) > min_n_for_continuous, stats::gaussian, stats::binomial)
+        fo <- sprintf(modelstring, response)
+        stats::glm(formula = as.formula(fo), family = fo.family, data = dset) %>%
+            broom::tidy() %>%
+                dplyr::filter(grepl("diversities_", term)) %>%
+                dplyr::mutate(response = response, fo = fo) %>%
+                dplyr::select(-term)
+    })
+    data.table::rbindlist(glmlist, id = "model_name") %>%
+        as.data.frame %>%
+        dplyr::mutate(conf.low = estimate - qnorm(1- 0.05/2) * std.error,
+                      conf.high = estimate + qnorm(1- 0.05/2) * std.error)
+}
 ```
 
 # Loading data
@@ -104,7 +144,7 @@ sample_data(pseq.genus) <- sample_data(dset.genus)
 sample_data(pseq.species) <- sample_data(dset.species)
 ```
 
-Sample data has dimensions (`r dim(sample_data(pseq.species)`).
+Sample data has dimensions (`r dim(sample_data(pseq.species))`).
 
 # Self reported vs. registered medication
 
@@ -169,28 +209,6 @@ ggplot(dset.alpha %>% mutate(SEX = ifelse(SEX == 0, "Male", "Female")), aes(x=di
     ggplot2::theme_minimal() 
 ```
 
-```{r function for glm calculation, include = FALSE}
-calculateglm <- function(dset,
-                         responses = list(model_1 = "MAP", model_2 = "SYSTM", model_3 = "DIASM",
-                                          model_4 = "PULSEPRESSURE", model_5 = "HYPERTENSION"),
-                         min_n_for_continuous = 10,
-                         modelstring = "%s ~ BL_AGE + SEX") {
-    glmlist <- lapply(responses, function(response) {
-        fo.family <- ifelse(length(unique(pull(dset, response))) > min_n_for_continuous, stats::gaussian, stats::binomial)
-        fo <- sprintf(modelstring, response)
-        stats::glm(formula = as.formula(fo), family = fo.family, data = dset) %>%
-            broom::tidy() %>%
-                dplyr::filter(grepl("diversities_", term)) %>%
-                dplyr::mutate(response = response, fo = fo) %>%
-                dplyr::select(-term)
-    })
-    data.table::rbindlist(glmlist, id = "model_name") %>%
-        as.data.frame %>%
-        dplyr::mutate(conf.low = estimate - qnorm(1- 0.05/2) * std.error,
-                      conf.high = estimate + qnorm(1- 0.05/2) * std.error)
-}
-```
-
 Calculating linear models for alpha diversity.
 
 ```{r calculate full alpha model}
@@ -219,7 +237,8 @@ calculateglm(dset.alpha, modelstring = "%s ~ BL_AGE + SEX + diversities_shannon"
 
 # Beta diversity
 
-Beetadiversiteetti-matriisin lasku. Tiedosista *comp_bc_dissimilarity_matrix.R* ja käyttö *comp_adonis_covariates.R*.
+Calculating the distance matrix from data after compositional
+transformation using vegdist and bray method.
 
 ```{r matrix calculation, cache = FALSE}
 if (!file.exists("rds/bray.dist.m.species.rds") || !file.exists("rds/bray.dist.m.genus.rds")) {
@@ -233,29 +252,7 @@ if (!file.exists("rds/bray.dist.m.species.rds") || !file.exists("rds/bray.dist.m
 }
 ```
 
-Mallin lasku Adoniksella
-
-```{r function for adnoiscalculation, include = FALSE}
-calculateadonis <- function(dset,
-                            matrix,
-                            responses = list(model_1 = "MAP", model_2 = "SYSTM", model_3 = "DIASM",
-                                          model_4 = "PULSEPRESSURE", model_5 = "HYPERTENSION"),
-                            covariates = "BL_AGE + SEX",
-                            modelstring = "matrix ~ %s + %s",
-                            npermutations = 99) {
-    ret  <- mclapply(responses, function(response) {
-        fo <- sprintf(modelstring, response, covariates)
-        ad <- adonis(as.formula(fo), data = dset, permutations = npermutations)
-        ad$aov.tab %>%
-            as.data.frame %>%
-            tibble::rownames_to_column(var = "term") %>%
-            dplyr::mutate(response = response, fo = fo)
-      }, mc.cores = length(responses))
-    data.table::rbindlist(ret, id = "model_name") %>%
-        dplyr::filter(term %in% responses) %>%
-            dplyr::select(-term)
-}
-```
+Calculating beta diversity for blood pressure variables using adonis
 
  ```{r adonis calculation, cache = FALSE}
 if (!file.exists("rds/adonis.species.rds")) {
@@ -269,6 +266,8 @@ if (!file.exists("rds/adonis.species.rds")) {
 }
 ```                     
 
+Printing the results for adonis run for blood pressure variables in
+full model
 
 ```{r adonis3}
  adonis.species %>%
