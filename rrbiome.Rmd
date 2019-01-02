@@ -318,22 +318,16 @@ ggplot(cbind(meta(pseq.species), pca.prcomp$x[,1:2]), aes(x=PC1, y=PC2)) +
 Aaron work-december-2018 *prepare_maaslin_input.R*
 
 ```{r prepare maaslin}
-
-
-get.merged.dataset <- function(pseq) {
+prepare.maaslin <- function (pseq,
+                             tsvfile = "merged_phfinrisk_genus.tsv",
+                             conffile = "maaslin_config.config",
+                             includedvars = c("BL_AGE", "BMI", "SEX")) {
     pheno <- t(microbiome::meta(phyloseq::sample_data(pseq)))
     sample.ids <- colnames(pheno)
     phfg.pseq.rel <- microbiome::transform(pseq, "compositional")
     abud.rel <- abundances(phfg.pseq.rel)
     rownames(abud.rel) <- sapply(rownames(abud.rel), function (genus) gsub("(.*) \\(+(.+)\\)", '\\1.\\2', genus))
-    t(rbind(sample.ids, pheno, abud.rel))
-}
-
-prepare.maaslin <- function (pseq,
-                             tsvfile = "merged_phfinrisk_genus.tsv",
-                             conffile = "maaslin_config.config",
-                             includedvars = c("BL_AGE", "BMI", "SEX")) {
-    write.table(get.merged.dataset(pseq), file = tsvfile, sep='\t', quote=FALSE, row.names=FALSE, col.names=TRUE)
+    write.table(t(rbind(sample.ids, pheno, abud.rel)), file = tsvfile, sep='\t', quote=TRUE, row.names=TRUE, col.names=NA)
     data <- file(conffile , open='wt')
     pcl.contents <- c("Matrix: Metadata",
                       paste(c("Read_PCL_Rows: ", paste(includedvars, collapse=",")), collapse = ""),
@@ -379,7 +373,7 @@ Reading and filtering the data Maaslin provided
 ```{r Reading maaslins output}
 maas.results.df.signf <- read.table("maaslin/merged_phfinrisk_genus.txt", header=TRUE, sep='\t') %>%
     merge(names.dset %>% select(Covariate, Category, Name), by.x ="Variable", by.y = "Covariate") %>%
-    dplyr::mutate(Qval = p.adjust(maas.results.df[,'P.value'], method="BH"),
+    dplyr::mutate(Qval = p.adjust(P.value, method="BH"),
            Beta = Coefficient) %>%
    dplyr::filter(Qval < 0.05) 
 
@@ -417,11 +411,19 @@ ggplot(df.merged %>% gather(Covariate, relabundance, maas.signf.features), aes(x
     ggplot2::theme_minimal() 
 ```
 
-```{r maaslin plot}
+```{r maaslin plot, message = FALSE, echo = FALSE}
 source("edgeR_plot_functions.R")
 
 plot_maaslin_heatmap_final(maas.results.df.signf,
                       xlab.text="Genera",
                       beta.maxabs=max(abs(maas.results.df.signf[,'beta'])),
                       order.by.category=FALSE)
+```
+
+# Lactobacillus
+
+```{r lactobacillus}
+
+taxa <- subset_taxa(pseq.species, Genus=="Lactobacillus") %>% taxa()
+
 ```
