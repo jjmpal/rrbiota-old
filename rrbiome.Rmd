@@ -357,7 +357,7 @@ prepare.maaslin <- function (pseq,
 Running maaslin for blood pressure variables while rest of the
 phenotype variables are forced in the model
 
-```{r run maaslin} 
+```{r run maaslin, echo = FALSE, warnings = FALSE, message=FALSE} 
 maaslin.force.vars <- c("BL_AGE", "SEX", "BMI", "CURR_SMOKE", "Q57X", "DIAB", "BL_USE_RX_C03", "BL_USE_RX_C07", "BL_USE_RX_C08", "BL_USE_RX_C09")
 
 prepare.maaslin(pseq.genus,
@@ -374,21 +374,16 @@ Maaslin("maaslin_merged_phfinrisk_genus.tsv",
         strForcedPredictors = maaslin.force.vars)
 ```
 
-Data framen luku *comp_maaslin_results_from_single_job.R* ja plottaus käyttäen *comp_maaslin_plots.R* ja *edgeR_plot_functions.R*.
+Reading and filtering the data Maaslin provided
 
 ```{r Reading maaslins output}
-maas.results.df <- read.table("maaslin/merged_phfinrisk_genus.txt", header=TRUE, sep='\t')
-maas.results.df[,'Covariate'] <- maas.results.df[,'Variable']
-maas.results.df <- merge(maas.results.df, names.dset[,c('Covariate','Category', 'Name')], by=c('Covariate'))
-maas.results.df[,'Maaslin.Q.value'] <- maas.results.df[,'Q.value']
-maas.results.df[,'Qval'] <- p.adjust(maas.results.df[,'P.value'], method="BH")
-maas.results.df[,'beta'] <- maas.results.df[,'Coefficient']
-maas.results.df.signf <- dplyr::filter(maas.results.df, Qval < 0.05)
+maas.results.df.signf <- read.table("maaslin/merged_phfinrisk_genus.txt", header=TRUE, sep='\t') %>%
+    merge(names.dset %>% select(Covariate, Category, Name), by.x ="Variable", by.y = "Covariate") %>%
+    dplyr::mutate(Qval = p.adjust(maas.results.df[,'P.value'], method="BH"),
+           Beta = Coefficient) %>%
+   dplyr::filter(Qval < 0.05) 
 
-```
-
-```{r scatter plots}
-sysm.signf.features <- maas.results.df.signf %>%
+maas.signf.features <- maas.results.df.signf %>%
     pull(Feature) %>%
     as.character() %>%
     gsub("_", ".", .)
@@ -396,8 +391,20 @@ sysm.signf.features <- maas.results.df.signf %>%
 df.merged <-  merge.pheno.abu(pseq.genus)
 ```
 
+Table for significant relations between blood pressure variables and genera
+
+```{r maaslin significant table}
+maas.results.df.signf %>%
+    select(Name, Feature, Beta, Qval) %>%
+    kable           
+```
+
+A scatter plot for the significant genera against blood
+pressuer. Compositional data is transformed using 
+$\textrm{arcsin}(\textrm{sqrt} (\cdot))$.
+
 ```{r maaslin scatter plot, fig.width = 10, fig.height = 20, dpi = 300}
-ggplot(df.merged %>% gather(Covariate, relabundance, sysm.signf.features), aes(x = asin(sqrt(relabundance)), y = SYSTM)) +
+ggplot(df.merged %>% gather(Covariate, relabundance, maas.signf.features), aes(x = asin(sqrt(relabundance)), y = SYSTM)) +
     facet_wrap(~Covariate, ncol=2, scales = "free") +
     geom_point(aes(color = SEX), size = 0.2) +
     scale_y_continuous(breaks=seq(0,200,40)) +
