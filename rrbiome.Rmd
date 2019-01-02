@@ -300,7 +300,7 @@ setNames(pca.percentage, pca.prcomp$x %>% colnames) %>% head(10) %>% t %>% kable
 
 PCA plot for hypertension
 
-```{r PCA plots continuous, fig.width = 10, fig.height = 6, dpi = 300}
+	```{r PCA plots continuous, fig.width = 10, fig.height = 6, dpi = 300}
 ggplot(cbind(meta(pseq.species), pca.prcomp$x[,1:2]), aes(x=PC1, y=PC2)) +
     geom_point(aes(color = HYPERTENSION), size = 0.2) +
     xlab(pca.labels[1]) +
@@ -309,45 +309,50 @@ ggplot(cbind(meta(pseq.species), pca.prcomp$x[,1:2]), aes(x=PC1, y=PC2)) +
     ggplot2::theme_minimal() 
 ```
 
-# Genus
+# Connection between genus and blood pressure
 
 Aaron work-december-2018 *prepare_maaslin_input.R*
 
-```{r prepare maaslin, eval = FALSE}
+```{r prepare maaslin}
 
-pheno <- t(meta(sample_data(pseq_filtered)))
-sample.ids <- colnames(pheno)
-phfg.pseq.rel <- microbiome::transform(pseq_filtered, "compositional")
-abud.rel <- abundances(phfg.pseq.rel)
+prepare.maaslin <- function (pseq,
+                             tsvfile = "merged_phfinrisk_genus.tsv",
+                             conffile = "maaslin_config.config",
+                             includedvars = c("BL_AGE", "BMI", "SEX")) {
+    pheno <- t(microbiome::meta(phyloseq::sample_data(pseq)))
+    sample.ids <- colnames(pheno)
+    phfg.pseq.rel <- microbiome::transform(pseq, "compositional")
+    abud.rel <- abundances(phfg.pseq.rel)
+    rownames(abud.rel) <- sapply(rownames(abud.rel), function (genus) gsub("(.*) \\(+(.+)\\)", '\\1.\\2', genus))
+    merged <- rbind(sample.ids, pheno, abud.rel)
+    write.table(t(merged), file = tsvfile, sep='\t', quote=FALSE, row.names=FALSE, col.names=TRUE)
+    data <- file(conffile , open='wt')
+    pcl.contents <- c("Matrix: Metadata",
+                      paste(c("Read_PCL_Rows: ", paste(includedvars, collapse=",")), collapse = ""),
+                      "",
+                      "Matrix: Adundance",
+                      "Read_PCL_Rows: Archaea.Archaea-")
+    writeLines(pcl.contents, con=data)
+    close(data)
+}
 
-rownames(abud.rel) <- sapply(rownames(abud.rel),
-                             function (genus) gsub("(.*) \\(+(.+)\\)", '\\1.\\2', genus))
 
-merged <- rbind(sample.ids, pheno, abud.rel)
-write.table(t(merged), file="merged_phfinrisk_genus.tsv", sep='\t', 
-            quote=FALSE, row.names=FALSE, col.names=TRUE)
-
-variables <- rownames(pheno)
-variables_wo_ctrls <- variables[!variables %in% c("BL_AGE","BMI","SEX")]
-data <- file("maaslin_config.config" , open='wt')
-pcl.contents <- c("Matrix: Metadata",
-                  paste(c("Read_PCL_Rows: BL_AGE,BMI,SEX",variables_wo_ctrls), collapse=","),
-                  "",
-                  "Matrix: Adundance",
-                  "Read_PCL_Rows: Archaea.Archaea-")
-writeLines(pcl.contents, con=data)
-close(data)
 ```
 
+```{r run maaslin} 
+maaslin.force.vars <- c("BL_AGE", "SEX", "BMI", "CURR_SMOKE", "Q57X", "DIAB", "BL_USE_RX_C03", "BL_USE_RX_C07", "BL_USE_RX_C08", "BL_USE_RX_C09")
+prepare.maaslin(pseq.genus,
+                 tsvfile = "merged_phfinrisk_genus.tsv",
+                conffile = "maaslin_config.config",
+                includedvars = c("MAP", "SYSTM", "DIASM", "PULSEPRESSURE", "HYPERTENSION", maaslin.force.vars))
 
-```{r run maaslin, eval = FALSE} 
 Maaslin("merged_phfinrisk_genus.tsv",
         "maaslin",
         strInputConfig = "maaslin_config.config",
         strModelSelection="none",
         dSignificanceLevel = 1.0, 
         fAllvAll = TRUE,
-        strForcedPredictors = c("BL_AGE", "BMI", "SEX"))
+        strForcedPredictors = maaslin.force.vars)
 
 ```
 
