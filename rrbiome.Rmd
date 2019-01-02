@@ -6,14 +6,14 @@ output: html_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(include = TRUE, echo = TRUE, message = FALSE, results='asis', cache=TRUE, warning=FALSE)
+knitr::opts_chunk$set(include = TRUE, xecho = TRUE, message = FALSE, results='asis', cache=TRUE, warning=FALSE)
 knitr::opts_chunk$set(cache.path = 'cache/', output.dir="cache/",
                       file.path = 'cache/', fig.path = 'cache/')
 
 dir.create("rds/", showWarnings = FALSE)
 ```
 
-Importing libraries
+Importing libraries:
 
 ```{r libraries}
 library(dplyr)
@@ -30,23 +30,9 @@ library(Maaslin)
 library(parallel)
 ```
 
-```{r functions, include = FALSE}
-print.dset <- function(dset) {
-    dset %>%
-        gather(Covariate, Value) %>%
-        group_by(Covariate) %>%
-        summarise_all(., .funs = funs(mean(as.numeric(.), na.rm = TRUE),
-                                         median(as.numeric(.), na.rm = TRUE),
-                                         sd(as.numeric(.), na.rm = TRUE),
-                                         min(as.numeric(.), na.rm = TRUE),
-                                         max(as.numeric(.), na.rm = TRUE),
-                                         NAs = sum(is.na(.)),
-                                         n = n(),
-                                         n_distinct)) %>%
-            mutate_if(is.numeric, round, 2) %>%
-            kable
-}
+Function definitions
 
+```{r functions}
 filter.phenotype.data <- function(pseq,
                                   included = c("DNA_OK", "MEN", "BL_AGE", "SYSTM", "DIASM", "BP_TREAT", "BMI",
                                                "CURR_SMOKE", "DIAB", "BL_USE_RX_C09", "Q57X", "BL_USE_RX_C03",
@@ -116,6 +102,36 @@ sample_data(pseq.genus) <- sample_data(dset.genus)
 sample_data(pseq.species) <- sample_data(dset.species)
 ```
 
+Sample data has dimensions (`r dim(sample_data(pseq.species)`).
+
+# Self reported vs. registered medication
+
+Contigency table for RR mediaction. 
+
+```{r self vs registered medication}
+tbl <- table(dset.species$BP_TREAT, dset.species$ANYDRUG)
+colnames(tbl) <- c("ANYDRUG 0", "ANYDRUG 1")
+rownames(tbl) <- c("BP_TREAT 0", "BP_TREAT 1")
+tbl %>%
+    kable(.)
+```
+
+$\chi^2$-test for medication `r format.pval(chisq.test(dset.species$BP_TREAT, dset.species$ANYDRUG, correct=FALSE)$p.value)`.
+
+# Self reported vs. registered medication
+
+Contigency table for RR mediaction. 
+
+```{r self vs registered medication}
+tbl <- table(dset.species$BP_TREAT, dset.species$ANYDRUG)
+colnames(tbl) <- c("ANYDRUG 0", "ANYDRUG 1")
+rownames(tbl) <- c("BP_TREAT 0", "BP_TREAT 1")
+tbl %>%
+    kable(.)
+```
+
+$\chi^2$-test for medication `r format.pval(chisq.test(dset.species$BP_TREAT, dset.species$ANYDRUG, correct=FALSE)$p.value)`.
+
 # How large subgroups are?
 
 Number of participants in each combination of all categorical variables
@@ -139,20 +155,6 @@ dset.species %>%
     arrange(desc(n)) %>%
     kable
 ```
-
-# Self reported vs. registered medication
-
-Contigency table for RR mediaction. 
-
-```{r self vs registered medication}
-tbl <- table(dset.species$BP_TREAT, dset.species$ANYDRUG)
-colnames(tbl) <- c("ANYDRUG 0", "ANYDRUG 1")
-rownames(tbl) <- c("BP_TREAT 0", "BP_TREAT 1")
-tbl %>%
-    kable(.)
-```
-
-$\chi^2$-test for medication `r format.pval(chisq.test(dset.species$BP_TREAT, dset.species$ANYDRUG, correct=FALSE)$p.value)`.
 
 # Alpha diversity
 
@@ -280,7 +282,7 @@ if (!file.exists("rds/adonis.species.rds")) {
 ```                     
 
 
-```{r adonis3, eval = FALSE}
+```{r adonis3}
  adonis.species %>%
     select(response, SumsOfSqs, MeanSqs, F.Model, R2, "Pr(>F)") %>%
     kable(.)
