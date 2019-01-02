@@ -371,7 +371,7 @@ Maaslin("maaslin_merged_phfinrisk_genus.tsv",
 Reading and filtering the data Maaslin provided
 
 ```{r Reading maaslins output}
-maas.results.df.signf <- read.table("maaslin/merged_phfinrisk_genus.txt", header=TRUE, sep='\t') %>%
+maas.results.df.signf <- read.table("maaslin/maaslin_merged_phfinrisk_genus.txt", header=TRUE, sep='\t') %>%
     merge(names.dset %>% select(Covariate, Category, Name), by.x ="Variable", by.y = "Covariate") %>%
     dplyr::mutate(Qval = p.adjust(P.value, method="BH"),
            Beta = Coefficient) %>%
@@ -422,15 +422,24 @@ plot_maaslin_heatmap_final(maas.results.df.signf,
 
 # Lactobacillus
 
-```{r lactobacillus, eval = FALSE}
+```{r lactobacillus}
 pseq.lacto  <- subset_taxa(pseq.species, Genus=="Lactobacillus")
 pseq.lacto.comp  <- microbiome::transform(pseq.lacto, "compositional")
 abud.rel.lacto <- abundances(pseq.lacto.comp)
 
 abud.rel.lacto %>%
-    gather(Key, Value) %>%
-    group_by(Subject, Type) %>%
-     summarise_each(funs(mean= mean(., na.rm=TRUE)))
-
-
+    t %>%
+    as.data.frame %>%
+    #dplyr::select("Lactobacillus_paracasei (BacteriaPlasmid)", "Lactobacillus_selangorensis (Bacteria)") %>%
+    gather(key, value) %>%
+    group_by(key) %>%
+    summarise_all(funs(mean= mean(value),
+                       min = min(value),
+                       max = max(value),
+                       sd = sd(value),
+                       n = n(),
+                       nonzeros = sum(abs(value) > 1e-12),
+                       zeros = n - nonzeros)) %>%
+    arrange(zeros) %>%
+    kable
 ```
