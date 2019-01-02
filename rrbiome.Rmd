@@ -116,6 +116,10 @@ Loading descriptions for clinical data
 data("phfinrisk_metadatadesc", package="finriskmetagcommon")
 names.dset <- filter(phfinrisk_metadatadesc,
                      Ignored.Covariate.in.Cross.Sectional.Analysis.Aaro20181115==0)
+names.dset <- bind_rows(names.dset,
+                        data.frame(Covariate = c("MAP", "PULSEPRESSURE", "HYPERTENSION"),
+                                   Category = rep("Physical", 3),
+                                   Name =c( "Mean artrerial pressure", "Pulse pressure", "Hypertension")))
 ```
 
 Loading phyloseq object
@@ -300,7 +304,7 @@ setNames(pca.percentage, pca.prcomp$x %>% colnames) %>% head(10) %>% t %>% kable
 
 PCA plot for hypertension
 
-	```{r PCA plots continuous, fig.width = 10, fig.height = 6, dpi = 300}
+```{r PCA plots continuous, fig.width = 10, fig.height = 6, dpi = 300}
 ggplot(cbind(meta(pseq.species), pca.prcomp$x[,1:2]), aes(x=PC1, y=PC2)) +
     geom_point(aes(color = HYPERTENSION), size = 0.2) +
     xlab(pca.labels[1]) +
@@ -315,17 +319,21 @@ Aaron work-december-2018 *prepare_maaslin_input.R*
 
 ```{r prepare maaslin}
 
-prepare.maaslin <- function (pseq,
-                             tsvfile = "merged_phfinrisk_genus.tsv",
-                             conffile = "maaslin_config.config",
-                             includedvars = c("BL_AGE", "BMI", "SEX")) {
+
+get.merged.dataset <- function(pseq) {
     pheno <- t(microbiome::meta(phyloseq::sample_data(pseq)))
     sample.ids <- colnames(pheno)
     phfg.pseq.rel <- microbiome::transform(pseq, "compositional")
     abud.rel <- abundances(phfg.pseq.rel)
     rownames(abud.rel) <- sapply(rownames(abud.rel), function (genus) gsub("(.*) \\(+(.+)\\)", '\\1.\\2', genus))
-    merged <- rbind(sample.ids, pheno, abud.rel)
-    write.table(t(merged), file = tsvfile, sep='\t', quote=FALSE, row.names=FALSE, col.names=TRUE)
+    t(rbind(sample.ids, pheno, abud.rel))
+}
+
+prepare.maaslin <- function (pseq,
+                             tsvfile = "merged_phfinrisk_genus.tsv",
+                             conffile = "maaslin_config.config",
+                             includedvars = c("BL_AGE", "BMI", "SEX")) {
+    write.table(get.merged.dataset(pseq), file = tsvfile, sep='\t', quote=FALSE, row.names=FALSE, col.names=TRUE)
     data <- file(conffile , open='wt')
     pcl.contents <- c("Matrix: Metadata",
                       paste(c("Read_PCL_Rows: ", paste(includedvars, collapse=",")), collapse = ""),
@@ -336,37 +344,42 @@ prepare.maaslin <- function (pseq,
     close(data)
 }
 
-
+ merge.pheno.abu <- function(pseq) {
+     pheno <- microbiome::meta(phyloseq::sample_data(pseq))
+     sample.ids <- rownames(pheno)
+     phfg.pseq.rel <- microbiome::transform(pseq, "compositional")
+     abud.rel <- abundances(phfg.pseq.rel)
+     rownames(abud.rel) <- sapply(rownames(abud.rel), function (genus) gsub("(.*) \\(+(.+)\\)", '\\1.\\2', genus))
+     cbind(pheno, t(abud.rel))
+}
 ```
+
+Running maaslin for blood pressure variables while rest of the
+phenotype variables are forced in the model
 
 ```{r run maaslin} 
 maaslin.force.vars <- c("BL_AGE", "SEX", "BMI", "CURR_SMOKE", "Q57X", "DIAB", "BL_USE_RX_C03", "BL_USE_RX_C07", "BL_USE_RX_C08", "BL_USE_RX_C09")
+
 prepare.maaslin(pseq.genus,
-                 tsvfile = "merged_phfinrisk_genus.tsv",
+                 tsvfile = "maaslin_merged_phfinrisk_genus.tsv",
                 conffile = "maaslin_config.config",
                 includedvars = c("MAP", "SYSTM", "DIASM", "PULSEPRESSURE", "HYPERTENSION", maaslin.force.vars))
 
-Maaslin("merged_phfinrisk_genus.tsv",
+Maaslin("maaslin_merged_phfinrisk_genus.tsv",
         "maaslin",
         strInputConfig = "maaslin_config.config",
         strModelSelection="none",
         dSignificanceLevel = 1.0, 
         fAllvAll = TRUE,
         strForcedPredictors = maaslin.force.vars)
-
 ```
 
 Data framen luku *comp_maaslin_results_from_single_job.R* ja plottaus käyttäen *comp_maaslin_plots.R* ja *edgeR_plot_functions.R*.
 
-
-```{r Reading maaslins output, eval = FALSE}
-
+```{r Reading maaslins output}
 maas.results.df <- read.table("maaslin/merged_phfinrisk_genus.txt", header=TRUE, sep='\t')
 maas.results.df[,'Covariate'] <- maas.results.df[,'Variable']
-maas.results.df <- merge(maas.results.df,
-                         names.dset[,c('Covariate','Category', 'Name')],
-                         by=c('Covariate'))
-
+maas.results.df <- merge(maas.results.df, names.dset[,c('Covariate','Category', 'Name')], by=c('Covariate'))
 maas.results.df[,'Maaslin.Q.value'] <- maas.results.df[,'Q.value']
 maas.results.df[,'Qval'] <- p.adjust(maas.results.df[,'P.value'], method="BH")
 maas.results.df[,'beta'] <- maas.results.df[,'Coefficient']
@@ -374,28 +387,19 @@ maas.results.df.signf <- dplyr::filter(maas.results.df, Qval < 0.05)
 
 ```
 
-```{r scatter plots, eval = FALSE}
-
+```{r scatter plots}
 sysm.signf.features <- maas.results.df.signf %>%
-    dplyr::filter(Covariate == "SYSTM") %>%
     pull(Feature) %>%
     as.character() %>%
     gsub("_", ".", .)
-df.merged <- t(merged) %>% as.data.frame
+
+df.merged <-  merge.pheno.abu(pseq.genus)
 ```
 
-```{r maaslin scatter plot, fig.width = 10, fig.height = 20, dpi = 300, eval = FALSE}
-
-#df.merged %>% pull("Rikenella.Bacteria") %>% as.character I%>% as.numeric %>% sqrt %>% asin
-
-ggplot(df.merged %>%
-       select(sysm.signf.features, SYSTM, SEX) %>%
-       gather(Covariate, Value, sysm.signf.features) %>%
-       mutate(SYSTM = as.numeric(as.character(SYSTM)),
-              Value = as.numeric(as.character(Value))),
-       aes(x = asin(sqrt(Value)), y = SYSTM)) +
+```{r maaslin scatter plot, fig.width = 10, fig.height = 20, dpi = 300}
+ggplot(df.merged %>% gather(Covariate, relabundance, sysm.signf.features), aes(x = asin(sqrt(relabundance)), y = SYSTM)) +
     facet_wrap(~Covariate, ncol=2, scales = "free") +
-    geom_point(aes(color = SEX), size = 0.5) +
+    geom_point(aes(color = SEX), size = 0.2) +
     scale_y_continuous(breaks=seq(0,200,40)) +
     geom_smooth(method=lm, se=TRUE, size=0.5, color = 'Black') +
     stat_poly_eq(formula = "y ~ x",
@@ -404,4 +408,13 @@ ggplot(df.merged %>%
                  parse = TRUE,
                  size = 3) +   
     ggplot2::theme_minimal() 
+```
+
+```{r maaslin plot}
+source("edgeR_plot_functions.R")
+
+plot_maaslin_heatmap_final(maas.results.df.signf,
+                      xlab.text="Genera",
+                      beta.maxabs=max(abs(maas.results.df.signf[,'beta'])),
+                      order.by.category=FALSE)
 ```
