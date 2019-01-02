@@ -15,7 +15,7 @@ dir.create("rds/", showWarnings = FALSE)
 
 Importing libraries:
 
-```{r libraries}
+```{r libraries, cache = FALSE}
 library(dplyr)
 library(tibble)
 library(phyloseq)
@@ -139,8 +139,8 @@ frames are (`r dim(dset.genus)`) and (`r dim(dset.species)`).
 Updating phyloseq objects
 
 ```{r updating phyloseq objects}
-sample_data(pseq.genus) <- sample_data(dset.genus)
-sample_data(pseq.species) <- sample_data(dset.species)
+phyloseq::sample_data(pseq.genus) <- phyloseq::sample_data(dset.genus)
+phyloseq::sample_data(pseq.species) <- phyloseq::sample_data(dset.species)
 ```
 
 Sample data has dimensions (`r dim(sample_data(pseq.species))`).
