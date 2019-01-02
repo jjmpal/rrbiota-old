@@ -15,7 +15,7 @@ dir.create("rds/", showWarnings = FALSE)
 
 Importing libraries:
 
-```{r libraries, cache = FALSE}
+	```{r libraries, cache = FALSE}
 library(dplyr)
 library(tibble)
 library(phyloseq)
@@ -279,7 +279,7 @@ full model
 We calculate primary component analysis using centered log-ratio
 transformation for the abunances.
 
-	```{r pca}
+```{r pca}
 if (!file.exists("rds/pca.prcomp.rds")) {
     pca.abundances  <- as.matrix(t(microbiome::abundances(microbiome::transform(pseq.species, "clr"))))
     pca.prcomp <- stats::prcomp(pca.abundances)
@@ -295,12 +295,12 @@ Proportion of variance for main PC axis
 pca.eigs <- pca.prcomp$sdev^2
 pca.percentage <- 100 * pca.eigs /sum(pca.eigs)
 pca.labels <- sprintf("%s (%.2f %%)", colnames(pca.prcomp$x), pca.percentage)
-pca.percentage %>% head %>% kable
+setNames(pca.percentage, pca.prcomp$x %>% colnames) %>% head(10) %>% t %>% kable
 ```
 
 PCA plot for hypertension
 
-```{r PCA plots continuous, fig.width = 10, fig.height = 4, dpi = 300}
+```{r PCA plots continuous, fig.width = 10, fig.height = 6, dpi = 300}
 ggplot(cbind(meta(pseq.species), pca.prcomp$x[,1:2]), aes(x=PC1, y=PC2)) +
     geom_point(aes(color = HYPERTENSION), size = 0.2) +
     xlab(pca.labels[1]) +
