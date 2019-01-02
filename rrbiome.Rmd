@@ -30,7 +30,7 @@ library(Maaslin)
 library(parallel)
 ```
 
-Function definitions
+# Function definitions
 
 ```{r functions}
 filter.phenotype.data <- function(pseq,
@@ -69,6 +69,8 @@ calculate.beta.matrix <- function(pseq) {
 }
 ```
 
+# Loading data
+	
 Loading descriptions for clinical data
 
 ```{r variables}
@@ -103,20 +105,6 @@ sample_data(pseq.species) <- sample_data(dset.species)
 ```
 
 Sample data has dimensions (`r dim(sample_data(pseq.species)`).
-
-# Self reported vs. registered medication
-
-Contigency table for RR mediaction. 
-
-```{r self vs registered medication}
-tbl <- table(dset.species$BP_TREAT, dset.species$ANYDRUG)
-colnames(tbl) <- c("ANYDRUG 0", "ANYDRUG 1")
-rownames(tbl) <- c("BP_TREAT 0", "BP_TREAT 1")
-tbl %>%
-    kable(.)
-```
-
-$\chi^2$-test for medication `r format.pval(chisq.test(dset.species$BP_TREAT, dset.species$ANYDRUG, correct=FALSE)$p.value)`.
 
 # Self reported vs. registered medication
 
