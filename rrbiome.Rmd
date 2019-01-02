@@ -279,7 +279,7 @@ full model
 We calculate primary component analysis using centered log-ratio
 transformation for the abunances.
 
-```{r pca}
+	```{r pca}
 if (!file.exists("rds/pca.prcomp.rds")) {
     pca.abundances  <- as.matrix(t(microbiome::abundances(microbiome::transform(pseq.species, "clr"))))
     pca.prcomp <- stats::prcomp(pca.abundances)
@@ -289,46 +289,24 @@ if (!file.exists("rds/pca.prcomp.rds")) {
 }
 ```
 
+Proportion of variance for main PC axis
+
 ```{r pca percentage}
-(pca.prcomp$sdev / sum(pca.prcomp$sdev)) %>% head %>% kable
+pca.eigs <- pca.prcomp$sdev^2
+pca.percentage <- 100 * eigs /sum(eigs)
+pca.labels <- sprintf("%s (%.2f %%)", colnames(pca.prcomp$x), pca.percentage)
+pca.percentage %>% head %>% kable
 ```
 
-Labels for PCA plot containing the 
+PCA plot for hypertension
 
-```{r pca labels}
-pca.percentage <- round(pca.prcomp$sdev / sum(pca.prcomp$sdev) * 100, 2)
-pca.labels <- paste0(colnames(pca.prcomp$x), " (", paste0(as.character(pca.percentage), "%", ")"))
-```
-
-```{r PCA plots categorical, fig.width = 10, fig.height = 10, dpi = 300, eval = FALSE}
-ggplot((cbind(meta(pseq_filtered), prcomp$x[,1:2]) %>%
-        select(PC1, PC2, BP_TREAT, CURR_SMOKE, DIAB, BL_USE_RX_C09, Q57X,
-               BL_USE_RX_C03, BL_USE_RX_C07, BL_USE_RX_C08, HYPERTENSION, SEX) %>%
-        gather(Covariate, Value, -PC1, -PC2)), 
-       aes(x=PC1, y=PC2)) +
-    facet_wrap(~Covariate, ncol=2, scales = "free") +
-    geom_point(aes(color = Value), size = 0.5) +
+```{r PCA plots continuous, fig.width = 10, fig.height = 4, dpi = 300}
+ggplot(cbind(meta(pseq.species), pca.prcomp$x[,1:2]), aes(x=PC1, y=PC2)) +
+    geom_point(aes(color = HYPERTENSION), size = 0.2) +
+    xlab(pca.labels[1]) +
+    ylab(pca.labels[2]) +
     scale_color_brewer(palette="Dark2") +
-    xlab(pca.labels[1]) +
-    ylab(pca.labels[2]) +
     ggplot2::theme_minimal() 
-
-```
-
-
-```{r PCA plots continuous, fig.width = 10, fig.height = 10, dpi = 300,  eval = FALSE}
-
-ggplot((cbind(meta(pseq_filtered), prcomp$x[,1:2]) %>%
-        select(PC1, PC2, BL_AGE, SYSTM, DIASM, BMI, MAP, PULSEPRESSURE) %>%
-        gather(Covariate, Value, -PC1, -PC2)), 
-       aes(x=PC1, y=PC2)) +
-    facet_wrap(~Covariate, ncol=2, scales = "free") +
-    geom_point(aes(color = Value), size = 0.5) +
-    scale_color_gradientn(colours = rainbow(12)) +
-    xlab(pca.labels[1]) +
-    ylab(pca.labels[2]) +
-    ggplot2::theme_minimal() 
-
 ```
 
 # Genus
