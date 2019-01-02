@@ -293,7 +293,7 @@ Proportion of variance for main PC axis
 
 ```{r pca percentage}
 pca.eigs <- pca.prcomp$sdev^2
-pca.percentage <- 100 * eigs /sum(eigs)
+pca.percentage <- 100 * pca.eigs /sum(pca.eigs)
 pca.labels <- sprintf("%s (%.2f %%)", colnames(pca.prcomp$x), pca.percentage)
 pca.percentage %>% head %>% kable
 ```
