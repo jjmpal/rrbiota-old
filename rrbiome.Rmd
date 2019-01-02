@@ -374,7 +374,7 @@ Reading and filtering the data Maaslin provided
 maas.results.df.signf <- read.table("maaslin/maaslin_merged_phfinrisk_genus.txt", header=TRUE, sep='\t') %>%
     merge(names.dset %>% select(Covariate, Category, Name), by.x ="Variable", by.y = "Covariate") %>%
     dplyr::mutate(Qval = p.adjust(P.value, method="BH"),
-           Beta = Coefficient) %>%
+           beta = Coefficient) %>%
    dplyr::filter(Qval < 0.05) 
 
 maas.signf.features <- maas.results.df.signf %>%
@@ -389,7 +389,7 @@ Table for significant relations between blood pressure variables and genera
 
 ```{r maaslin significant table}
 maas.results.df.signf %>%
-    select(Name, Feature, Beta, Qval) %>%
+    select(Name, Feature, beta, Qval) %>%
     kable           
 ```
 
@@ -416,7 +416,7 @@ source("edgeR_plot_functions.R")
 
 plot_maaslin_heatmap_final(maas.results.df.signf,
                       xlab.text="Genera",
-                      beta.maxabs=max(abs(maas.results.df.signf[,'Beta'])),
+                      beta.maxabs=max(abs(maas.results.df.signf[,'beta'])),
                       order.by.category=FALSE)
 ```
 
