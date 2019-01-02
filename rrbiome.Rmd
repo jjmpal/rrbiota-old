@@ -446,16 +446,14 @@ abud.rel.lacto %>%
     kable
 ```
 
-```{r lactobacillus scatterplot}
-df.merged.lacto <-  merge.pheno.abu(pseq.lacto)
-
-colnames(df.merged.lacto)
+```{r lactobacillus scatterplot, eval = FALSE, include = FALSE}
+maaslin.lacto.force.vars <- c("BL_AGE", "SEX", "BMI", "CURR_SMOKE", "DIAB")
 
 prepare.maaslin(pseq.lacto,
                  tsvfile = "maaslin_lacto_merged_phfinrisk_genus.tsv",
                 conffile = "maaslin_lacto_config.config",
-                includedvars = c("MAP", "SYSTM", "DIASM", "PULSEPRESSURE", "HYPERTENSION", maaslin.force.vars),
-                readpclrows = "-MAP")
+                includedvars = c("MAP", "SYSTM", "DIASM", "PULSEPRESSURE", "HYPERTENSION", maaslin.lacto.force.vars),
+                readpclrows = "Lactobacillus_acetotolerans.Bacteria-")
 
 Maaslin("maaslin_lacto_merged_phfinrisk_genus.tsv",
         "maaslin_lacto",
@@ -463,6 +461,31 @@ Maaslin("maaslin_lacto_merged_phfinrisk_genus.tsv",
         strModelSelection="none",
         dSignificanceLevel = 1.0, 
         fAllvAll = TRUE,
-        strForcedPredictors = maaslin.force.vars)
+        strForcedPredictors = maaslin.lacto.force.vars)
+```
 
+```{r Reading maaslin lacto output, eval = FALSE, include = FALSE}
+maas.lacto.results.df.signf <- read.table("maaslin_lacto/maaslin_lacto_merged_phfinrisk_genus.txt", header=TRUE, sep='\t') %>%
+    merge(names.dset %>% select(Covariate, Category, Name), by.x ="Variable", by.y = "Covariate") %>%
+    dplyr::mutate(Qval = p.adjust(P.value, method="BH"),
+                  beta = Coefficient)
+
+                                        #%>%
+   dplyr::filter(Qval < 0.05) 
+
+maas.lacto.signf.features <- maas.results.df.signf %>%
+    pull(Feature) %>%
+    as.character() %>%
+    gsub("_", ".", .)
+
+df.lacto.merged <-  merge.pheno.abu(pseq.lacto)
+
+maas.lacto.results.df.signf %>% select(Feature, Qval, P.value)
+
+```
+
+```{r maaslin lacto significant table, eval = FALSE, include = FALSE}
+maas.lacto.results.df.signf %>%
+    select(Name, Feature, beta, Qval) %>%
+    kable           
 ```
