@@ -106,6 +106,37 @@ calculateadonis <- function(dset,
         dplyr::filter(term %in% responses) %>%
             dplyr::select(-term)
 }
+
+prepare.maaslin <- function (pseq,
+                             tsvfile = "merged_phfinrisk_genus.tsv",
+                             conffile = "maaslin_config.config",
+                             includedvars = c("BL_AGE", "BMI", "SEX"),
+                             readpclrows = "Archaea.Archaea-") {
+    pheno <- t(microbiome::meta(phyloseq::sample_data(pseq)))
+    sample.ids <- colnames(pheno)
+    phfg.pseq.rel <- microbiome::transform(pseq, "compositional")
+    abud.rel <- abundances(phfg.pseq.rel)
+    rownames(abud.rel) <- sapply(rownames(abud.rel),
+                                 function (genus) gsub("(.*) \\(+(.+)\\)", '\\1.\\2', genus))
+    write.table(t(rbind(sample.ids, pheno, abud.rel)), file = tsvfile, sep='\t', quote=FALSE, row.names=FALSE, col.names=TRUE)
+    data <- file(conffile , open='wt')
+    pcl.contents <- c("Matrix: Metadata",
+                      paste(c("Read_PCL_Rows: ", paste(includedvars, collapse=",")), collapse = ""),
+                      "",
+                      "Matrix: Adundance",
+                      paste("Read_PCL_Rows:", readpclrows))
+    writeLines(pcl.contents, con=data)
+    close(data)
+}
+
+ merge.pheno.abu <- function(pseq) {
+     pheno <- microbiome::meta(phyloseq::sample_data(pseq))
+     sample.ids <- rownames(pheno)
+     phfg.pseq.rel <- microbiome::transform(pseq, "compositional")
+     abud.rel <- abundances(phfg.pseq.rel)
+     rownames(abud.rel) <- sapply(rownames(abud.rel), function (genus) gsub("(.*) \\(+(.+)\\)", '\\1.\\2', genus))
+     cbind(pheno, t(abud.rel))
+}
 ```
 
 # Loading data
@@ -315,46 +346,13 @@ ggplot(cbind(meta(pseq.species), pca.prcomp$x[,1:2]), aes(x=PC1, y=PC2)) +
 
 # Connection between genus and blood pressure
 
-Aaron work-december-2018 *prepare_maaslin_input.R*
-
-```{r prepare maaslin}
-prepare.maaslin <- function (pseq,
-                             tsvfile = "merged_phfinrisk_genus.tsv",
-                             conffile = "maaslin_config.config",
-                             includedvars = c("BL_AGE", "BMI", "SEX"),
-                             readpclrows = "Archaea.Archaea-") {
-    pheno <- t(microbiome::meta(phyloseq::sample_data(pseq)))
-    sample.ids <- colnames(pheno)
-    phfg.pseq.rel <- microbiome::transform(pseq, "compositional")
-    abud.rel <- abundances(phfg.pseq.rel)
-    rownames(abud.rel) <- sapply(rownames(abud.rel),
-                                 function (genus) gsub("(.*) \\(+(.+)\\)", '\\1.\\2', genus))
-    write.table(t(rbind(sample.ids, pheno, abud.rel)), file = tsvfile, sep='\t', quote=FALSE, row.names=FALSE, col.names=TRUE)
-    data <- file(conffile , open='wt')
-    pcl.contents <- c("Matrix: Metadata",
-                      paste(c("Read_PCL_Rows: ", paste(includedvars, collapse=",")), collapse = ""),
-                      "",
-                      "Matrix: Adundance",
-                      paste("Read_PCL_Rows:", readpclrows))
-    writeLines(pcl.contents, con=data)
-    close(data)
-}
-
- merge.pheno.abu <- function(pseq) {
-     pheno <- microbiome::meta(phyloseq::sample_data(pseq))
-     sample.ids <- rownames(pheno)
-     phfg.pseq.rel <- microbiome::transform(pseq, "compositional")
-     abud.rel <- abundances(phfg.pseq.rel)
-     rownames(abud.rel) <- sapply(rownames(abud.rel), function (genus) gsub("(.*) \\(+(.+)\\)", '\\1.\\2', genus))
-     cbind(pheno, t(abud.rel))
-}
-```
-
 Running maaslin for blood pressure variables while rest of the
 phenotype variables are forced in the model
 
-```{r run maaslin, echo = FALSE, warnings = FALSE, message=FALSE} 
+```{r run maaslin, results = 'hide'} 
 maaslin.force.vars <- c("BL_AGE", "SEX", "BMI", "CURR_SMOKE", "Q57X", "DIAB", "BL_USE_RX_C03", "BL_USE_RX_C07", "BL_USE_RX_C08", "BL_USE_RX_C09")
+
+#pseq.core <- microbiome::core(pseq.genus, detection = 0.001, pervalence = 0.01)
 
 prepare.maaslin(pseq.genus,
                  tsvfile = "maaslin_merged_phfinrisk_genus.tsv",
