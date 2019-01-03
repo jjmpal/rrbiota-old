@@ -32,6 +32,10 @@ library(parallel)
 
 # Function definitions
 
+```{r mini functions}
+replace.brackets <- function (genus) gsub('(.*) \\(+(.+)\\)', '\\1.\\2', genus)
+```
+
 ```{r functions}
 filter.phenotype.data <- function(pseq,
                                   included = c("DNA_OK", "MEN", "BL_AGE", "SYSTM", "DIASM", "BP_TREAT", "BMI",
@@ -94,27 +98,32 @@ calculateadonis <- function(dset,
                             covariates = c("BL_AGE", "SEX"),
                             npermutations = 99,
                             maxcores = 100) {
-    mclapply(responses, function(response) {
-        fo <- paste(response, covariates, sep = " + ", collapse = " + ")
-        ad <- adonis(as.formula(paste(matrix, fo, sep = "~")), data = dset, permutations = npermutations)
+    lapply(responses, function(response) {
+        fo <- sprintf("matrix ~ %s + %s", response, paste(covariates, collapse = " + "))
+        ad <- adonis(formula = as.formula(fo), data = dset, permutations = npermutations)
         ad$aov.tab %>%
             as.data.frame %>%
             tibble::rownames_to_column(var = "term") %>%
             dplyr::mutate(response = response)
-      }, mc.cores = min(maxcores, length(responses)))
+      })#, mc.cores = min(maxcores, length(responses)))
 }
 
 prepare.maaslin <- function (pseq,
                              tsvfile = "merged_phfinrisk_genus.tsv",
                              conffile = "maaslin_config.config",
                              includedvars = c("BL_AGE", "BMI", "SEX"),
-                             readpclrows = "Archaea.Archaea-") {
-    pheno <- t(microbiome::meta(phyloseq::sample_data(pseq)))
+                             readpclrows = "Archaea.Archaea-",
+                             core = FALSE,
+                             core.detection = 0.001,
+                             core.prevalence = 0.01) {
+    pseq.comp <- microbiome::transform(pseq, "compositional")
+    if (core) {
+         pseq.comp  <- microbiome::core(pseq.comp, detection = core.detection, prevalence = core.prevalence)
+    }
+    pheno <- t(microbiome::meta(phyloseq::sample_data(pseq.comp)))
     sample.ids <- colnames(pheno)
-    phfg.pseq.rel <- microbiome::transform(pseq, "compositional")
-    abud.rel <- abundances(phfg.pseq.rel)
-    rownames(abud.rel) <- sapply(rownames(abud.rel),
-                                 function (genus) gsub("(.*) \\(+(.+)\\)", '\\1.\\2', genus))
+    abud.rel <- abundances(pseq.comp)
+    rownames(abud.rel) <- sapply(rownames(abud.rel), replace.brackets)
     write.table(t(rbind(sample.ids, pheno, abud.rel)), file = tsvfile, sep='\t', quote=FALSE, row.names=FALSE, col.names=TRUE)
     data <- file(conffile , open='wt')
     pcl.contents <- c("Matrix: Metadata",
@@ -126,14 +135,22 @@ prepare.maaslin <- function (pseq,
     close(data)
 }
 
- merge.pheno.abu <- function(pseq) {
-     pheno <- microbiome::meta(phyloseq::sample_data(pseq))
+ merge.pheno.abu <- function(pseq,
+                             core = FALSE,
+                             core.detection = 0.001,
+                             core.prevalence = 0.01) {
+     pseq.comp <- microbiome::transform(pseq, "compositional")
+     if (core) {
+         pseq.comp  <- microbiome::core(pseq.comp, detection = core.detection, prevalence = core.prevalence)
+    }
+     pheno <- microbiome::meta(phyloseq::sample_data(pseq.comp))
      sample.ids <- rownames(pheno)
-     phfg.pseq.rel <- microbiome::transform(pseq, "compositional")
-     abud.rel <- abundances(phfg.pseq.rel)
-     rownames(abud.rel) <- sapply(rownames(abud.rel), function (genus) gsub("(.*) \\(+(.+)\\)", '\\1.\\2', genus))
+     abud.rel <- abundances(pseq.comp)
+     rownames(abud.rel) <- sapply(rownames(abud.rel), replace.brackets)
      cbind(pheno, t(abud.rel))
 }
+
+
 ```
 
 # Loading data
@@ -287,10 +304,12 @@ Calculating beta diversity for blood pressure variables using adonis
 
  ```{r adonis calculation, cache = FALSE}
 if (!file.exists("rds/adonis.species.rds")) {
+
     adonis.species <- calculateadonis(dset = meta(pseq.species),
                     matrix = bray.dist.m.species,
                         covariates = c("BL_AGE", "SEX", "BMI", "CURR_SMOKE", "Q57X", "DIAB", "BL_USE_RX_C03", "BL_USE_RX_C07", "BL_USE_RX_C08", "BL_USE_RX_C09"),
-                    npermutations = 500)
+                    npermutations = 1)
+
     saveRDS(adonis.species, file = "rds/adonis.species.rds")
 
 } else {
@@ -320,7 +339,7 @@ if (!file.exists("rds/pca.prcomp.rds")) {
     pca.prcomp <- stats::prcomp(pca.abundances)
     saveRDS(pca.prcomp, file = "rds/pca.prcomp.rds")
 } else {
-     pca.prcomp <- readRDS("rds/pca.prcomp.rds")
+5     pca.prcomp <- readRDS("rds/pca.prcomp.rds")
 }
 ```
 
@@ -352,16 +371,16 @@ phenotype variables are forced in the model
 ```{r run maaslin, results = 'hide'} 
 maaslin.force.vars <- c("BL_AGE", "SEX", "BMI", "CURR_SMOKE", "Q57X", "DIAB", "BL_USE_RX_C03", "BL_USE_RX_C07", "BL_USE_RX_C08", "BL_USE_RX_C09")
 
-#pseq.core <- microbiome::core(pseq.genus, detection = 0.001, pervalence = 0.01)
-
 prepare.maaslin(pseq.genus,
-                 tsvfile = "maaslin_merged_phfinrisk_genus.tsv",
-                conffile = "maaslin_config.config",
-                includedvars = c("MAP", "SYSTM", "DIASM", "PULSEPRESSURE", "HYPERTENSION", maaslin.force.vars))
+                 tsvfile = "maaslin_core_merged_phfinrisk_genus.tsv",
+                conffile = "maaslin_core_config.config",
+                includedvars = c("MAP", "SYSTM", "DIASM", "PULSEPRESSURE", "HYPERTENSION", maaslin.force.vars),
+                core = TRUE,
+                readpclrows = "Halapricum.Archaea-")
 
-Maaslin("maaslin_merged_phfinrisk_genus.tsv",
-        "maaslin",
-        strInputConfig = "maaslin_config.config",
+Maaslin("maaslin_core_merged_phfinrisk_genus.tsv",
+        "maaslin_core",
+        strInputConfig = "maaslin_core_config.config",
         strModelSelection="none",
         dSignificanceLevel = 1.0, 
         fAllvAll = TRUE,
@@ -371,7 +390,7 @@ Maaslin("maaslin_merged_phfinrisk_genus.tsv",
 Reading and filtering the data Maaslin provided
 
 ```{r Reading maaslins output}
-maas.results.df.signf <- read.table("maaslin/maaslin_merged_phfinrisk_genus.txt", header=TRUE, sep='\t') %>%
+maas.results.df.signf <- read.table("maaslin_core/maaslin_core_merged_phfinrisk_genus.txt", header=TRUE, sep='\t') %>%
     merge(names.dset %>% select(Covariate, Category, Name), by.x ="Variable", by.y = "Covariate") %>%
     dplyr::mutate(Qval = p.adjust(P.value, method="BH"),
            beta = Coefficient) %>%
@@ -382,7 +401,7 @@ maas.signf.features <- maas.results.df.signf %>%
     as.character() %>%
     gsub("_", ".", .)
 
-df.merged <-  merge.pheno.abu(pseq.genus)
+df.merged <-  merge.pheno.abu(pseq.genus, core = TRUE)
 ```
 
 Table for significant relations between blood pressure variables and genera
@@ -415,7 +434,7 @@ ggplot(df.merged %>% gather(Covariate, relabundance, maas.signf.features), aes(x
 ```{r maaslin plot, message = FALSE, echo = FALSE}
 source("edgeR_plot_functions.R")
 
-plot_maaslin_heatmap_final(maas.results.df.signf,
+plot_maaslin_heatmap_final(maas.results.df.signf %>% dplyr::filter(Variable != "HYPERTENSION"),
                       xlab.text="Genera",
                       beta.maxabs=max(abs(maas.results.df.signf[,'beta'])),
                       order.by.category=FALSE)

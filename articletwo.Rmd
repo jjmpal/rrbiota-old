@@ -1,0 +1,81 @@
+---
+title: "Hypertension and microbiome"
+author: "Joonatan Palmu"
+date: "`r format(Sys.time(), '%d.%m.%Y')`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(include = TRUE, xecho = TRUE, message = FALSE, results='asis', cache=TRUE, warning=FALSE)
+knitr::opts_chunk$set(cache.path = 'cache/', output.dir="cache/",
+                      file.path = 'cache/', fig.path = 'cache/')
+
+dir.create("rds/", showWarnings = FALSE)
+```
+
+Importing libraries:
+
+```{r libraries, cache = FALSE}
+library(dplyr)
+library(tibble)
+library(phyloseq)
+library(microbiome)
+library(finriskmetagcommon)
+library(knitr)
+library(tidyr)
+library(vegan)
+library(reshape)
+library(ggpmisc)
+library(Maaslin)
+library(parallel)
+library(officer)
+library(tableone)
+```
+
+# Function definitions
+
+```{r Importing functions}
+source("rrbiomefunctions.R", echo = TRUE)
+```{r functions}
+```
+
+# Loading data
+	
+Loading descriptions for clinical data
+
+```{r variables}
+data("phfinrisk_metadatadesc", package="finriskmetagcommon")
+names.dset <- filter(phfinrisk_metadatadesc,
+                     Ignored.Covariate.in.Cross.Sectional.Analysis.Aaro20181115==0)
+names.dset <- bind_rows(names.dset,
+                        data.frame(Covariate = c("MAP", "PULSEPRESSURE", "HYPERTENSION"),
+                                   Category = rep("Physical", 3),
+                                   Name =c( "Mean artrerial pressure", "Pulse pressure", "Hypertension")))
+```
+
+Loading phyloseq object
+
+```{r data}
+pseq.genus <- readRDS("data/phfinrisk_genus_all_drop50k_2018-11-16.RDs")
+pseq.species <- readRDS("data/phfinrisk_species_all_drop50k_2018-12-21.RDs")
+```
+
+Filtering clinical data
+
+```{r filtering}
+dset.genus <- filter.phenotype.data(pseq.genus)
+dset.species <- filter.phenotype.data(pseq.species)
+```
+
+Phenotypical data between genus and species all.equal `r 
+isTRUE(all.equal(dset.genus, dset.species))`. Dimension for data
+frames are (`r dim(dset.genus)`) and (`r dim(dset.species)`).
+
+Updating phyloseq objects
+
+```{r updating phyloseq objects}
+phyloseq::sample_data(pseq.genus) <- phyloseq::sample_data(dset.genus)
+phyloseq::sample_data(pseq.species) <- phyloseq::sample_data(dset.species)
+```
+
+Sample data has dimensions (`r dim(sample_data(pseq.species))`).
