@@ -293,7 +293,7 @@ if (!file.exists("rds/adonis.species.rds")) {
     adonis.species <- calculateadonis(dset = meta(pseq.species),
                     matrix = bray.dist.m.species,
                     covariates = "BL_AGE + SEX + BMI + CURR_SMOKE + Q57X + DIAB + BL_USE_RX_C03 + BL_USE_RX_C07 + BL_USE_RX_C08 + BL_USE_RX_C09",
-                    npermutations = 99)
+                    npermutations = 500)
      saveRDS(adonis.species, file = "rds/adonis.species.rds")
 } else {
      adonis.species  <- readRDS("rds/adonis.species.rds")
