@@ -406,6 +406,7 @@ ggplot(df.merged %>% gather(Covariate, relabundance, maas.signf.features), aes(x
     stat_poly_eq(formula = "y ~ x",
                  aes(label = paste(..eq.label.., ..rr.label.., sep = "~~~")),
                  label.y.npc = "bottom",
+                 label.x.npc = "right",
                  parse = TRUE,
                  size = 3) +   
     ggplot2::theme_minimal() 
