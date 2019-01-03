@@ -91,20 +91,17 @@ calculateadonis <- function(dset,
                             matrix,
                             responses = list(model_1 = "MAP", model_2 = "SYSTM", model_3 = "DIASM",
                                           model_4 = "PULSEPRESSURE", model_5 = "HYPERTENSION"),
-                            covariates = "BL_AGE + SEX",
-                            modelstring = "matrix ~ %s + %s",
-                            npermutations = 99) {
-    ret  <- mclapply(responses, function(response) {
-        fo <- sprintf(modelstring, response, covariates)
-        ad <- adonis(as.formula(fo), data = dset, permutations = npermutations)
+                            covariates = c("BL_AGE", "SEX"),
+                            npermutations = 99,
+                            maxcores = 100) {
+    mclapply(responses, function(response) {
+        fo <- paste(response, covariates, sep = " + ", collapse = " + ")
+        ad <- adonis(as.formula(paste(matrix, fo, sep = "~")), data = dset, permutations = npermutations)
         ad$aov.tab %>%
             as.data.frame %>%
             tibble::rownames_to_column(var = "term") %>%
-            dplyr::mutate(response = response, fo = fo)
-      }, mc.cores = length(responses))
-    data.table::rbindlist(ret, id = "model_name") %>%
-        dplyr::filter(term %in% responses) %>%
-            dplyr::select(-term)
+            dplyr::mutate(response = response)
+      }, mc.cores = min(maxcores, length(responses)))
 }
 
 prepare.maaslin <- function (pseq,
@@ -292,9 +289,10 @@ Calculating beta diversity for blood pressure variables using adonis
 if (!file.exists("rds/adonis.species.rds")) {
     adonis.species <- calculateadonis(dset = meta(pseq.species),
                     matrix = bray.dist.m.species,
-                    covariates = "BL_AGE + SEX + BMI + CURR_SMOKE + Q57X + DIAB + BL_USE_RX_C03 + BL_USE_RX_C07 + BL_USE_RX_C08 + BL_USE_RX_C09",
+                        covariates = c("BL_AGE", "SEX", "BMI", "CURR_SMOKE", "Q57X", "DIAB", "BL_USE_RX_C03", "BL_USE_RX_C07", "BL_USE_RX_C08", "BL_USE_RX_C09"),
                     npermutations = 500)
-     saveRDS(adonis.species, file = "rds/adonis.species.rds")
+    saveRDS(adonis.species, file = "rds/adonis.species.rds")
+
 } else {
      adonis.species  <- readRDS("rds/adonis.species.rds")
 }
@@ -304,7 +302,9 @@ Printing the results for adonis run for blood pressure variables in
 full model
 
 ```{r adonis3}
- adonis.species %>%
+adonis.species %>%
+    dplyr::filter(term %in% responses) %>%
+    dplyr::select(-term) %>%
     select(response, SumsOfSqs, MeanSqs, F.Model, R2, "Pr(>F)") %>%
     kable(.)
 ```
