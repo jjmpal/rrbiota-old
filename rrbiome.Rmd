@@ -398,14 +398,14 @@ pressuer. Compositional data is transformed using
 $\textrm{arcsin}(\textrm{sqrt} (\cdot))$.
 
 ```{r maaslin scatter plot, fig.width = 10, fig.height = 20, dpi = 300}
-ggplot(df.merged %>% gather(Covariate, relabundance, maas.signf.features), aes(x = asin(sqrt(relabundance)), y = SYSTM)) +
+ggplot(df.merged %>% gather(Covariate, relabundance, maas.signf.features), aes(x = asin(sqrt(relabundance)), y = SYSTM, color = SEX)) +
     facet_wrap(~Covariate, ncol=2, scales = "free") +
-    geom_point(aes(color = SEX), size = 0.2) +
+    geom_point(size = 0.2) +
     scale_y_continuous(breaks=seq(0,200,40)) +
-    geom_smooth(method=lm, se=TRUE, size=0.5, color = 'Black') +
+    geom_smooth(method=lm, se=TRUE, size=0.5) +
     stat_poly_eq(formula = "y ~ x",
                  aes(label = paste(..eq.label.., ..rr.label.., sep = "~~~")),
-                 label.y = 0,
+                 label.y.npc = "bottom",
                  parse = TRUE,
                  size = 3) +   
     ggplot2::theme_minimal() 
