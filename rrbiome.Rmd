@@ -417,7 +417,7 @@ ggplot(df.merged %>% gather(Covariate, relabundance, maas.signf.features), aes(x
 ```
 
 ```{r maaslin plot, message = FALSE, echo = FALSE}
-source("edgeR_plot_functions.R")
+source("aaro/edgeR_plot_functions.R")
 
 plot_maaslin_heatmap_final(maas.results.df.signf %>% dplyr::filter(Variable != "HYPERTENSION"),
                       xlab.text="Genera",
