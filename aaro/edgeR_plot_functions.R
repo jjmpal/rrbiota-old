@@ -124,10 +124,10 @@ plot_edgeR_fc_heatmap_final <- function (tables.df, xlab.text = "Phyla", logFC.m
   p <- ggplot(tables.df, aes(x = OTU, y = Name, fill=logFC)) + geom_tile(colour="white",size=0.25)
 
   if (is.null(logFC.maxabs)) {
-    p <- p + scale_fill_distiller(palette = "RdBu", name = 'log fold-change', na.value="grey50")
+    p <- p + scale_fill_distiller(palette = "RdBu", name = 'log fold-change', na.value="grey30")
   } else {
     p <- p + scale_fill_distiller(palette = "RdBu", name = 'log fold-change',
-                                  limits=c(-logFC.maxabs, logFC.maxabs), na.value="grey50")
+                                  limits=c(-logFC.maxabs, logFC.maxabs), na.value="grey30")
   }
   p <- p + coord_fixed()
   p <- p + xlab(xlab.text) + ylab("")
@@ -142,12 +142,16 @@ plot_maaslin_heatmap_final <- function (tables.df, xlab.text = "Phyla", beta.max
                                         cluster=TRUE, signif=NULL, signif.th=0.05,
                                         fname='Feature', pname='Name',vname='beta',
                                         qvalues=NULL, colours=NULL, breaks=NULL, names.df=NULL,
-                                        order.by.category=TRUE) {
+                                        order.by.category=FALSE, ystr=NULL,
+                                        v.title.name="Effect size",
+                                        sign.name="Significance", no.sign.legend=FALSE,
+                                        discrete.colors=FALSE,
+                                        vname_discrete=NULL) {
 
 
   # otherwise the same as edgeR heatmap plotter, but relevant df columns are different
 
-  if (is.null(beta.maxabs)) {
+  if (is.null(beta.maxabs) && !discrete.colors) {
     beta.maxabs <- max(abs(tables.df[,vname]))
     cat("auto choose bet.maxbs: ")
     cat(beta.maxabs)
@@ -214,41 +218,54 @@ plot_maaslin_heatmap_final <- function (tables.df, xlab.text = "Phyla", beta.max
     tables.df[[fname]] <- factor(tables.df[[fname]], levels=order.cols)
   }
 
-  if (order.by.category) {
+  if (!is.null(ystr)) {
+    ystr <- ystr
+  } else if (order.by.category) {
+    # TODO this causes buggy behavior
     ystr <- paste0("reorder(paste0(", pname, ",' (', Category, ')') , as.numeric(as.ordered(Category)))")
 
   } else {
     ystr <- pname
   }
 
+  vname2plot <- ifelse(discrete.colors, vname_discrete, vname)
   p <- ggplot(tables.df, aes_string(x = paste0("reorder(", fname, " , as.numeric(",fname,"))"),
                                     y = ystr,
-                                    fill=vname)) + geom_tile(colour="white",size=0.25)
+                                    fill=vname2plot)) + geom_tile(colour="white", size=0.25)
 
   if (!is.null(signif)){
     p <- p + geom_point(data=tables.df, aes_string(x = fname, y = pname,  shape='Qstar'),
                                                                show.legend=TRUE, color='black', size=floor(text.size/2))
-    p <- p + scale_shape_manual(name="Significance", values=c('*'='*', ' '=' '),
+    p <- p + scale_shape_manual(name=sign.name, values=c('*'='*', ' '=' '),
                                                 labels=c("*"=paste("significant at FDR", signif.th),
                                                          ' '=' '),
                                                 breaks=c("*", ' '))
   }
 
-  if (!is.null(qvalues) && !is.null(colours)) {
-    p <- p + scale_fill_gradientn(name=vname,
+  if (no.sign.legend) {
+    p <- p + guides(shape=FALSE)
+  }
+
+  if (!discrete.colors && !is.null(qvalues) && !is.null(colours)) {
+    p <- p + scale_fill_gradientn(name=v.title.name,
                              colours=colours,
                              values=rescale(c(qvalues, c(-beta.maxabs, beta.maxabs)))[1:length(qvalues)],
                              limits=c(-beta.maxabs, beta.maxabs),
                              breaks=breaks)
+  } else if (discrete.colors && !is.null(colours)) {
+    p <- p + scale_fill_manual(values=colours, name=v.title.name, na.value="gray50")
+  
+  } else if (discrete.colors) {
+    p <- p + scale_fill_brewer(palette="RdBu", drop=FALSE, name=v.title.name, na.value="gray50")
   } else {
-    p <- p + scale_fill_distiller(palette = "RdBu", name = vname,
-                                  limits=c(-beta.maxabs, beta.maxabs), na.value="grey50")
+    p <- p + scale_fill_distiller(palette = "RdBu", name = v.title.name,
+                                  limits=c(-beta.maxabs, beta.maxabs), na.value="grey30")
   }
 
   p <- p + coord_fixed()
   p <- p + xlab(xlab.text) + ylab("")
   p <- p + theme_classic(text.size)
-  p <- p + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, size=floor(0.7*text.size)))
+  p <- p + theme(axis.text.x = element_text(angle = 90, hjust = 1.0, vjust=0.5, size=floor(0.7*text.size)))
   p <- p + theme(axis.text.y = element_text(size=floor(0.7*text.size)))
 
   p
