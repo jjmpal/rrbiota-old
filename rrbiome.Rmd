@@ -315,7 +315,7 @@ adonis.species %>%
 
 # PCA
 
-We calculate primary component analysis using centered log-ratio
+We calculate principal component analysis using centered log-ratio
 transformation for the abunances.
 
 ```{r pca}
@@ -450,13 +450,13 @@ abud.rel.lacto %>%
 ```
 
 ```{r lactobacillus scatterplot, eval = FALSE, include = FALSE}
-maaslin.lacto.force.vars <- c("BL_AGE", "SEX", "BMI", "CURR_SMOKE", "DIAB")
+maaslin.force.vars <- c("BL_AGE", "SEX", "BMI", "CURR_SMOKE", "Q57X", "DIAB", "BL_USE_RX_C03", "BL_USE_RX_C07", "BL_USE_RX_C08", "BL_USE_RX_C09")
 
 prepare.maaslin(pseq.lacto,
                  tsvfile = "maaslin_lacto_merged_phfinrisk_genus.tsv",
                 conffile = "maaslin_lacto_config.config",
-                includedvars = c("MAP", "SYSTM", "DIASM", "PULSEPRESSURE", "HYPERTENSION", maaslin.lacto.force.vars),
-                readpclrows = "Lactobacillus_acetotolerans.Bacteria-")
+                includedvars = c("MAP", "SYSTM", "DIASM", "PULSEPRESSURE", "HYPERTENSION", maaslin.force.vars),
+                readpclrows = "Lactobacillus_delbrueckii.Bacteria,Lactobacillus_ruminis.Bacteria,Lactobacillus_acidophilus.Bacteria,Lactobacillus_fermentum.Bacteria,Lactobacillus_paracasei.Bacteria,Lactobacillus_salivarius.Bacteria")
 
 Maaslin("maaslin_lacto_merged_phfinrisk_genus.tsv",
         "maaslin_lacto",
@@ -464,7 +464,7 @@ Maaslin("maaslin_lacto_merged_phfinrisk_genus.tsv",
         strModelSelection="none",
         dSignificanceLevel = 1.0, 
         fAllvAll = TRUE,
-        strForcedPredictors = maaslin.lacto.force.vars)
+        strForcedPredictors = maaslin.force.vars)
 ```
 
 ```{r Reading maaslin lacto output, eval = FALSE, include = FALSE}

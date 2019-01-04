@@ -40,13 +40,14 @@ calculateglm <- function(dset,
                          responses = list(model_1 = "MAP", model_2 = "SYSTM", model_3 = "DIASM",
                                           model_4 = "PULSEPRESSURE", model_5 = "HYPERTENSION"),
                          min_n_for_continuous = 10,
-                         modelstring = "%s ~ BL_AGE + SEX") {
+                         modelstring = "%s ~ BL_AGE + SEX",
+                         filterstr = "diversities_") {
     glmlist <- lapply(responses, function(response) {
         fo.family <- ifelse(length(unique(pull(dset, response))) > min_n_for_continuous, stats::gaussian, stats::binomial)
         fo <- sprintf(modelstring, response)
         stats::glm(formula = as.formula(fo), family = fo.family, data = dset) %>%
             broom::tidy() %>%
-                dplyr::filter(grepl("diversities_", term)) %>%
+                dplyr::filter(grepl(filterstr, term)) %>%
                 dplyr::mutate(response = response, fo = fo) %>%
                 dplyr::select(-term)
     })

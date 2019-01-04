@@ -34,6 +34,7 @@ library(rvg)
 library(tableone)
 library(scales)
 library(gridExtra)
+library(png)
 ```
 
 ```{r Remove temporary data, include = FALSE, cache = FALSE, eval = FALSE}
@@ -74,10 +75,11 @@ writeggplot <- function(doc, ggplot, header, footer, width = 7, height = 7) {
         body_add_break(pos = "after") 
 }
 
-writeimage <- function(doc, filename, header, footer, width = 7, height = 7) {
+writeimage <- function(doc, filename, header, footer, width = 7.5) {
+    img <- readPNG("cache/pca.png")
     doc <- doc %>% 
         body_add_fpar(fpar(ftext("Figure . ", prop = text.bold), ftext(header, prop = text.normal)), style = "Image Caption") %>%
-        body_add_img(src = filename, width = width, height = height) %>% 
+        body_add_img(src = filename, width = width, height = width*dim(img)[1]/dim(img)[2]) %>% 
         body_add_par(footer, style = "footnote text") %>%
         body_add_break(pos = "after") 
 }
@@ -281,7 +283,7 @@ g4 <- arrangeGrob(grobs = gs4,
             heights=c(3,12,8,21,1,2))
 
 ggsave(file = "cache/alpha-beta.png", plot=g4, height=fig.height, width=11)
-writeimage(doc, "cache/alpha-beta.png", "Alpha-beta", "footer", width = 11, height = fig.height)
+writeimage(doc, "cache/alpha-beta.png", "Alpha-beta", "footer")
 ```
 
 ```{r pca}
@@ -313,7 +315,7 @@ pcaplot <- ggplot(cbind(meta(pseq.species), pca.prcomp$x[,1:2]), aes(x=PC1, y=PC
 
 ggsave(file = "cache/pca.png", plot = pcaplot, height = 5, width = 9, dpi = 300)
 
-writeimage(doc, "cache/pca.png", "Alpha-beta", "footer", width = 11, height = fig.height)
+writeimage(doc, "cache/pca.png", "Alpha-beta", "footer", width = 7)
 ```
 
 ```{r maaslin}
@@ -331,8 +333,58 @@ maaslinplot <- plot_maaslin_heatmap_final(maas.results.df.signf %>% dplyr::filte
 writeggplot(doc, maaslinplot, "maaslin", "footer", width = 7, height = 3)
 ```
 
-```{r}
-``
+```{r PCA heatmap}
+pca.axis <- pca.prcomp$x %>% data.frame
+pca.dset <- base::merge(meta(pseq.species), pca.axis[,1:5], by=0, all=TRUE) %>%
+  dplyr::rename(Sample_ID = Row.names)
+
+pca.dset %>% head
+
+pca.ret <- lapply(paste0("PC", seq(1,5)), function (pc) {
+    calculateglm(pca.dset,
+                 modelstring = paste("%s ~ BL_AGE + SEX + BMI + CURR_SMOKE + Q57X + DIAB + BL_USE_RX_C03 + BL_USE_RX_C07 + BL_USE_RX_C08 + BL_USE_RX_C09  +", pc),
+                 filterstr = "PC") %>%
+        select(response, estimate, p.value) %>%
+        mutate(model_name = pc)
+})
+
+pca.ret  %>%
+    data.table::rbindlist() %>%
+    as.data.frame %>%
+    mutate(p.value = p.adjust(p.value, method="BH")) %>%
+    arrange(p.value) %>%
+    kable
+```
+
+```{r PCA loadings}
+
+pca.rotation.abs <- abs(pca.prcomp$rotation)
+pca.loading <- sweep(pca.rotation.abs, 2, colSums(pca.rotation.abs), "/") %>%
+    as.data.frame %>%
+    tibble::rownames_to_column(var = "term")
+
+pca.pc3 <- pca.loading %>%
+    select(term, PC3) %>%
+    arrange(-PC3) %>%
+    head(20)
+
+pca.loading %>% pull(PC3) %>% head(2700) %>% sum
+
+ggplot(data=pca.pc3, aes(x=reorder(term, -PC3), y=PC3)) +
+    geom_bar(stat="identity") +
+    theme_minimal() +
+    theme(axis.text.x = element_text(angle = 90, hjust = 1))
+    
+
+dev.off()
+    
+
+    
+
+ 
+
+```
+
 
 ```{r Write docx to file, cache = FALSE, results = FALSE, include = FALSE}
 print(doc, target = "articletwo.docx")
