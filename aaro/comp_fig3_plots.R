@@ -12,21 +12,18 @@ amaxb <- diversity %>% pull(estimate) %>% abs %>% max %>% signif(., digits = 2)
 
 legend_extractor <- function (tmp) {
   leg <- which(sapply(tmp$grobs, function(x) x$name) == "guide-box")
-  legend <- tmp$grobs[[leg]]
-  legend
+  tmp$grobs[[leg]]
 }
 
 ylabl_extractor <- function(tmp) {
   yl <- which(grepl('axis.title.y.left', sapply(tmp$grobs, function(x) x$name)))
-  ylabb <- tmp$grobs[[yl]]
-  ylabb
+  tmp$grobs[[yl]]
 }
 
 
 xlabb_extractor <- function(tmp) {
   xl <- which(grepl('axis.title.x.bottom', sapply(tmp$grobs, function(x) x$name)))
-  xlabb <- tmp$grobs[[xl]]
-  xlabb
+  tmp$grobs[[xl]]
 }
 
 

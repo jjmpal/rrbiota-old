@@ -115,3 +115,19 @@ prepare.maaslin <- function (pseq,
      cbind(pheno, t(abud.rel))
 }
 
+
+legend_extractor <- function (tmp) {
+  leg <- which(sapply(tmp$grobs, function(x) x$name) == "guide-box")
+  tmp$grobs[[leg]]
+}
+
+ylabl_extractor <- function(tmp) {
+  yl <- which(grepl('axis.title.y.left', sapply(tmp$grobs, function(x) x$name)))
+  tmp$grobs[[yl]]
+}
+
+xlabb_extractor <- function(tmp) {
+  xl <- which(grepl('axis.title.x.bottom', sapply(tmp$grobs, function(x) x$name)))
+  tmp$grobs[[xl]]
+}
+
