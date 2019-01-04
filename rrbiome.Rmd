@@ -260,24 +260,8 @@ ggplot(dset.alpha %>% mutate(SEX = ifelse(SEX == 0, "Male", "Female")), aes(x=di
 Calculating linear models for alpha diversity.
 
 ```{r calculate full alpha model}
-calculateglm(dset.alpha, modelstring = "%s ~ BL_AGE + SEX + BMI + CURR_SMOKE + Q57X + DIAB + BL_USE_RX_C03 + BL_USE_RX_C07 + BL_USE_RX_C08 + BL_USE_RX_C09  + diversities_shannon") %>%
-    select(response, estimate, std.error, conf.low, conf.high, p.value) %>%
-    kable(.)
-```
-
-Calculating linear model using binomial variable for exercice and medication.
-
-```{r calculate binomial alpha model}
-calculateglm(dset.alpha, modelstring = "%s ~ BL_AGE + SEX + BMI + CURR_SMOKE + ANYEXERCICE + DIAB + ANYDRUG  + diversities_shannon") %>%
-    select(response, estimate, std.error, conf.low, conf.high, p.value) %>%
-    kable(.)
-```
-
-
-Calculating linear model using minimal variables.
-
-```{r calculate minimal alpha model}
-calculateglm(dset.alpha, modelstring = "%s ~ BL_AGE + SEX + diversities_shannon") %>%
+alphaglm <- calculateglm(dset.alpha, modelstring = "%s ~ BL_AGE + SEX + BMI + CURR_SMOKE + Q57X + DIAB + BL_USE_RX_C03 + BL_USE_RX_C07 + BL_USE_RX_C08 + BL_USE_RX_C09  + diversities_shannon")
+alphaglm %>%
     select(response, estimate, std.error, conf.low, conf.high, p.value) %>%
     kable(.)
 ```
@@ -322,8 +306,9 @@ full model
 
 ```{r adonis3}
 adonis.species %>%
-    dplyr::filter(term %in% responses) %>%
-    dplyr::select(-term) %>%
+    data.table::rbindlist(ret, id = "model_name") %>%
+#    dplyr::filter(term %in% c("SY) %>%
+ #   dplyr::select(-term) %>%
     select(response, SumsOfSqs, MeanSqs, F.Model, R2, "Pr(>F)") %>%
     kable(.)
 ```
@@ -339,7 +324,7 @@ if (!file.exists("rds/pca.prcomp.rds")) {
     pca.prcomp <- stats::prcomp(pca.abundances)
     saveRDS(pca.prcomp, file = "rds/pca.prcomp.rds")
 } else {
-5     pca.prcomp <- readRDS("rds/pca.prcomp.rds")
+    pca.prcomp <- readRDS("rds/pca.prcomp.rds")
 }
 ```
 
