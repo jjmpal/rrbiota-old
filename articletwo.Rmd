@@ -29,6 +29,7 @@ library(ggpmisc)
 library(Maaslin)
 library(parallel)
 library(officer)
+library(flextable)
 library(tableone)
 ```
 
@@ -51,8 +52,26 @@ text.normal <- fp_text(font.size = 12, font.family = "Arial")
 # Function definitions
 
 ```{r Importing functions}
+source("aaro/edgeR_plot_functions.R", echo = TRUE)
+source("aaro/comp_fig3_plots.R", echo = TRUE)
 source("rrbiomefunctions.R", echo = TRUE)
-```{r functions}
+
+writetable <- function(doc, tbl,  head, foot) {
+    doc <- doc %>% 
+        body_add_fpar(fpar(ftext("Table . ", prop = text.bold), ftext(head, prop = text.normal)), style = "Table Caption") %>%
+        body_add_flextable(tbl, align = "left") %>%
+        body_add_par(foot, style = "footnote text") %>%
+        body_add_break(pos = "after")
+}
+
+writeggplot <- function(doc, ggplot, header, footer, width = 7, height = 7) {
+    doc <- doc %>% 
+        body_add_fpar(fpar(ftext("Figure . ", prop = text.bold), ftext(header, prop = text.normal)), style = "Image Caption") %>%
+        body_add_gg(value = ggplot, width = width, height = height) %>%
+        body_add_par(footer, style = "footnote text") %>%
+        body_add_break(pos = "after") 
+}
+
 ```
 
 # Loading data
@@ -64,9 +83,9 @@ data("phfinrisk_metadatadesc", package="finriskmetagcommon")
 names.dset <- filter(phfinrisk_metadatadesc,
                      Ignored.Covariate.in.Cross.Sectional.Analysis.Aaro20181115==0)
 names.dset <- bind_rows(names.dset,
-                        data.frame(Covariate = c("MAP", "PULSEPRESSURE", "HYPERTENSION"),
-                                   Category = rep("Physical", 3),
-                                   Name =c( "Mean artrerial pressure", "Pulse pressure", "Hypertension")))
+                        data.frame(Covariate = c("MAP", "PULSEPRESSURE", "HYPERTENSION", "SEX"),
+                                   Category = rep("Physical", 4),
+                                   Name =c( "Mean artrerial pressure", "Pulse pressure", "Hypertension", "Female")))
 ```
 
 Loading phyloseq object
@@ -85,6 +104,106 @@ phyloseq::sample_data(pseq.species) <- phyloseq::sample_data(filter.phenotype.da
 
 Sample data has dimensions (`r dim(sample_data(pseq.species))`).
 
-```{r officer init}
+```{r Characteristics}
+tableone.names <- list("BL_AGE" = "Age, y (SD)",
+              "SEX" = "Female, N (%)",
+              "BMI" = "BMI, kg/m² (SD)",
+              "SYSTM" = "Systolic blood pressure, mmHg (SD)",
+              "DIASM" = "Diastolic blood pressure, mmHg (SD)",
+              "PULSEPRESSURE" = "Pulse pressure, mmHg (SD)",
+              "MAP" = "Mean arterial pressure, mmHg (SD)",
+              "HYPERTENSION" = "Hypertension, N (%)",
+              "CURR_SMOKE" = "Current smoker, N (%)",
+              "DIAB" = "Diabetes mellitus, N (%)",
+              "Q57X" = "Exercice, N (%)",
+              "ANYDRUG" = "Antihypertensive medication, N (%)",
+              "BL_USE_RX_C03" = "  Diuretics, N (%)",
+              "BL_USE_RX_C07" = "  Beta blockers, N (%)",
+              "BL_USE_RX_C08" = "  Calcium channel blocker, N (%)",
+              "BL_USE_RX_C09" = "  Agents acting on the renin-angiotensin system, N (%)")
+tableone.factors <- c("SEX", "HYPERTENSION",  "ANYDRUG", "CURR_SMOKE", "DIAB", "BL_USE_RX_C03", "BL_USE_RX_C07", "BL_USE_RX_C08", "BL_USE_RX_C09")
 
+characteristics <- function(dset, names, factors) {
+    title <- "Characteristics"
+    overall <- paste0("Cases, n=", dim(dset)[1])
+    tableobject <- tableone::CreateTableOne(data = dset, vars = names, factorVars = factors)
+    tablecsv <- print(tableobject,
+                      exact = "stage",
+                      quote = FALSE,
+                      noSpaces = TRUE,
+                      printToggle = FALSE,
+                      digits = 1,
+                      pDigits = 3,
+                      contDigits=1)
+}
+
+data <- characteristics(meta(pseq.species), names(tableone.names), tableone.factors) %>%
+    as.data.frame %>%
+    tibble::rownames_to_column(var = "rowname") %>%
+    dplyr::filter(row_number() > 1) %>%
+    format(justify = "left", trim = TRUE) %>%
+    rowwise() %>%
+    mutate(id = gsub("([A-Za-z_0-9]+).*", "\\1", rowname)) %>%
+    mutate(present = id %in%  names(tableone.names)) %>%
+    mutate(rowname = ifelse(present == TRUE, tableone.names[[id]], rowname)) %>%
+    select(rowname, Overall)
+
+tbl1  <- flextable(data = data) %>%
+    flextable::width(j = 1, width = 3) %>%
+    flextable::width(j = 2, width = 1.2)
+
+doc <- writetable(doc, tbl1, "Continuous variables are presented as mean (standard deviation). Categorical variables reported as absolute and relative frequencies. BMI indicates body mass index.", "Characteristics of the study sample.")
+```
+```{r alpha-beta picture}
+dset.alpha <- meta.merge.alphadiversity(pseq.species)
+alphaglm <- calculateglm(dset.alpha, modelstring = "%s ~ BL_AGE + SEX + BMI + CURR_SMOKE + Q57X + DIAB + BL_USE_RX_C03 + BL_USE_RX_C07 + BL_USE_RX_C08 + BL_USE_RX_C09  + diversities_shannon")
+alpha.diversity <- alphaglm %>% select(response, estimate, p.value)
+
+adonis.species  <- readRDS("rds/adonis.species.rds")
+beta.diversity <- adonis.species %>%
+    data.table::rbindlist(id = "model_name") %>%
+    dplyr::filter(term %in% c("MAP", "SYSTM", "DIASM", "PULSEPRESSURE", "HYPERTENSION")) %>%
+    dplyr::select(response, R2)
+
+diversity <- merge(alpha.diversity, beta.diversity, by = "response") %>%
+    merge(names.dset %>% select(Covariate, Category, Name), by.x ="response", by.y = "Covariate")
+```
+
+```{r pca}
+pca.prcomp <- readRDS("rds-20190102/pca.prcomp.rds")
+pca.eigs <- pca.prcomp$sdev^2
+pca.percentage <- 100 * pca.eigs /sum(pca.eigs)
+pca.labels <- sprintf("%s (%.2f %%)", colnames(pca.prcomp$x), pca.percentage)
+setNames(pca.percentage, pca.prcomp$x %>% colnames) %>% head(10) %>% t %>% kable
+pcaplot <- ggplot(cbind(meta(pseq.species), pca.prcomp$x[,1:2]), aes(x=PC1, y=PC2)) +
+    geom_point(aes(color = HYPERTENSION), size = 0.2) +
+    xlab(pca.labels[1]) +
+    ylab(pca.labels[2]) +
+    scale_color_brewer(palette="Dark2") +
+    ggplot2::theme_minimal() 
+
+writeggplot(doc, pcaplot2, "PCA", "footer", width = 7, height = 7)
+```
+
+```{r maaslin}
+maas.results.df.signf <- read.table("maaslin_core/maaslin_core_merged_phfinrisk_genus.txt", header=TRUE, sep='\t') %>%
+    merge(names.dset %>% select(Covariate, Category, Name), by.x ="Variable", by.y = "Covariate") %>%
+    dplyr::mutate(Qval = p.adjust(P.value, method="BH"),
+           beta = Coefficient) %>%
+   dplyr::filter(Qval < 0.05) 
+
+maaslinplot <- plot_maaslin_heatmap_final(maas.results.df.signf %>% dplyr::filter(Variable != "HYPERTENSION"),
+                      xlab.text="Genera",
+                      beta.maxabs=max(abs(maas.results.df.signf[,'beta'])),
+                      order.by.category=FALSE)
+
+writeggplot(doc, maaslinplot, "maaslin", "footer", width = 7, height = 3)
+
+```
+
+```{r}
+``
+
+```{r Write docx to file, cache = FALSE, results = FALSE, include = FALSE}
+print(doc, target = "articletwo.docx")
 ```
