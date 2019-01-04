@@ -306,7 +306,7 @@ full model
 
 ```{r adonis3}
 adonis.species %>%
-    data.table::rbindlist(ret, id = "model_name") %>%
+    data.table::rbindlist(id = "model_name") %>%
 #    dplyr::filter(term %in% c("SY) %>%
  #   dplyr::select(-term) %>%
     select(response, SumsOfSqs, MeanSqs, F.Model, R2, "Pr(>F)") %>%
