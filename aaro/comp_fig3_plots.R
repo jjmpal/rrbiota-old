@@ -1,5 +1,3 @@
-library(scales)
-library(gridExtra)
 
 fig.height <- 4.0 + nrow(diversity) * 0.33
 fig.permar2.text <- "R2 of variable \nin Bray-Curtis distance" # TODO latexify expression?
@@ -9,22 +7,6 @@ diversity <- diversity %>%
     mutate(Qstar = ifelse(p.value < 0.5, '*', ' '))
 
 amaxb <- diversity %>% pull(estimate) %>% abs %>% max %>% signif(., digits = 2)
-
-legend_extractor <- function (tmp) {
-  leg <- which(sapply(tmp$grobs, function(x) x$name) == "guide-box")
-  tmp$grobs[[leg]]
-}
-
-ylabl_extractor <- function(tmp) {
-  yl <- which(grepl('axis.title.y.left', sapply(tmp$grobs, function(x) x$name)))
-  tmp$grobs[[yl]]
-}
-
-
-xlabb_extractor <- function(tmp) {
-  xl <- which(grepl('axis.title.x.bottom', sapply(tmp$grobs, function(x) x$name)))
-  tmp$grobs[[xl]]
-}
 
 
 plot.beta.diversity <- ggplot(diversity, aes(x = reorder(Name, R2), y= R2)) +
