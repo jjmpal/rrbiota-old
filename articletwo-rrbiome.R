@@ -2,6 +2,12 @@
 
 replace.brackets <- function (genus) gsub('(.*) \\(+(.+)\\)', '\\1.\\2', genus)
 
+rename.genus  <- function (genus, markword = "Plasmid", mark = "*") {
+    name <- gsub('(.*) \\(.*\\)', '\\1', genus)
+    star <- ifelse(grepl(markword, genus), mark, "")
+    paste0(gsub("_", " ", name), star)
+}
+
 filter.phenotype.data <- function(pseq,
                                   included = c("DNA_OK", "MEN", "BL_AGE", "SYSTM", "DIASM", "BP_TREAT", "BMI",
                                                "CURR_SMOKE", "DIAB", "BL_USE_RX_C09", "Q57X", "BL_USE_RX_C03",

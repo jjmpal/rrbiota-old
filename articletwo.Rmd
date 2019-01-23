@@ -349,33 +349,39 @@ pca.ret  %>%
 ## Loadings for principal component axis 3 (Figure 5)
 
 ```{r Main contributors of PC3}
-pca.rotation.abs <- abs(pca.prcomp$rotation)
-pca.loading <- sweep(pca.rotation.abs, 2, colSums(pca.rotation.abs), "/") %>%
+pca.loading <- pca.prcomp$rotation^2 %>%
     as.data.frame %>%
-    tibble::rownames_to_column(var = "term")
+    tibble::rownames_to_column(var = "term") %>%
+    mutate(name = rename.genus(term))
 
-pca.prcomp$rotation %>% length
-
-pca.loading %>% pull(PC3) %>% sum
-
-pca.pc3 <- pca.loading %>%
-    select(term, PC3) %>%
+pca.loading.pc3.top20 <- pca.loading %>%
+    select(name, PC3) %>%
     arrange(-PC3) %>%
     head(20)
 
-
-
-pca.pc3.gg <- ggplot(data=pca.pc3, aes(x=reorder(term, -PC3), y=PC3)) +
-    geom_bar(stat="identity") +
-    theme_minimal() +
-    theme(axis.text.x = element_text(angle = 90, hjust = 1))
-   
-ggsave(file = "cache/pca.pc3.png", plot = pca.pc3.gg, height = 3, width = 7, dpi = 300)
+pca.pc3.gg <- ggplot(data=pca.loading.pc3.top20, aes(x=reorder(name, -PC3), y=100*PC3)) +
+    geom_bar(stat="identity", width=0.5, position = position_dodge(preserve = "single")) +
+    theme_classic(20) +
+    theme(axis.text.x = element_text(angle = 90, vjust = 0.3, hjust = 1)) +
+    xlab("") +
+    ylab("Contribution (%)") +
+#    coord_fixed(ratio = 1) +
+    theme(axis.title.x=element_blank(),
+          text = element_text(size=20),
+          legend.justification=c(1,0),
+          legend.position=c(1.03, 0.75),
+          legend.title=element_text(size = 20),
+          legend.direction="vertical",
+          legend.text=element_text(size = floor(0.75*20)),
+          legend.box.margin = margin(1, 1, 1, 1, "mm"),
+          legend.box.background = element_rect(colour = "black"),
+          aspect.ratio = 0.7)
+   ggsave(file = "cache/pca.pc3.png", plot = pca.pc3.gg, height = 8, width = 8, dpi = 300) 
 ```
 
 ```{r Write figure 4}
-fig4head <- ""
-fig4foot <- ""
+fig4head <- "Bacteria causing dysentery and diarrhea contribute to third principal component"
+fig4foot <- sprintf("Top 20 bacterial contributors to third principal coordinate at species level. Centered log ratio transform is performed for the compositional data. Third principal component explain %.1f%% of the total variation. Plasmid DNA is denoted using star.", pca.percentage[3])
 writeimage(doc, 4, "cache/pca.pc3.png", fig4head, fig4foot)
 ```
 
