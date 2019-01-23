@@ -17,8 +17,8 @@ characteristics <- function(dset, names, factors) {
         format(justify = "left", trim = TRUE) %>%
         rowwise() %>%
         mutate(id = gsub("([A-Za-z_0-9]+).*", "\\1", rowname)) %>%
-        mutate(present = id %in%  names(tableone.names)) %>%
-        mutate(rowname = ifelse(present == TRUE, tableone.names[[id]], rowname)) %>%
+        mutate(present = id %in%  names(names)) %>%
+        mutate(rowname = ifelse(present == TRUE, names[[id]], rowname)) %>%
         select(rowname, Overall)
 }
 
@@ -145,6 +145,9 @@ riskmodel.joincolumns <- function(rset, riskmodels, idforn = "fwdbonf_riskclass"
 }
 
 writetable <- function(doc, tbl, number = 0, head, foot) {
+	text.bold <- fp_text(font.size = 12, bold = TRUE, font.family = "Arial")
+	text.normal <- fp_text(font.size = 12, font.family = "Arial")
+
   doc <- doc %>%
     body_add_fpar(fpar(ftext(paste0("Table ", number, ". "), prop = text.bold), ftext(head, prop = text.normal)), style = "Table Caption") %>%
     body_add_flextable(tbl, align = "left") %>%
@@ -153,6 +156,9 @@ writetable <- function(doc, tbl, number = 0, head, foot) {
 }
 
 writeimage <- function(doc, number = 0, filename, header, footer, width = 7) {
+text.bold <- fp_text(font.size = 12, bold = TRUE, font.family = "Arial")
+text.normal <- fp_text(font.size = 12, font.family = "Arial")
+
   img <- readPNG(filename)
   doc <- doc %>%
     body_add_fpar(fpar(ftext(paste0("Figure ", number, ". "), prop = text.bold), ftext(header, prop = text.normal)), style = "Image Caption") %>%
