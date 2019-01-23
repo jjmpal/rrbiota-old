@@ -24,6 +24,12 @@ if (!exists('now')) {
 now
 ```
 
+Session info
+
+```{r session info}
+sessionInfo()
+```
+
 # Importing libraries:
 
 ```{r libraries, cache = FALSE}
@@ -122,7 +128,7 @@ tbl1 <- tableone(meta(pseq.species))
 
 ```{r Write characteristics}
 tbl1head <- "Characteristics of the study sample."
-tbl1foot <- "Continuous variables are presented as mean (standard deviation). Categorical variables reported as absolute and relative frequencies. BP indicates blood pressure, BMI body mass index, RAS renin-angiotensin system."
+tbl1foot <- "Continuous variables are presented as mean (standard deviation). Exercise at free-timeis reported as not much (1), walk etc. (2), regular three hours or more or competitive sports (3). Categorical variables reported as absolute and relative frequencies. BP indicates blood pressure, BMI body mass index, RAS renin-angiotensin system."
 writetable(doc, tbl1, number = 1, tbl1head, tbl1foot)
 ```
 
@@ -248,7 +254,7 @@ g4 <- arrangeGrob(grobs = gs4,
             heights=c(3,12,8,21,1,2))
 
 ggsave(file = "cache/alpha-beta.png", plot=g4, height=fig.height, width=11)
-writeimage(doc, "cache/alpha-beta.png", "Alpha-beta", "footer")
+
 ```
 
 ## Principal component analysis (Figure 2.)
@@ -261,7 +267,7 @@ pca.labels <- sprintf("%s (%.2f %%)", colnames(pca.prcomp$x), pca.percentage)
 
 pcaplot <- ggplot(cbind(meta(pseq.species), pca.prcomp$x[,1:2]), aes(x=PC1, y=PC2)) +
     geom_point(aes(color = HYPERTENSION), size = 0.5) +
-    scale_color_manual(values=c("red", "blue"),
+    scale_color_manual(values=c("blue", "red"),
                        name= "Hypertension",
                        breaks=c("1", "0"),
                        labels=c("Yes", "No")) +
@@ -282,8 +288,16 @@ pcaplot <- ggplot(cbind(meta(pseq.species), pca.prcomp$x[,1:2]), aes(x=PC1, y=PC
 
 ggsave(file = "cache/pca.png", plot = pcaplot, height = 5, width = 9, dpi = 300)
 
-writeimage(doc, "cache/pca.png", "Alpha-beta", "footer", width = 7)
+writeimage(doc, 2, "cache/pca.png", "Alpha-beta", "footer", width = 7)
 ```
+
+```{r Write figure 2}
+fig2head <- "Tenth of bacterial variation can be explained by two first principal axes"
+fig2foot <- sprintf("Principal component analysis for bacterial abundances at species level. Centered log ratio transform is performed for the compositional data. First two axes explain %.1f%% of the variation. Research participants with hypertension are denoted by red dot.", sum(pca.percentage[1:2]))
+writeimage(doc, 2, "cache/pca.png", fig2head, fig2foot)
+```
+
+## Direct associations between genus level and blood pressure variables (figure 3)
 
 ```{r maaslin}
 maas.results.df.signf <- read.table("maaslin_core/maaslin_core_merged_phfinrisk_genus.txt", header=TRUE, sep='\t') %>%
@@ -297,8 +311,17 @@ maaslinplot <- plot_maaslin_heatmap_final(maas.results.df.signf %>% dplyr::filte
                       beta.maxabs=max(abs(maas.results.df.signf[,'beta'])),
                       order.by.category=FALSE)
 
-writeggplot(doc, maaslinplot, "maaslin", "footer", width = 7, height = 3)
+ggsave(file = "cache/maaslin.png", plot = maaslinplot, height = 3, width = 7, dpi = 300)
 ```
+
+```{r Write figure 3}
+fig3head <- ""
+fig3foot <- ""
+writeimage(doc, 3, "cache/maaslin.png", fig3head, fig3foot)
+```
+
+
+## Figure 4
 
 ```{r PCA heatmap}
 pca.axis <- pca.prcomp$x %>% data.frame
@@ -323,35 +346,38 @@ pca.ret  %>%
     kable
 ```
 
-```{r PCA loadings}
+## Loadings for principal component axis 3 (Figure 5)
 
+```{r Main contributors of PC3}
 pca.rotation.abs <- abs(pca.prcomp$rotation)
 pca.loading <- sweep(pca.rotation.abs, 2, colSums(pca.rotation.abs), "/") %>%
     as.data.frame %>%
     tibble::rownames_to_column(var = "term")
+
+pca.prcomp$rotation %>% length
+
+pca.loading %>% pull(PC3) %>% sum
 
 pca.pc3 <- pca.loading %>%
     select(term, PC3) %>%
     arrange(-PC3) %>%
     head(20)
 
-pca.loading %>% pull(PC3) %>% head(2700) %>% sum
 
-ggplot(data=pca.pc3, aes(x=reorder(term, -PC3), y=PC3)) +
+
+pca.pc3.gg <- ggplot(data=pca.pc3, aes(x=reorder(term, -PC3), y=PC3)) +
     geom_bar(stat="identity") +
     theme_minimal() +
     theme(axis.text.x = element_text(angle = 90, hjust = 1))
-    
-
-dev.off()
-    
-
-    
-
- 
-
+   
+ggsave(file = "cache/pca.pc3.png", plot = pca.pc3.gg, height = 3, width = 7, dpi = 300)
 ```
 
+```{r Write figure 4}
+fig4head <- ""
+fig4foot <- ""
+writeimage(doc, 4, "cache/pca.pc3.png", fig4head, fig4foot)
+```
 
 ```{r Write docx to file, cache = FALSE, results = FALSE, include = FALSE}
 print(doc, target = paste0("report/articletwo-", now, ".docx"))

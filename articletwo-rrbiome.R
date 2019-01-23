@@ -64,14 +64,14 @@ calculateadonis <- function(dset,
                             covariates = c("BL_AGE", "SEX"),
                             npermutations = 99,
                             maxcores = 100) {
-    lapply(responses, function(response) {
+    mclapply(responses, function(response) {
         fo <- sprintf("matrix ~ %s + %s", response, paste(covariates, collapse = " + "))
         ad <- adonis(formula = as.formula(fo), data = dset, permutations = npermutations)
         ad$aov.tab %>%
             as.data.frame %>%
             tibble::rownames_to_column(var = "term") %>%
             dplyr::mutate(response = response)
-      })#, mc.cores = min(maxcores, length(responses)))
+      }, mc.cores = min(maxcores, length(responses)))
 }
 
 prepare.maaslin <- function (pseq,
