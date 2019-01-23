@@ -73,37 +73,6 @@ source("articletwo-rrbiome.R")
 source("aaro/edgeR_plot_functions.R")
 ```
 
-
-# Function definitions
-
-```{r Importing functions}
-writetable <- function(doc, tbl,  head, foot) {
-    doc <- doc %>% 
-        body_add_fpar(fpar(ftext("Table . ", prop = text.bold), ftext(head, prop = text.normal)), style = "Table Caption") %>%
-        body_add_flextable(tbl, align = "left") %>%
-        body_add_par(foot, style = "footnote text") %>%
-        body_add_break(pos = "after")
-}
-
-writeggplot <- function(doc, ggplot, header, footer, width = 7, height = 7) {
-    doc <- doc %>% 
-        body_add_fpar(fpar(ftext("Figure . ", prop = text.bold), ftext(header, prop = text.normal)), style = "Image Caption") %>%
-        body_add_gg(value = ggplot, width = width, height = height) %>%
-        body_add_par(footer, style = "footnote text") %>%
-        body_add_break(pos = "after") 
-}
-
-writeimage <- function(doc, filename, header, footer, width = 7.5) {
-    img <- readPNG("cache/pca.png")
-    doc <- doc %>% 
-        body_add_fpar(fpar(ftext("Figure . ", prop = text.bold), ftext(header, prop = text.normal)), style = "Image Caption") %>%
-        body_add_img(src = filename, width = width, height = width*dim(img)[1]/dim(img)[2]) %>% 
-        body_add_par(footer, style = "footnote text") %>%
-        body_add_break(pos = "after") 
-}
-
-```
-
 # Loading data
 	
 Loading descriptions for clinical data
@@ -115,7 +84,11 @@ names.dset <- filter(phfinrisk_metadatadesc,
 names.dset <- bind_rows(names.dset,
                         data.frame(Covariate = c("MAP", "PULSEPRESSURE", "HYPERTENSION", "SEX"),
                                    Category = rep("Physical", 4),
-                                   Name =c( "Mean artrerial pressure", "Pulse pressure", "Hypertension", "Female")))
+                                   Name =c( "Mean artrerial pressure", "Pulse pressure", "Hypertension", "Female"),
+                                   Desc = c("Mean arterail presure, 2./3.*DIASM + 1./3.*SYSTM)",
+                                            "Pulse pressure, SYSTM - DIASM",
+                                            "Hypertension, SYSTM >=140 or DIAS >= 90 or BP mediaction",
+                                            "Sex is female, True for female, False for male")))
 ```
 
 Loading phyloseq object
@@ -137,67 +110,17 @@ Sample data has dimensions (`r dim(sample_data(pseq.species))`).
 ## Characteristics of the study sample. (Table 1.)
 
 ```{r Characteristics}
-tbl1 <- xtableformatter(characteristics(dset$fr02$data.full)) %>%
-    flextable::width(j = 1, width = 3) %>%
-    flextable::width(j = 2, width = 1.2) 
+tbl1 <- tableone(meta(pseq.species))
 ```
 
 ```{r Write characteristics}
 tbl1head <- "Characteristics of the study sample."
-tbl1foot <- "Continuous variables are presented as mean (standard deviation). Categorical variables reported as absolute and relative frequencies. BMI indicates body mass index."
+tbl1foot <- "Continuous variables are presented as mean (standard deviation). Categorical variables reported as absolute and relative frequencies. BP indicates blood pressure, BMI body mass index, RAS renin-angiotensin system."
 writetable(doc, tbl1, number = 1, tbl1head, tbl1foot)
+print(doc, target = "articletwo.docx")
 ```
 
-```{r Characteristics}
-tableone.names <- list("BL_AGE" = "Age, y (SD)",
-              "SEX" = "Female, N (%)",
-              "BMI" = "BMI, kg/m² (SD)",
-              "SYSTM" = "Systolic blood pressure, mmHg (SD)",
-              "DIASM" = "Diastolic blood pressure, mmHg (SD)",
-              "PULSEPRESSURE" = "Pulse pressure, mmHg (SD)",
-              "MAP" = "Mean arterial pressure, mmHg (SD)",
-              "HYPERTENSION" = "Hypertension, N (%)",
-              "CURR_SMOKE" = "Current smoker, N (%)",
-              "DIAB" = "Diabetes mellitus, N (%)",
-              "Q57X" = "Exercice, N (%)",
-              "ANYDRUG" = "Antihypertensive medication, N (%)",
-              "BL_USE_RX_C03" = "  Diuretics, N (%)",
-              "BL_USE_RX_C07" = "  Beta blockers, N (%)",
-              "BL_USE_RX_C08" = "  Calcium channel blocker, N (%)",
-              "BL_USE_RX_C09" = "  Agents acting on the renin-angiotensin system, N (%)")
-tableone.factors <- c("SEX", "HYPERTENSION",  "ANYDRUG", "CURR_SMOKE", "DIAB", "BL_USE_RX_C03", "BL_USE_RX_C07", "BL_USE_RX_C08", "BL_USE_RX_C09")
 
-characteristics <- function(dset, names, factors) {
-    title <- "Characteristics"
-    overall <- paste0("Cases, n=", dim(dset)[1])
-    tableobject <- tableone::CreateTableOne(data = dset, vars = names, factorVars = factors)
-    tablecsv <- print(tableobject,
-                      exact = "stage",
-                      quote = FALSE,
-                      noSpaces = TRUE,
-                      printToggle = FALSE,
-                      digits = 1,
-                      pDigits = 3,
-                      contDigits=1)
-}
-
-data <- characteristics(meta(pseq.species), names(tableone.names), tableone.factors) %>%
-    as.data.frame %>%
-    tibble::rownames_to_column(var = "rowname") %>%
-    dplyr::filter(row_number() > 1) %>%
-    format(justify = "left", trim = TRUE) %>%
-    rowwise() %>%
-    mutate(id = gsub("([A-Za-z_0-9]+).*", "\\1", rowname)) %>%
-    mutate(present = id %in%  names(tableone.names)) %>%
-    mutate(rowname = ifelse(present == TRUE, tableone.names[[id]], rowname)) %>%
-    select(rowname, Overall)
-
-tbl1  <- flextable(data = data) %>%
-    flextable::width(j = 1, width = 3) %>%
-    flextable::width(j = 2, width = 1.2)
-
-doc <- writetable(doc, tbl1, "Continuous variables are presented as mean (standard deviation). Categorical variables reported as absolute and relative frequencies. BMI indicates body mass index.", "Characteristics of the study sample.")
-```
 ```{r alphabeta definitions}
 dset.alpha <- meta.merge.alphadiversity(pseq.species)
 alphaglm <- calculateglm(dset.alpha, modelstring = "%s ~ BL_AGE + SEX + BMI + CURR_SMOKE + Q57X + DIAB + BL_USE_RX_C03 + BL_USE_RX_C07 + BL_USE_RX_C08 + BL_USE_RX_C09  + diversities_shannon")

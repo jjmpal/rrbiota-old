@@ -1,51 +1,65 @@
-characteristics <- function(dset, type = "fr02") {
-  if (type == "fr02") {
-    factors <- c("HT", "HRX", "sex", "curr_smk", "curr_diab", "plate")
-    names <- list("Age, y (SD)" = "AGE",
-                  "Female, N (%)" = "sex",
-                  "BMI, kg/m² (SD)" = "BMI",
-                  "Systolic blood pressure, mmHg (SD)" = "SBP",
-                  "Diastolic blood pressure, mmHg (SD)" = "DBP",
-                  "Pulse pressure, mmHg (SD)" = "PP",
-                  "Mean arterial pressure, mmHg (SD)" = "MAP",
-                  "Hypertension, N (%)" = "HT",
-                  "Antihypertensive medication, N (%)" = "HRX",
-                  "Current smoker, N (%)" = "curr_smk",
-                  "Diabetes mellitus, N (%)" = "curr_diab")
-  } else {
-    factors <- c("HT8", "HRX8", "sex", "CURRSMK8", "curr_diab8", "plate")
-    names <- list("Age, y (SD)" = "AGE8",
-                  "Female, N (%)" = "sex",
-                  "BMI, kg/m² (SD)" = "BMI8",
-                  "Systolic blood pressure, mmHg (SD)" = "SBP8",
-                  "Diastolic blood pressure, mmHg (SD)" = "DBP8",
-                  "Pulse pressure, mmHg (SD)" = "PP8",
-                  "Mean arterial pressure, mmHg (SD)" = "MAP8",
-                  "Hypertension, N (%)" = "HT8",
-                  "Antihypertensive medication, N (%)" = "HRX8",
-                  "Current smoker, N (%)" = "CURRSMK8",
-                  "Diabetes mellitus, N (%)" = "curr_diab8")
-  }
-  tableobject <- tableone::CreateTableOne(data = dset, vars = unlist(names), factorVars = factors)
-  tablecsv <- print(tableobject,
-                    exact = "stage",
-                    quote = FALSE,
-                    noSpaces = TRUE,
-                    printToggle = FALSE,
-                    digits = 1,
-                    pDigits = 3,
-                    contDigits=1)
-  
-  title <- "Characteristics"
-  overall <- paste0("Cases, n=", dim(dset)[1])
-  
-  tablecsv <- tablecsv %>%
-    as.data.frame %>%
-    dplyr::filter(row_number() > 1) %>%
-    dplyr::mutate(!!title := names(names), !!overall := Overall) %>%
-    dplyr::select(-Overall) %>%
-    format(justify = "left", trim = TRUE)
-  return(tablecsv)
+characteristics <- function(dset, names, factors) {
+    title <- "Characteristics"
+    overall <- paste0("Cases, n=", dim(dset)[1])
+    tableobject <- tableone::CreateTableOne(data = dset, vars = names, factorVars = factors)
+    tablecsv <- print(tableobject,
+                      exact = "stage",
+                      quote = FALSE,
+                      noSpaces = TRUE,
+                      printToggle = FALSE,
+                      digits = 1,
+                      pDigits = 3,
+                      contDigits=1)
+    tablecsv %>%
+        as.data.frame %>%
+        tibble::rownames_to_column(var = "rowname") %>%
+        dplyr::filter(row_number() > 1) %>%
+        format(justify = "left", trim = TRUE) %>%
+        rowwise() %>%
+        mutate(id = gsub("([A-Za-z_0-9]+).*", "\\1", rowname)) %>%
+        mutate(present = id %in%  names(tableone.names)) %>%
+        mutate(rowname = ifelse(present == TRUE, tableone.names[[id]], rowname)) %>%
+        select(rowname, Overall)
+}
+
+tableone <- function(dset, ) {
+    tableone.names <- list("BL_AGE" = "Age, y (SD)",
+                           "SEX" = "Female, N (%)",
+                           "BMI" = "BMI, kg/m² (SD)",
+                           "SYSTM" = "Systolic BP, mmHg (SD)",
+                           "DIASM" = "Diastolic BP, mmHg (SD)",
+                           "PULSEPRESSURE" = "Pulse pressure, mmHg (SD)",
+                           "MAP" = "Mean arterial pressure, mmHg (SD)",
+                           "HYPERTENSION" = "Hypertension, N (%)",
+                           "CURR_SMOKE" = "Current smoker, N (%)",
+                           "DIAB" = "Diabetes mellitus, N (%)",
+                           "Q57X" = "Exercice, N (%)",
+                           "ANYDRUG" = "Antihypertensive medication, N (%)",
+                           "BL_USE_RX_C03" = "  Diuretics, N (%)",
+                           "BL_USE_RX_C07" = "  Beta blockers, N (%)",
+                           "BL_USE_RX_C08" = "  Calcium channel blockers, N (%)",
+                           "BL_USE_RX_C09" = "  Agents acting on the RAS, N (%)")
+    tableone.factors <- c("SEX", "HYPERTENSION",  "ANYDRUG", "CURR_SMOKE", "DIAB",
+                          "BL_USE_RX_C03", "BL_USE_RX_C07", "BL_USE_RX_C08", "BL_USE_RX_C09")
+
+    data <- characteristics(dset, names(tableone.names), tableone.factors)
+
+    flextable(data = data) %>%
+        set_header_labels(rowname = "Characteristics",
+                          Overall = paste0("Cases, n=", dim(dset)[1])) %>%
+        flextable::width(j = 1, width = 3) %>%
+        flextable::width(j = 2, width = 1.2) %>%
+        flextable::border(border = fp_border(width=0), part="body") %>%
+        flextable::border(border = fp_border(width=0), part="header") %>%
+        flextable::border(part="header", border.bottom = fp_border(width=1)) %>%
+        flextable::border(i = nrow(data), part="body", border.bottom = fp_border(width=1)) %>%
+        flextable::bold(bold = FALSE, part = "header") %>%
+        flextable::bold(bold = FALSE, part = "body") %>%
+        flextable::fontsize(size = 12, part = "header") %>%
+        flextable::fontsize(size = 12, part = "body") %>%
+        flextable::align(align = "center", part = "all") %>%
+        flextable::align(align = "left", part = "header", j = 1) %>%
+        flextable::align(align = "left", part = "body", j = 1)
 }
 
 typologyformatter <- function(data, font = 12, typology) {
@@ -54,14 +68,14 @@ typologyformatter <- function(data, font = 12, typology) {
     flextable::border(border = fp_border(width=0), part="body") %>%
     flextable::border(border = fp_border(width=0), part="header") %>%
     flextable::border(part="header", border.bottom = fp_border(width=1))
-  
+
   if (!missing(typology)) {
     flex <- flex %>%
       set_header_df(mapping = typology, key = "col_keys") %>%
       merge_h(part = "header") %>%
       flextable::border(part="header", border.bottom = fp_border(width=1))
   }
-  
+
   flex %>%
     flextable::border(i = nrow(data), part="body", border.bottom = fp_border(width=1)) %>%
     flextable::bold(bold = FALSE, part = "header") %>%
@@ -88,9 +102,9 @@ xtableformatter <- function(table, font = 12) {
 }
 
 riskmodel.getn <- function(df, riskclass, inviduals = FALSE, cols = c("htn")) {
-  ret <- df %>% 
-    group_by(.dots = riskclass) %>% 
-    summarize(n=n(), htn=sum(HT == 1)) %>% 
+  ret <- df %>%
+    group_by(.dots = riskclass) %>%
+    summarize(n=n(), htn=sum(HT == 1)) %>%
     select(cols)
   return(rbind(c("", ""), c("", ""), c("", ""), ret))
 }
@@ -100,14 +114,14 @@ riskmodel.onecolumn <- function(riskmodels) {
   lapply(riskmodels, function(result) {
     cbind(
       rbind(result$unadj_persd$mean_ci,
-            result$unadj_persd$p, 
+            result$unadj_persd$p,
             "",
-            "1.0 (referent)", 
+            "1.0 (referent)",
             cbind(result$unadj_class$mean_ci)),
-      rbind(result$adj_persd$mean_ci, 
-            result$adj_persd$p, 
-            "",          
-            "1.0 (referent)", 
+      rbind(result$adj_persd$mean_ci,
+            result$adj_persd$p,
+            "",
+            "1.0 (referent)",
             cbind(result$adj_class$mean_ci)))
   })
 }
@@ -131,8 +145,8 @@ riskmodel.joincolumns <- function(rset, riskmodels, idforn = "fwdbonf_riskclass"
 }
 
 writetable <- function(doc, tbl, number = 0, head, foot) {
-  doc <- doc %>% 
-    body_add_fpar(fpar(ftext(paste0("Table ", number, "."), prop = text.bold), ftext(head, prop = text.normal)), style = "Table Caption") %>%
+  doc <- doc %>%
+    body_add_fpar(fpar(ftext(paste0("Table ", number, ". "), prop = text.bold), ftext(head, prop = text.normal)), style = "Table Caption") %>%
     body_add_flextable(tbl, align = "left") %>%
     body_add_par(foot, style = "footnote text") %>%
     body_add_break(pos = "after")
@@ -140,9 +154,9 @@ writetable <- function(doc, tbl, number = 0, head, foot) {
 
 writeimage <- function(doc, number = 0, filename, header, footer, width = 7) {
   img <- readPNG(filename)
-  doc <- doc %>% 
-    body_add_fpar(fpar(ftext(paste0("Figure ", number, "."), prop = text.bold), ftext(header, prop = text.normal)), style = "Image Caption") %>%
-    body_add_img(src = filename, width = width, height = width*dim(img)[1]/dim(img)[2]) %>% 
+  doc <- doc %>%
+    body_add_fpar(fpar(ftext(paste0("Figure ", number, ". "), prop = text.bold), ftext(header, prop = text.normal)), style = "Image Caption") %>%
+    body_add_img(src = filename, width = width, height = width*dim(img)[1]/dim(img)[2]) %>%
     body_add_par(footer, style = "footnote text") %>%
-    body_add_break(pos = "after") 
+    body_add_break(pos = "after")
 }
