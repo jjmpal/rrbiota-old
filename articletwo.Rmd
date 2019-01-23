@@ -61,12 +61,22 @@ text.normal <- fp_text(font.size = 12, font.family = "Arial")
 source("articletwo-officer.R")
 ```
 
+### RR biome functions
+
+```{r RR biome functions, code=readLines("articletwo-rrbiome.R")}
+source("articletwo-rrbiome.R")
+```
+
+### EdgeR plot functions
+
+```{r EdgeR functions, code=readLines("aaro/edgeR_plot_functions.R")}
+source("aaro/edgeR_plot_functions.R")
+```
+
+
 # Function definitions
 
 ```{r Importing functions}
-source("aaro/edgeR_plot_functions.R", echo = TRUE)
-source("rrbiomefunctions.R", echo = TRUE)
-
 writetable <- function(doc, tbl,  head, foot) {
     doc <- doc %>% 
         body_add_fpar(fpar(ftext("Table . ", prop = text.bold), ftext(head, prop = text.normal)), style = "Table Caption") %>%
