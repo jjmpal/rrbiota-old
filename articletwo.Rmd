@@ -6,7 +6,7 @@ output: html_document
 ---
 	
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(include = TRUE, xecho = TRUE, message = FALSE, results='asis', cache=TRUE, warning=FALSE)
+knitr::opts_chunk$set(include = TRUE, xecho = TRUE, message = FALSE, results='asis', cache=FALSE, warning=FALSE)
 knitr::opts_chunk$set(cache.path = 'cache/', output.dir="cache/",
                       file.path = 'cache/', fig.path = 'cache/')
 
@@ -70,7 +70,7 @@ dir.create("cache", showWarnings = FALSE)
 
 ### Officer functions
 
-```{r Officer importer, code=readLines("articleone-officer.R")}
+```{r Officer importer, code=readLines("articletwo-officer.R")}
 source("articletwo-officer.R")
 ```
 
@@ -347,10 +347,13 @@ pca.ret  %>%
 ## Loadings for principal component axis 3 (Figure 5)
 
 ```{r Main contributors of PC3}
-pca.loading <- pca.prcomp$rotation^2 %>%
-    as.data.frame %>%
+pca.rotation.abs <- abs(pca.prcomp$rotation)
+pca.loading <- sweep(pca.rotation.abs, 2, colSums(pca.rotation.abs), "/") %>%
+	    as.data.frame %>%
     tibble::rownames_to_column(var = "term") %>%
     mutate(name = rename.genus(term))
+	
+
 
 pca.loading.pc3.top20 <- pca.loading %>%
     select(name, PC3) %>%
@@ -383,6 +386,6 @@ fig4foot <- sprintf("Top 20 bacterial contributors to third principal coordinate
 writeimage(doc, 4, "cache/pca.pc3.png", fig4head, fig4foot)
 ```
 
-```{r Write docx to file, cache = FALSE, results = FALSE, include = FALSE}
+```{r Write docx to file}
 print(doc, target = paste0("report/articletwo-", now, ".docx"))
 ```
