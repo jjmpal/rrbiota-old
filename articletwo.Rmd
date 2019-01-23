@@ -53,6 +53,14 @@ text.bold <- fp_text(font.size = 12, bold = TRUE, font.family = "Arial")
 text.normal <- fp_text(font.size = 12, font.family = "Arial")
 ```
 
+# Sources
+
+### Officer functions
+
+```{r Officer importer, code=readLines("articleone-officer.R")}
+source("articletwo-officer.R")
+```
+
 # Function definitions
 
 ```{r Importing functions}
@@ -115,6 +123,20 @@ phyloseq::sample_data(pseq.species) <- phyloseq::sample_data(filter.phenotype.da
 ```
 
 Sample data has dimensions (`r dim(sample_data(pseq.species))`).
+
+## Characteristics of the study sample. (Table 1.)
+
+```{r Characteristics}
+tbl1 <- xtableformatter(characteristics(dset$fr02$data.full)) %>%
+    flextable::width(j = 1, width = 3) %>%
+    flextable::width(j = 2, width = 1.2) 
+```
+
+```{r Write characteristics}
+tbl1head <- "Characteristics of the study sample."
+tbl1foot <- "Continuous variables are presented as mean (standard deviation). Categorical variables reported as absolute and relative frequencies. BMI indicates body mass index."
+writetable(doc, tbl1, number = 1, tbl1head, tbl1foot)
+```
 
 ```{r Characteristics}
 tableone.names <- list("BL_AGE" = "Age, y (SD)",
