@@ -13,7 +13,18 @@ knitr::opts_chunk$set(cache.path = 'cache/', output.dir="cache/",
 dir.create("rds/", showWarnings = FALSE)
 ```
 
-Importing libraries:
+# Running at
+
+Calculations ran at
+
+```{r Running at}
+if (!exists('now')) {
+    now <- format(Sys.time(), '%Y%m%d-%H%M%S')
+}
+now
+```
+
+# Importing libraries:
 
 ```{r libraries, cache = FALSE}
 library(dplyr)
@@ -45,12 +56,8 @@ unlink("cache", recursive=TRUE)
 ```{r Initialize docx, include = FALSE, cache = FALSE}
 doc <- read_docx(path = "style/articlestyle.docx") %>%
   body_remove()
-
 dir.create("rds", showWarnings = FALSE)
 dir.create("cache", showWarnings = FALSE)
-
-text.bold <- fp_text(font.size = 12, bold = TRUE, font.family = "Arial")
-text.normal <- fp_text(font.size = 12, font.family = "Arial")
 ```
 
 # Sources
@@ -117,9 +124,9 @@ tbl1 <- tableone(meta(pseq.species))
 tbl1head <- "Characteristics of the study sample."
 tbl1foot <- "Continuous variables are presented as mean (standard deviation). Categorical variables reported as absolute and relative frequencies. BP indicates blood pressure, BMI body mass index, RAS renin-angiotensin system."
 writetable(doc, tbl1, number = 1, tbl1head, tbl1foot)
-print(doc, target = "articletwo.docx")
 ```
 
+## Alpha & Beta plot (Figure 1.)
 
 ```{r alphabeta definitions}
 dset.alpha <- meta.merge.alphadiversity(pseq.species)
@@ -127,9 +134,12 @@ alphaglm <- calculateglm(dset.alpha, modelstring = "%s ~ BL_AGE + SEX + BMI + CU
 alpha.diversity <- alphaglm %>% select(response, estimate, p.value)
 
 adonis.species  <- readRDS("rds/adonis.species.rds")
+
 beta.diversity <- adonis.species %>%
     data.table::rbindlist(id = "model_name") %>%
-    dplyr::filter(term %in% c("MAP", "SYSTM", "DIASM", "PULSEPRESSURE", "HYPERTENSION")) %>%
+    dplyr::filter(term %in% c("MAP", "SYSTM", "DIASM", "PULSEPRESSURE", "HYPERTENSION"))
+
+                                        #%>%
     dplyr::select(response, R2)
 
 diversity <- merge(alpha.diversity, beta.diversity, by = "response") %>%
@@ -241,6 +251,8 @@ ggsave(file = "cache/alpha-beta.png", plot=g4, height=fig.height, width=11)
 writeimage(doc, "cache/alpha-beta.png", "Alpha-beta", "footer")
 ```
 
+## Principal component analysis (Figure 2.)
+
 ```{r pca}
 pca.prcomp <- readRDS("rds/pca.prcomp.rds")
 pca.eigs <- pca.prcomp$sdev^2
@@ -342,5 +354,5 @@ dev.off()
 
 
 ```{r Write docx to file, cache = FALSE, results = FALSE, include = FALSE}
-print(doc, target = "articletwo.docx")
+print(doc, target = paste0("report/articletwo-", now, ".docx"))
 ```
