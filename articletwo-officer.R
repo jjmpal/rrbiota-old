@@ -22,7 +22,7 @@ characteristics <- function(dset, names, factors) {
         select(rowname, Overall)
 }
 
-tableone <- function(dset, ) {
+tableone <- function(dset) {
     tableone.names <- list("BL_AGE" = "Age, y (SD)",
                            "SEX" = "Female, N (%)",
                            "BMI" = "BMI, kg/m² (SD)",
