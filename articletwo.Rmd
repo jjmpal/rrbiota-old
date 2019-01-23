@@ -143,9 +143,7 @@ adonis.species  <- readRDS("rds/adonis.species.rds")
 
 beta.diversity <- adonis.species %>%
     data.table::rbindlist(id = "model_name") %>%
-    dplyr::filter(term %in% c("MAP", "SYSTM", "DIASM", "PULSEPRESSURE", "HYPERTENSION"))
-
-                                        #%>%
+    dplyr::filter(term %in% c("MAP", "SYSTM", "DIASM", "PULSEPRESSURE", "HYPERTENSION")) %>%
     dplyr::select(response, R2)
 
 diversity <- merge(alpha.diversity, beta.diversity, by = "response") %>%
@@ -220,7 +218,7 @@ plot.beta.diversity <- ggplot(diversity, aes(x = reorder(Name, R2), y= R2)) +
           legend.text.align = 0)
 
 plot.gtable.beta.diversity <- ggplot_gtable(ggplot_build(plot.beta.diversity))
-plot.xlab.beta.diversity <- xlabb_extractor(gtable.beta.diversity)
+plot.xlab.beta.diversity <- xlabb_extractor(plot.gtable.beta.diversity)
 
 plot.beta.diversity <- plot.beta.diversity  +
     theme(axis.text.x = element_blank(),
@@ -253,7 +251,7 @@ g4 <- arrangeGrob(grobs = gs4,
             widths=c(4,0.7,0.5,5,5),
             heights=c(3,12,8,21,1,2))
 
-ggsave(file = "cache/alpha-beta.png", plot=g4, height=fig.height, width=11)
+ggsave(file = "cache/alpha-beta.png", plot=g4, height=10, width=11)
 
 ```
 
@@ -365,7 +363,7 @@ pca.pc3.gg <- ggplot(data=pca.loading.pc3.top20, aes(x=reorder(name, -PC3), y=10
     theme(axis.text.x = element_text(angle = 90, vjust = 0.3, hjust = 1)) +
     xlab("") +
     ylab("Contribution (%)") +
-#    coord_fixed(ratio = 1) +
+    scale_y_continuous(limits=c(0, 2.7), oob = rescale_none, expand = c(0,0)) +
     theme(axis.title.x=element_blank(),
           text = element_text(size=20),
           legend.justification=c(1,0),
