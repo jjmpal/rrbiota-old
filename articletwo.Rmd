@@ -267,7 +267,7 @@ g4 <- arrangeGrob(grobs = gs4,
 ggsave(file = "cache/alpha-beta.png", plot=g4, height=6, width=9)
 ```
 
-```{r Write figure 2}
+```{r Write figure 1}
 fig1head <- "alpha beta figure"
 fig1foot <- ""
 writeimage(doc, 1, "cache/alpha-beta.png", fig1head, fig1foot)
