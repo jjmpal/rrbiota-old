@@ -145,7 +145,7 @@ if (!file.exists("rds/bray.dist.m.species.rds") || !file.exists("rds/bray.dist.m
 }
 ```
 
-```{r pca}
+```{r pca calculate}
 if (!file.exists("rds/pca.prcomp.rds")) {
     pca.abundances  <- as.matrix(t(microbiome::abundances(microbiome::transform(pseq.species, "clr"))))
     pca.prcomp <- stats::prcomp(pca.abundances)
@@ -275,7 +275,7 @@ writeimage(doc, 1, "cache/alpha-beta.png", fig1head, fig1foot)
 
 ## Principal component analysis (Figure 2.)
 
-```{r pca}
+```{r pca plot}
 pca.eigs <- pca.prcomp$sdev^2
 pca.percentage <- 100 * pca.eigs /sum(pca.eigs)
 pca.labels <- sprintf("%s (%.2f %%)", colnames(pca.prcomp$x), pca.percentage)
