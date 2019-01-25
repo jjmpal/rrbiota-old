@@ -180,7 +180,6 @@ Calculating beta diversity for blood pressure variables using adonis
                                            matrix = bray.dist.m.species,
                                            covariates = c("BL_AGE", "SEX", "BMI", "CURR_SMOKE", "Q57X", "DIAB", "BL_USE_RX_C03", "BL_USE_RX_C07", "BL_USE_RX_C08", "BL_USE_RX_C09"),
                                            npermutations = 99)
-
      saveRDS(adonis.species, file = "rds/adonis.species.rds")
     } else {
      adonis.species  <- readRDS("rds/adonis.species.rds")

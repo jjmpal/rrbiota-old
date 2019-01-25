@@ -140,6 +140,8 @@ alpha.diversity <- alphaglm %>% select(response, estimate, p.value)
 
 adonis.species  <- readRDS("rds/adonis.species.rds")
 
+adonis.species$min
+
 beta.diversity <- adonis.species %>%
     data.table::rbindlist(id = "model_name") %>%
     dplyr::filter(term %in% c("MAP", "SYSTM", "DIASM", "PULSEPRESSURE", "HYPERTENSION")) %>%
@@ -172,7 +174,7 @@ plot.alpha <- function(diversity,  width = .4, posdodge = .25, aspectratio = 2, 
               legend.title=element_text(size = 14),
               legend.direction="vertical",
               legend.text=element_text(size = floor(0.75*20)),
-              legend.box.margin=margin(0,0,0,0,"pt"),
+              legend.box.margin=margin(t = 1, unit = "cm"),
               legend.margin=margin(0,0,0,0,"pt"),
               legend.justification="left",
               axis.line.y = element_line(linetype="blank"),
@@ -198,8 +200,6 @@ plot.alpha <- function(diversity,  width = .4, posdodge = .25, aspectratio = 2, 
                 xaxis = plot.alpha.diversity.gtable$grobs[[7]],
                 legend = plot.alpha.diversity.legend))
 }
-
-
 ```
 
 
@@ -249,13 +249,15 @@ gs4 <- list(alpha.diversity$yaxis,
            plot.xlab.beta.diversity)
 
 g4 <- arrangeGrob(grobs = gs4,
-            layout_matrix = rbind(
-                c(1,    2,    3, 4),
-                c(NA, 5,    6, NA),
-                c(NA, NA, 7, NA)),
-            widths=c(4, 0.7, 5, 5),
-            heights=c(10, 1, 2))
+                  layout_matrix = rbind(
+                      c(1,    2,    3, NA, NA),
+                      c(1,    2,    3, NA, 4),
+                      c(NA, 5,    6, NA, NA),
+                      c(NA, NA, 7, NA, NA)),
+                  widths=c(4, 0.7, 5, 0.7, 3),
+            heights=c(3, 7, 1, 2))
 ggsave(file = "cache/alpha-beta.png", plot=g4, height=3, width=9)
+
 ```
 
 ## Principal component analysis (Figure 2.)
