@@ -87,7 +87,7 @@ source("aaro/edgeR_plot_functions.R")
 
 ### Plot functions
 
-```{r EdgeR functions, code=readLines("aaro/edgeR_plot_functions.R")}
+```{r EdgeR functions, code=readLines("articletwo-ggplot.R")}
 source("articletwo-ggplot.R")
 ```
 
