@@ -97,17 +97,7 @@ source("articletwo-ggplot.R")
 Loading descriptions for clinical data
 
 ```{r variables, warning = FALSE}
-data("phfinrisk_metadatadesc", package="finriskmetagcommon")
-names.dset <- filter(phfinrisk_metadatadesc,
-                     Ignored.Covariate.in.Cross.Sectional.Analysis.Aaro20181115==0)
-names.dset <- bind_rows(names.dset,
-                        data.frame(Covariate = c("MAP", "PULSEPRESSURE", "HYPERTENSION", "SEX"),
-                                   Category = rep("Physical", 4),
-                                   Name =c( "Mean artrerial pressure", "Pulse pressure", "Hypertension", "Female"),
-                                   Desc = c("Mean arterail presure, 2./3.*DIASM + 1./3.*SYSTM)",
-                                            "Pulse pressure, SYSTM - DIASM",
-                                            "Hypertension, SYSTM >=140 or DIAS >= 90 or BP mediaction",
-                                            "Sex is female, True for female, False for male")))
+names.dset <- getdescriptions()
 ```
 
 Loading phyloseq object
@@ -125,6 +115,83 @@ phyloseq::sample_data(pseq.species) <- phyloseq::sample_data(filter.phenotype.da
 ```
 
 Sample data has dimensions (`r dim(sample_data(pseq.species))`).
+
+## Models
+
+```{r matrix calculation}
+if (!file.exists("rds/bray.dist.m.species.rds") || !file.exists("rds/bray.dist.m.genus.rds")) {
+    bray.dist.m.species <- calculate.beta.matrix(pseq.species)
+    saveRDS(bray.dist.m.species, file = "rds/bray.dist.m.species.rds")
+} else {
+    bray.dist.m.species  <- readRDS("rds/bray.dist.m.species.rds")
+}
+```
+
+ ```{r adonis calculation}
+ if (!file.exists("rds/adonis.species.rds")) {
+     adonis.species = list()
+     adonis.species$min <- calculateadonis(dset = meta(pseq.species),
+                                           matrix = bray.dist.m.species,
+                                           covariates = c("BL_AGE", "SEX"),
+                                           npermutations = 99)
+     adonis.species$max <- calculateadonis(dset = meta(pseq.species),
+                                           matrix = bray.dist.m.species,
+                                           covariates = c("BL_AGE", "SEX", "BMI", "CURR_SMOKE", "Q57X", "DIAB",
+                                                          "BL_USE_RX_C03", "BL_USE_RX_C07", "BL_USE_RX_C08", "BL_USE_RX_C09"),
+                                           npermutations = 99)
+     saveRDS(adonis.species, file = "rds/adonis.species.rds")
+    } else {
+     adonis.species  <- readRDS("rds/adonis.species.rds")
+}
+```
+
+```{r pca}
+if (!file.exists("rds/pca.prcomp.rds")) {
+    pca.abundances  <- as.matrix(t(microbiome::abundances(microbiome::transform(pseq.species, "clr"))))
+    pca.prcomp <- stats::prcomp(pca.abundances)
+    saveRDS(pca.prcomp, file = "rds/pca.prcomp.rds")
+} else {
+    pca.prcomp <- readRDS("rds/pca.prcomp.rds")
+}
+```
+
+```{r run maaslin, results = 'hide'} 
+maaslin.force.vars <- c("BL_AGE", "SEX", "BMI", "CURR_SMOKE", "Q57X", "DIAB", "BL_USE_RX_C03", "BL_USE_RX_C07", "BL_USE_RX_C08", "BL_USE_RX_C09")
+
+prepare.maaslin(pseq.genus,
+                 tsvfile = "maaslin_core_merged_phfinrisk_genus.tsv",
+                conffile = "maaslin_core_config.config",
+                includedvars = c("MAP", "SYSTM", "DIASM", "PULSEPRESSURE", "HYPERTENSION", maaslin.force.vars),
+                core = TRUE,
+                readpclrows = "Halapricum.Archaea-")
+
+Maaslin("maaslin_core_merged_phfinrisk_genus.tsv",
+        "maaslin_core",
+        strInputConfig = "maaslin_core_config.config",
+        strModelSelection="none",
+        dSignificanceLevel = 1.0, 
+        fAllvAll = TRUE,
+        strForcedPredictors = maaslin.force.vars)
+```
+
+```{r lactobacillus scatterplot,  results = 'hide'}
+pseq.lacto  <- subset_taxa(pseq.species, Genus=="Lactobacillus")
+maaslin.force.vars.lacto <- c("BL_AGE", "SEX", "BMI", "CURR_SMOKE", "Q57X", "DIAB", "BL_USE_RX_C03", "BL_USE_RX_C07", "BL_USE_RX_C08", "BL_USE_RX_C09")
+
+prepare.maaslin(pseq.lacto,
+                 tsvfile = "maaslin_lacto_merged_phfinrisk_genus.tsv",
+                conffile = "maaslin_lacto_config.config",
+                includedvars = c("MAP", "SYSTM", "DIASM", "PULSEPRESSURE", "HYPERTENSION", maaslin.force.vars.lacto),
+                readpclrows = "Lactobacillus_delbrueckii.Bacteria,Lactobacillus_ruminis.Bacteria,Lactobacillus_acidophilus.Bacteria,Lactobacillus_fermentum.Bacteria,Lactobacillus_paracasei.Bacteria,Lactobacillus_salivarius.Bacteria")
+
+Maaslin("maaslin_lacto_merged_phfinrisk_genus.tsv",
+        "maaslin_lacto",
+        strInputConfig = "maaslin_lacto_config.config",
+        strModelSelection="none",
+        dSignificanceLevel = 1.0, 
+        fAllvAll = TRUE,
+        strForcedPredictors = maaslin.force.vars.lacto)
+```
 
 ## Characteristics of the study sample. (Table 1.)
 
@@ -145,8 +212,7 @@ dset.alpha <- meta.merge.alphadiversity(pseq.species)
 alphadiversity <- list(
     min = calculateglm(dset.alpha, modelstring = "%s ~ BL_AGE + SEX  + diversities_shannon"),
     max = calculateglm(dset.alpha, modelstring = "%s ~ BL_AGE + SEX + BMI + CURR_SMOKE + Q57X + DIAB + BL_USE_RX_C03 + BL_USE_RX_C07 + BL_USE_RX_C08 + BL_USE_RX_C09  + diversities_shannon"))
-betadiversity  <- readRDS("rds/adonis.species.rds")
-diversities <- mergediversities(alphadiversity, betadiversity)
+diversities <- mergediversities(alphadiversity, adonis.species)
 
 betadiversity$min$model_1 %>% select(term, R2)
 betadiversity$max$model_1 %>% select(term, R2)
@@ -210,7 +276,6 @@ writeimage(doc, 1, "cache/alpha-beta.png", fig1head, fig1foot)
 ## Principal component analysis (Figure 2.)
 
 ```{r pca}
-pca.prcomp <- readRDS("rds/pca.prcomp.rds")
 pca.eigs <- pca.prcomp$sdev^2
 pca.percentage <- 100 * pca.eigs /sum(pca.eigs)
 pca.labels <- sprintf("%s (%.2f %%)", colnames(pca.prcomp$x), pca.percentage)
@@ -334,6 +399,23 @@ pca.pc3.gg <- ggplot(data=pca.loading.pc3.top20, aes(x=reorder(name, -PC3), y=10
 fig4head <- "Bacteria causing dysentery and diarrhea contribute to third principal component"
 fig4foot <- sprintf("Top 20 bacterial contributors to third principal coordinate at species level. Centered log ratio transform is performed for the compositional data. Third principal component explain %.1f%% of the total variation. Plasmid DNA is denoted using star.", pca.percentage[3])
 writeimage(doc, 4, "cache/pca.pc3.png", fig4head, fig4foot)
+```
+
+### Lactobacillus
+
+```{r Reading maaslin lacto output}
+maas.lacto.results.df.signf <- read.table("maaslin_lacto/maaslin_lacto_merged_phfinrisk_genus.txt", header=TRUE, sep='\t') %>%
+    merge(names.dset %>% select(Covariate, Category, Name), by.x ="Variable", by.y = "Covariate") %>%
+    dplyr::mutate(Qval = p.adjust(P.value, method="BH"),
+                  beta = Coefficient) %>%
+   dplyr::filter(Qval < 0.05) 
+
+maas.lacto.signf.features <- maas.results.df.signf %>%
+    pull(Feature) %>%
+    as.character() %>%
+    gsub("_", ".", .)
+
+df.lacto.merged <-  merge.pheno.abu(pseq.lacto)
 ```
 
 ```{r Write docx to file}

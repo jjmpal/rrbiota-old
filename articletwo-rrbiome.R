@@ -156,3 +156,17 @@ mergediversities <- function(alphadiversity, betadiversity) {
             mutate(Qstar = ifelse(p.value < 0.05, '*', ' '))
     })
 }
+
+getdescriptions <- function() {
+    data("phfinrisk_metadatadesc", package="finriskmetagcommon")
+    names.dset <- filter(phfinrisk_metadatadesc,
+                         Ignored.Covariate.in.Cross.Sectional.Analysis.Aaro20181115==0)
+    bind_rows(names.dset,
+              data.frame(Covariate = c("MAP", "PULSEPRESSURE", "HYPERTENSION", "SEX"),
+                         Category = rep("Physical", 4),
+                         Name =c( "Mean artrerial pressure", "Pulse pressure", "Hypertension", "Female"),
+                         Desc = c("Mean arterail presure, 2./3.*DIASM + 1./3.*SYSTM)",
+                                  "Pulse pressure, SYSTM - DIASM",
+                                  "Hypertension, SYSTM >=140 or DIAS >= 90 or BP mediaction",
+                                  "Sex is female, True for female, False for male")))
+}
