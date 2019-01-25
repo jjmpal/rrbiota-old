@@ -171,8 +171,8 @@ getdescriptions <- function() {
                                   "Sex is female, True for female, False for male")))
 }
 
-maaslinwrapper <- function(pseq, looped, forced, taxa)  {
-    tempdir <- sprintf("%s/maaslin-%s", Sys.getenv("HOME"), format(Sys.time(), '%s'))
+maaslinwrapper <- function(pseq, looped, forced, taxa, tempstr = "%s/temp/maaslin-%s")  {
+    tempdir <- sprintf(tempstr, Sys.getenv("HOME"), format(Sys.time(), '%s'))
     dir.create(tempdir)
     cwd <- getwd()
     setwd(tempdir)
