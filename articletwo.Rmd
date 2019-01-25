@@ -18,15 +18,7 @@ dir.create("rds/", showWarnings = FALSE)
 Calculations ran at
 
 ```{r Running at}
-if (!exists('now')) {
-    now <- format(Sys.time(), '%Y%m%d-%H%M%S')
-}
-now
-```
-
-Session info
-
-```{r Officer importer, code = sessionInfo()}
+now <- ifelse(exists('now'),now, format(Sys.time(), '%Y%m%d-%H%M%S'))
 ```
 
 # Importing libraries:
@@ -52,6 +44,13 @@ library(scales)
 library(ggplot2)
 library(gridExtra)
 library(png)
+library(pander)
+```
+
+Session info
+
+```{r Session info}
+pander(sessionInfo(), compact = TRUE)
 ```
 
 ```{r Remove temporary data, include = FALSE, cache = FALSE, eval = FALSE}
