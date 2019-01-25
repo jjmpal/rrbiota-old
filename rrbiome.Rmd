@@ -6,7 +6,7 @@ output: html_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(include = TRUE, xecho = TRUE, message = FALSE, results='asis', cache=TRUE, warning=FALSE)
+knitr::opts_chunk$set(include = TRUE, xecho = TRUE, message = FALSE, results='asis', cache=FALSE, warning=FALSE)
 knitr::opts_chunk$set(cache.path = 'cache/', output.dir="cache/",
                       file.path = 'cache/', fig.path = 'cache/')
 
@@ -15,7 +15,7 @@ dir.create("rds/", showWarnings = FALSE)
 
 Importing libraries:
 
-```{r libraries, cache = FALSE}
+```{r libraries}
 library(dplyr)
 library(tibble)
 library(phyloseq)
@@ -155,27 +155,26 @@ alphaglm %>%
 Calculating the distance matrix from data after compositional
 transformation using vegdist and bray method.
 
-```{r matrix calculation, cache = FALSE}
+```{r matrix calculation}
 if (!file.exists("rds/bray.dist.m.species.rds") || !file.exists("rds/bray.dist.m.genus.rds")) {
     bray.dist.m.species <- calculate.beta.matrix(pseq.species)
     saveRDS(bray.dist.m.species, file = "rds/bray.dist.m.species.rds")
-    bray.dist.m.genus <- calculate.beta.matrix(pseq.genus)
-    saveRDS(bray.dist.m.genus, file = "rds/bray.dist.m.genus.rds")
 } else {
     bray.dist.m.species  <- readRDS("rds/bray.dist.m.species.rds")
-    bray.dist.m.genus <- readRDS("rds/bray.dist.m.genus.rds")
 }
 ```
 
 Calculating beta diversity for blood pressure variables using adonis
 
- ```{r adonis calculation, cache = FALSE}
+ ```{r adonis calculation}
  if (!file.exists("rds/adonis.species.rds")) {
+
      adonis.species = list()
      adonis.species$min <- calculateadonis(dset = meta(pseq.species),
                                            matrix = bray.dist.m.species,
                                            covariates = c("BL_AGE", "SEX"),
                                            npermutations = 99)
+
      adonis.species$max <- calculateadonis(dset = meta(pseq.species),
                                            matrix = bray.dist.m.species,
                                            covariates = c("BL_AGE", "SEX", "BMI", "CURR_SMOKE", "Q57X", "DIAB", "BL_USE_RX_C03", "BL_USE_RX_C07", "BL_USE_RX_C08", "BL_USE_RX_C09"),
