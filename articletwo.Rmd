@@ -158,6 +158,8 @@ if (!file.exists("rds/pca.prcomp.rds")) {
 ```{r run maaslin, results = 'hide'} 
 maaslin.force.vars <- c("BL_AGE", "SEX", "BMI", "CURR_SMOKE", "Q57X", "DIAB", "BL_USE_RX_C03", "BL_USE_RX_C07", "BL_USE_RX_C08", "BL_USE_RX_C09")
 
+unlink("maaslin_core", recursive = TRUE)
+
 prepare.maaslin(pseq.genus,
                  tsvfile = "maaslin_core_merged_phfinrisk_genus.tsv",
                 conffile = "maaslin_core_config.config",
@@ -177,6 +179,8 @@ Maaslin("maaslin_core_merged_phfinrisk_genus.tsv",
 ```{r lactobacillus scatterplot,  results = 'hide'}
 pseq.lacto  <- subset_taxa(pseq.species, Genus=="Lactobacillus")
 maaslin.force.vars.lacto <- c("BL_AGE", "SEX", "BMI", "CURR_SMOKE", "Q57X", "DIAB", "BL_USE_RX_C03", "BL_USE_RX_C07", "BL_USE_RX_C08", "BL_USE_RX_C09")
+
+unlink("maaslin_lacto", recursive = TRUE)
 
 prepare.maaslin(pseq.lacto,
                  tsvfile = "maaslin_lacto_merged_phfinrisk_genus.tsv",
@@ -214,13 +218,6 @@ alphadiversity <- list(
     max = calculateglm(dset.alpha, modelstring = "%s ~ BL_AGE + SEX + BMI + CURR_SMOKE + Q57X + DIAB + BL_USE_RX_C03 + BL_USE_RX_C07 + BL_USE_RX_C08 + BL_USE_RX_C09  + diversities_shannon"))
 diversities <- mergediversities(alphadiversity, adonis.species)
 ```
-
-Max values for alpha diversity `r diversities$max %>% pull(estimate)
-								  %>% abs %>% max %>% round(., 2)` and
-								  `r diversities$mmin %>%
-								  pull(estimate) %>% abs %>% max %>%
-								  round(., 2)`.
-
 
 ```{r save grob}
 alpha.diversity.min <- plot.alpha(diversities$min, colorlimit = 1.3)
@@ -402,15 +399,13 @@ writeimage(doc, 4, "cache/pca.pc3.png", fig4head, fig4foot)
 maas.lacto.results.df.signf <- read.table("maaslin_lacto/maaslin_lacto_merged_phfinrisk_genus.txt", header=TRUE, sep='\t') %>%
     merge(names.dset %>% select(Covariate, Category, Name), by.x ="Variable", by.y = "Covariate") %>%
     dplyr::mutate(Qval = p.adjust(P.value, method="BH"),
-                  beta = Coefficient) %>%
-   dplyr::filter(Qval < 0.05) 
+                  beta = Coefficient) #%>%
 
-maas.lacto.signf.features <- maas.results.df.signf %>%
-    pull(Feature) %>%
-    as.character() %>%
-    gsub("_", ".", .)
-
-df.lacto.merged <-  merge.pheno.abu(pseq.lacto)
+colnames(maas.lacto.results.df.signf)
+maas.lacto.results.df.signf %>%
+    select(Variable, Feature, P.value, Q.value) %>%
+    arrange(Q.value) %>%
+    kable
 ```
 
 ```{r Write docx to file}
