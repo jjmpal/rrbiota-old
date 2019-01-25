@@ -155,46 +155,28 @@ if (!file.exists("rds/pca.prcomp.rds")) {
 }
 ```
 
-```{r run maaslin, results = 'hide'} 
-maaslin.force.vars <- c("BL_AGE", "SEX", "BMI", "CURR_SMOKE", "Q57X", "DIAB", "BL_USE_RX_C03", "BL_USE_RX_C07", "BL_USE_RX_C08", "BL_USE_RX_C09")
+```{r maaslin runs, results = 'hide'} 
+maaslin <- list()
 
-unlink("maaslin_core", recursive = TRUE)
+maalin$genus <- maaslinwrapper(pseq = pseq.genus,
+                looped = c("MAP", "SYSTM", "DIASM", "PULSEPRESSURE", "HYPERTENSION"),
+                forced = c("BL_AGE", "SEX", "BMI", "CURR_SMOKE", "Q57X", "DIAB", "BL_USE_RX_C03",
+                           "BL_USE_RX_C07", "BL_USE_RX_C08", "BL_USE_RX_C09"),
+                taxa = "Halapricum.Archaea-")
 
-prepare.maaslin(pseq.genus,
-                 tsvfile = "maaslin_core_merged_phfinrisk_genus.tsv",
-                conffile = "maaslin_core_config.config",
-                includedvars = c("MAP", "SYSTM", "DIASM", "PULSEPRESSURE", "HYPERTENSION", maaslin.force.vars),
-                core = TRUE,
-                readpclrows = "Halapricum.Archaea-")
+lactotaxa <- paste0(c("Lactobacillus_delbrueckii.Bacteria", "Lactobacillus_ruminis.Bacteria", "Lactobacillus_acidophilus.Bacteria",
+                    "Lactobacillus_fermentum.Bacteria", "Lactobacillus_paracasei.Bacteria", "Lactobacillus_salivarius.Bacteria"), collapse = ",")
 
-Maaslin("maaslin_core_merged_phfinrisk_genus.tsv",
-        "maaslin_core",
-        strInputConfig = "maaslin_core_config.config",
-        strModelSelection="none",
-        dSignificanceLevel = 1.0, 
-        fAllvAll = TRUE,
-        strForcedPredictors = maaslin.force.vars)
-```
+maalin$lacto.min <- maaslinwrapper(pseq = (subset_taxa(pseq.species, Genus=="Lactobacillus")),
+                looped = c("MAP", "SYSTM", "DIASM", "PULSEPRESSURE", "HYPERTENSION"),
+                forced = c("BL_AGE", "SEX"),
+                taxa = lactotaxa)
 
-```{r lactobacillus scatterplot,  results = 'hide'}
-pseq.lacto  <- subset_taxa(pseq.species, Genus=="Lactobacillus")
-maaslin.force.vars.lacto <- c("BL_AGE", "SEX", "BMI", "CURR_SMOKE", "Q57X", "DIAB", "BL_USE_RX_C03", "BL_USE_RX_C07", "BL_USE_RX_C08", "BL_USE_RX_C09")
-
-unlink("maaslin_lacto", recursive = TRUE)
-
-prepare.maaslin(pseq.lacto,
-                 tsvfile = "maaslin_lacto_merged_phfinrisk_genus.tsv",
-                conffile = "maaslin_lacto_config.config",
-                includedvars = c("MAP", "SYSTM", "DIASM", "PULSEPRESSURE", "HYPERTENSION", maaslin.force.vars.lacto),
-                readpclrows = "Lactobacillus_delbrueckii.Bacteria,Lactobacillus_ruminis.Bacteria,Lactobacillus_acidophilus.Bacteria,Lactobacillus_fermentum.Bacteria,Lactobacillus_paracasei.Bacteria,Lactobacillus_salivarius.Bacteria")
-
-Maaslin("maaslin_lacto_merged_phfinrisk_genus.tsv",
-        "maaslin_lacto",
-        strInputConfig = "maaslin_lacto_config.config",
-        strModelSelection="none",
-        dSignificanceLevel = 1.0, 
-        fAllvAll = TRUE,
-        strForcedPredictors = maaslin.force.vars.lacto)
+maalin$lacto.max  <- maaslinwrapper(pseq = (subset_taxa(pseq.species, Genus=="Lactobacillus")),
+                looped = c("MAP", "SYSTM", "DIASM", "PULSEPRESSURE", "HYPERTENSION"),
+                forced =c("BL_AGE", "SEX", "BMI", "CURR_SMOKE", "Q57X", "DIAB", "BL_USE_RX_C03",
+                          "BL_USE_RX_C07", "BL_USE_RX_C08", "BL_USE_RX_C09"),
+                taxa = lactotaxa)
 ```
 
 ## Characteristics of the study sample. (Table 1.)
@@ -305,7 +287,7 @@ writeimage(doc, 2, "cache/pca.png", fig2head, fig2foot)
 ## Direct associations between genus level and blood pressure variables (figure 3)
 
 ```{r maaslin}
-maas.results.df.signf <- read.table("maaslin_core/maaslin_core_merged_phfinrisk_genus.txt", header=TRUE, sep='\t') %>%
+maas.results.df.signf <- maaslin$genus %>%
     merge(names.dset %>% select(Covariate, Category, Name), by.x ="Variable", by.y = "Covariate") %>%
     dplyr::mutate(Qval = p.adjust(P.value, method="BH"),
            beta = Coefficient) %>%
@@ -395,8 +377,10 @@ writeimage(doc, 4, "cache/pca.pc3.png", fig4head, fig4foot)
 
 ### Lactobacillus
 
-```{r Reading maaslin lacto output}
-maas.lacto.results.df.signf <- read.table("maaslin_lacto/maaslin_lacto_merged_phfinrisk_genus.txt", header=TRUE, sep='\t') %>%
+Lacto min
+
+```{r Reading maaslin lacto min output}
+maas.lacto.results.df.signf <- maaslin$lacto.min %>%
     merge(names.dset %>% select(Covariate, Category, Name), by.x ="Variable", by.y = "Covariate") %>%
     dplyr::mutate(Qval = p.adjust(P.value, method="BH"),
                   beta = Coefficient) #%>%
@@ -407,6 +391,22 @@ maas.lacto.results.df.signf %>%
     arrange(Q.value) %>%
     kable
 ```
+
+Lacto max
+
+```{r Reading maaslin lacto max output}
+maas.lacto.results.df.signf <- maaslin$lacto.max %>%
+    merge(names.dset %>% select(Covariate, Category, Name), by.x ="Variable", by.y = "Covariate") %>%
+    dplyr::mutate(Qval = p.adjust(P.value, method="BH"),
+                  beta = Coefficient) #%>%
+
+colnames(maas.lacto.results.df.signf)
+maas.lacto.results.df.signf %>%
+    select(Variable, Feature, P.value, Q.value) %>%
+    arrange(Q.value) %>%
+    kable
+```
+
 
 ```{r Write docx to file}
 print(doc, target = paste0("report/articletwo-", now, ".docx"))

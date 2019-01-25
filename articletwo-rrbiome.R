@@ -164,9 +164,31 @@ getdescriptions <- function() {
     bind_rows(names.dset,
               data.frame(Covariate = c("MAP", "PULSEPRESSURE", "HYPERTENSION", "SEX"),
                          Category = rep("Physical", 4),
-                         Name =c( "Mean artrerial pressure", "Pulse pressure", "Hypertension", "Female"),
-                         Desc = c("Mean arterail presure, 2./3.*DIASM + 1./3.*SYSTM)",
+                         Name =c( "Mean arterial pressure", "Pulse pressure", "Hypertension", "Female"),
+                         Desc = c("Mean arterial presure, 2./3.*DIASM + 1./3.*SYSTM)",
                                   "Pulse pressure, SYSTM - DIASM",
                                   "Hypertension, SYSTM >=140 or DIAS >= 90 or BP mediaction",
                                   "Sex is female, True for female, False for male")))
+}
+
+maaslinwrapper <- function(pseq, looped, forced, taxa)  {
+    tempdir <- sprintf("%s/maaslin-%s", Sys.getenv("HOME"), format(Sys.time(), '%s'))
+    dir.create(tempdir)
+    cwd <- getwd()
+    setwd(tempdir)
+    prepare.maaslin(pseq,
+                    tsvfile = "maaslin.tsv",
+                    conffile = "maaslin.config",
+                    includedvars = c(looped, forced),
+                    readpclrows = taxa)
+    Maaslin("maaslin.tsv",
+            "maaslin",
+            strInputConfig = "maaslin.config",
+            strModelSelection="none",
+            dSignificanceLevel = 1.0,
+            fAllvAll = TRUE,
+            strForcedPredictors = forced)
+    ret <- read.table("maaslin/maaslin.txt", header=TRUE, sep='\t')
+    setwd(cwd)
+    ret
 }
