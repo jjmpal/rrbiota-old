@@ -142,45 +142,69 @@ writetable(doc, tbl1, number = 1, tbl1head, tbl1foot)
 
 ```{r alphabeta definitions}
 dset.alpha <- meta.merge.alphadiversity(pseq.species)
-alphaglm <- calculateglm(dset.alpha, modelstring = "%s ~ BL_AGE + SEX + BMI + CURR_SMOKE + Q57X + DIAB + BL_USE_RX_C03 + BL_USE_RX_C07 + BL_USE_RX_C08 + BL_USE_RX_C09  + diversities_shannon")
-alpha.diversity <- alphaglm %>% select(response, estimate, p.value)
+alphadiversity <- list(
+    min = calculateglm(dset.alpha, modelstring = "%s ~ BL_AGE + SEX  + diversities_shannon"),
+    max = calculateglm(dset.alpha, modelstring = "%s ~ BL_AGE + SEX + BMI + CURR_SMOKE + Q57X + DIAB + BL_USE_RX_C03 + BL_USE_RX_C07 + BL_USE_RX_C08 + BL_USE_RX_C09  + diversities_shannon"))
+betadiversity  <- readRDS("rds/adonis.species.rds")
+diversities <- mergediversities(alphadiversity, betadiversity)
 
-adonis.species  <- readRDS("rds/adonis.species.rds")
-adonis.species$min
+betadiversity$min$model_1 %>% select(term, R2)
+betadiversity$max$model_1 %>% select(term, R2)
 
-beta.diversity <- adonis.species %>%
-    data.table::rbindlist(id = "model_name") %>%
-    dplyr::filter(term %in% c("MAP", "SYSTM", "DIASM", "PULSEPRESSURE", "HYPERTENSION")) %>%
-    dplyr::select(response, R2)
 
-diversity <- merge(alpha.diversity, beta.diversity, by = "response") %>%
-    merge(names.dset %>% select(Covariate, Category, Name), by.x ="response", by.y = "Covariate") %>%
-    mutate(Qstar = ifelse(p.value < 0.05, '*', ' '))
 ```
 
+Max values for alpha diversity `r diversities$max %>% pull(estimate)
+								  %>% abs %>% max %>% round(., 2)` and
+								  `r diversities$mmin %>%
+								  pull(estimate) %>% abs %>% max %>%
+								  round(., 2)`.
+
+
 ```{r save grob}
-alpha.diversity <- plot.alpha(diversity)
-beta.diversity <- plot.beta(diversity)
-gs4 <- list(alpha.diversity$yaxis,
-            alpha.diversity$plot,
-            beta.diversity$plot,  
-            alpha.diversity$legend,
-            alpha.diversity$xaxis,
-            beta.diversity$xaxis,
-            plot.xlab.beta.diversity,
-            text_grob("A", vjust = "top", hjust= "left", size = 20))
+alpha.diversity.min <- plot.alpha(diversities$min, colorlimit = 1.3)
+alpha.diversity.max <- plot.alpha(diversities$max, colorlimit = 1.3)
+beta.diversity.min <- plot.beta(diversities$min)
+beta.diversity.max <- plot.beta(diversities$max)
+
+
+gs4 <- list(alpha.diversity.min$yaxis,
+            alpha.diversity.min$plot,
+            beta.diversity.min$plot,  
+            alpha.diversity.min$legend,
+            alpha.diversity.min$xaxis,
+            beta.diversity.min$xaxis,
+            beta.diversity.min$xlab,
+            text_grob("A.", size = 18),
+            alpha.diversity.max$yaxis,
+            alpha.diversity.max$plot,
+            beta.diversity.max$plot,  
+            alpha.diversity.max$xaxis,
+            beta.diversity.max$xaxis,
+            beta.diversity.max$xlab,
+            text_grob("B.", size = 18))
 
 g4 <- arrangeGrob(grobs = gs4,
                   layout_matrix = rbind(
-                      c(8,    NA,    NA,    NA, NA, 4),
-                      c(NA, 1,    2,    3, NA, 4),
-                      c(NA, 1,    2,    3, NA, NA),
-                      c(NA, NA, 5,    6, NA, NA),
-                      c(NA, NA, NA, 7, NA, NA)),
-                  widths=c(0.7, 4, 0.7, 5, 0.7, 4),
-                  heights=c(1, 1, 6, 1, 2))
-ggsave(file = "cache/alpha-beta.png", plot=g4, height=3, width=9)
+                      c(8,    NA,    NA, NA,   NA, NA, NA),
+                      c(NA, 1,    2,    NA, 3, NA, NA),
+                      c(NA, 1,    2,    NA, 3, NA, 4),
+                      c(NA, NA, 5,    NA,6, NA, 4),
+                      c(NA, NA, NA, NA,7, NA, 4),
+                      c(15,    NA,    NA, NA,   NA, NA, 4),
+                      c(NA, 9,    10,  NA,  11, NA, 4),
+                      c(NA, 9,    10,  NA,  11, NA, NA),
+                      c(NA, NA, 12,   NA, 13, NA, NA),
+                      c(NA, NA, NA, NA,14, NA, NA)),
+                  widths=c(0.7, 4, 0.7, 0.1, 5, 0.7, 4),
+                  heights=rep(c(1, 1, 6, 1, 2), 2))
+ggsave(file = "cache/alpha-beta.png", plot=g4, height=6, width=9)
+```
 
+```{r Write figure 2}
+fig1head <- "alpha beta figure"
+fig1foot <- ""
+writeimage(doc, 1, "cache/alpha-beta.png", fig1head, fig1foot)
 ```
 
 ## Principal component analysis (Figure 2.)
@@ -213,8 +237,6 @@ pcaplot <- ggplot(cbind(meta(pseq.species), pca.prcomp$x[,1:2]), aes(x=PC1, y=PC
           legend.box.background = element_rect(colour = "black"))
 
 ggsave(file = "cache/pca.png", plot = pcaplot, height = 5, width = 9, dpi = 300)
-
-writeimage(doc, 2, "cache/pca.png", "Alpha-beta", "footer", width = 7)
 ```
 
 ```{r Write figure 2}

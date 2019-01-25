@@ -2,16 +2,16 @@ plot.alpha <- function(diversity,  colorlimit = 0.25) {
     plot.alpha.diversity <- ggplot(diversity, aes(x=reorder(Name, R2),  y = 1, fill = estimate)) +
         geom_bar(stat="identity", color="black") +
         coord_flip() +
-        scale_fill_gradientn(colours = c("darkblue", "white", "darkred"),
-                             values = rescale(c(-colorlimit, 0, colorlimit)),
+        scale_fill_gradientn(colours = c("blue", "white"),
+                             breaks = c(-colorlimit, 0),
                              name = 'Regression coefficient \nin linear model \nfor Shannon index',
-                             limits = c(-colorlimit, colorlimit),
+                             limits = c(-colorlimit, 0),
                              na.value = "black") +
         theme_classic(20) +
         geom_point(aes(Name, y=0.5, shape=Qstar), show.legend=TRUE, color='black', size=20) +
         scale_shape_manual(name="",
                            values=c('*'='*', ' '=' '),
-                           labels=c("*"="significant at FDR 0.05", ' '=' '),
+                           labels=c("*"="significant at\nFDR 0.05", ' '=' '),
                            breaks=c("*", ' ')) +
         xlab("") +
         ylab("") +
@@ -74,5 +74,6 @@ plot.beta <- function(diversity, fig.permar2.text = "R2 of variable \nin Bray-Cu
     plot.gtable.beta.diversity.stripped <- ggplot_gtable(ggplot_build(plot.beta.diversity))
 
       return(list(plot =plot.gtable.beta.diversity.stripped$grobs[[6]],
-                xaxis = plot.gtable.beta.diversity$grobs[[7]]))
+                  xaxis = plot.gtable.beta.diversity$grobs[[7]],
+                  xlab = plot.xlab.beta.diversity))
 }
