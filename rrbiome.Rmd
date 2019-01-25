@@ -170,12 +170,18 @@ if (!file.exists("rds/bray.dist.m.species.rds") || !file.exists("rds/bray.dist.m
 Calculating beta diversity for blood pressure variables using adonis
 
  ```{r adonis calculation, cache = FALSE}
-if (!file.exists("rds/adonis.species.rds")) {
-    adonis.species <- calculateadonis(dset = meta(pseq.species),
-                                      matrix = bray.dist.m.species,
-                                      covariates = c("BL_AGE", "SEX", "BMI", "CURR_SMOKE", "Q57X", "DIAB", "BL_USE_RX_C03", "BL_USE_RX_C07", "BL_USE_RX_C08", "BL_USE_RX_C09"),
-                                      npermutations = 99)
-    saveRDS(adonis.species, file = "rds/adonis.species.rds")
+ if (!file.exists("rds/adonis.species.rds")) {
+     adonis.species = list()
+     adonis.species$min <- calculateadonis(dset = meta(pseq.species),
+                                           matrix = bray.dist.m.species,
+                                           covariates = c("BL_AGE", "SEX"),
+                                           npermutations = 99)
+     adonis.species$max <- calculateadonis(dset = meta(pseq.species),
+                                           matrix = bray.dist.m.species,
+                                           covariates = c("BL_AGE", "SEX", "BMI", "CURR_SMOKE", "Q57X", "DIAB", "BL_USE_RX_C03", "BL_USE_RX_C07", "BL_USE_RX_C08", "BL_USE_RX_C09"),
+                                           npermutations = 99)
+
+     saveRDS(adonis.species, file = "rds/adonis.species.rds")
     } else {
      adonis.species  <- readRDS("rds/adonis.species.rds")
 }
