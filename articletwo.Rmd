@@ -158,7 +158,7 @@ if (!file.exists("rds/pca.prcomp.rds")) {
 ```{r maaslin runs, results = 'hide'} 
 maaslin <- list()
 
-maalin$genus <- maaslinwrapper(pseq = pseq.genus,
+maaslin$genus <- maaslinwrapper(pseq = pseq.genus,
                 looped = c("MAP", "SYSTM", "DIASM", "PULSEPRESSURE", "HYPERTENSION"),
                 forced = c("BL_AGE", "SEX", "BMI", "CURR_SMOKE", "Q57X", "DIAB", "BL_USE_RX_C03",
                            "BL_USE_RX_C07", "BL_USE_RX_C08", "BL_USE_RX_C09"),
@@ -167,12 +167,12 @@ maalin$genus <- maaslinwrapper(pseq = pseq.genus,
 lactotaxa <- paste0(c("Lactobacillus_delbrueckii.Bacteria", "Lactobacillus_ruminis.Bacteria", "Lactobacillus_acidophilus.Bacteria",
                     "Lactobacillus_fermentum.Bacteria", "Lactobacillus_paracasei.Bacteria", "Lactobacillus_salivarius.Bacteria"), collapse = ",")
 
-maalin$lacto.min <- maaslinwrapper(pseq = (subset_taxa(pseq.species, Genus=="Lactobacillus")),
+maaslin$lacto.min <- maaslinwrapper(pseq = (subset_taxa(pseq.species, Genus=="Lactobacillus")),
                 looped = c("MAP", "SYSTM", "DIASM", "PULSEPRESSURE", "HYPERTENSION"),
                 forced = c("BL_AGE", "SEX"),
                 taxa = lactotaxa)
 
-maalin$lacto.max  <- maaslinwrapper(pseq = (subset_taxa(pseq.species, Genus=="Lactobacillus")),
+maaslin$lacto.max  <- maaslinwrapper(pseq = (subset_taxa(pseq.species, Genus=="Lactobacillus")),
                 looped = c("MAP", "SYSTM", "DIASM", "PULSEPRESSURE", "HYPERTENSION"),
                 forced =c("BL_AGE", "SEX", "BMI", "CURR_SMOKE", "Q57X", "DIAB", "BL_USE_RX_C03",
                           "BL_USE_RX_C07", "BL_USE_RX_C08", "BL_USE_RX_C09"),
