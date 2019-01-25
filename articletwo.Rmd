@@ -385,7 +385,6 @@ maas.lacto.results.df.signf <- maaslin$lacto.min %>%
     dplyr::mutate(Qval = p.adjust(P.value, method="BH"),
                   beta = Coefficient) #%>%
 
-colnames(maas.lacto.results.df.signf)
 maas.lacto.results.df.signf %>%
     select(Variable, Feature, P.value, Q.value) %>%
     arrange(Q.value) %>%
@@ -400,7 +399,6 @@ maas.lacto.results.df.signf <- maaslin$lacto.max %>%
     dplyr::mutate(Qval = p.adjust(P.value, method="BH"),
                   beta = Coefficient) #%>%
 
-colnames(maas.lacto.results.df.signf)
 maas.lacto.results.df.signf %>%
     select(Variable, Feature, P.value, Q.value) %>%
     arrange(Q.value) %>%
