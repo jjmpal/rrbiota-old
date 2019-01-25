@@ -172,8 +172,6 @@ maaslin$lacto.min <- maaslinwrapper(pseq = (subset_taxa(pseq.species, Genus=="La
                 forced = c("BL_AGE", "SEX"),
                 taxa = lactotaxa)
 
-maaslin
-
 maaslin$lacto.max  <- maaslinwrapper(pseq = (subset_taxa(pseq.species, Genus=="Lactobacillus")),
                 looped = c("MAP", "SYSTM", "DIASM", "PULSEPRESSURE", "HYPERTENSION"),
                 forced =c("BL_AGE", "SEX", "BMI", "CURR_SMOKE", "Q57X", "DIAB", "BL_USE_RX_C03",
