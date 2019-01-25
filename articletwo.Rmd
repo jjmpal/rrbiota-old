@@ -213,11 +213,6 @@ alphadiversity <- list(
     min = calculateglm(dset.alpha, modelstring = "%s ~ BL_AGE + SEX  + diversities_shannon"),
     max = calculateglm(dset.alpha, modelstring = "%s ~ BL_AGE + SEX + BMI + CURR_SMOKE + Q57X + DIAB + BL_USE_RX_C03 + BL_USE_RX_C07 + BL_USE_RX_C08 + BL_USE_RX_C09  + diversities_shannon"))
 diversities <- mergediversities(alphadiversity, adonis.species)
-
-betadiversity$min$model_1 %>% select(term, R2)
-betadiversity$max$model_1 %>% select(term, R2)
-
-
 ```
 
 Max values for alpha diversity `r diversities$max %>% pull(estimate)
