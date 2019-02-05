@@ -1,7 +1,7 @@
 characteristics <- function(dset, names, factors) {
     title <- "Characteristics"
     overall <- paste0("Cases, n=", dim(dset)[1])
-    tableobject <- tableone::CreateTableOne(data = dset, vars = names, factorVars = factors)
+    tableobject <- tableone::CreateTableOne(data = dset, vars = names(names), factorVars = factors)
     tablecsv <- print(tableobject,
                       exact = "stage",
                       quote = FALSE,
@@ -42,7 +42,7 @@ tableone <- function(dset) {
     tableone.factors <- c("SEX", "HYPERTENSION",  "ANYDRUG", "CURR_SMOKE", "DIAB",
                           "BL_USE_RX_C03", "BL_USE_RX_C07", "BL_USE_RX_C08", "BL_USE_RX_C09")
 
-    data <- characteristics(dset, names(tableone.names), tableone.factors)
+    data <- characteristics(dset, tableone.names, tableone.factors)
 
     flextable(data = data) %>%
         set_header_labels(rowname = "Characteristics",
