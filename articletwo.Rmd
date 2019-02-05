@@ -17,15 +17,16 @@ dir.create("rds/", showWarnings = FALSE)
 
 Calculations ran at
 
-```{r Running at}
-args <- R.utils::commandArgs(trailingOnly = TRUE, asValues = TRUE, unique = TRUE)
-now <- ifelse("time" %in% names(args),
-              args$time,
-              format(Sys.time(), '%Y%m%d-%H%M%S'))
+```{r Command line arguments}
+now <- format(Sys.time(), '%Y%m%d-%H%M%S')
 
-if("clean" %in% names(args)) {
-    unlink("rds", recursive=TRUE)
-    unlink("cache", recursive=TRUE)
+if (exists(args)) {
+    if ("time" %in% names(args) now <- args$time,
+    
+    if("clean" %in% names(args)) {
+        unlink("rds", recursive=TRUE)
+        unlink("cache", recursive=TRUE)
+    }
 }
 ```
 
