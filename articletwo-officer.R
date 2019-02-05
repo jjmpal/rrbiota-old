@@ -1,7 +1,7 @@
-characteristics <- function(dset, names, factors) {
+characteristics <- function(dset, tableone.names, tableone.factors, extras = list()) {
     title <- "Characteristics"
     overall <- paste0("Cases, n=", dim(dset)[1])
-    tableobject <- tableone::CreateTableOne(data = dset, vars = names(names), factorVars = factors)
+    tableobject <- tableone::CreateTableOne(data = dset, vars = names(tableone.names), factorVars = tableone.factors)
     tablecsv <- print(tableobject,
                       exact = "stage",
                       quote = FALSE,
@@ -10,19 +10,21 @@ characteristics <- function(dset, names, factors) {
                       digits = 1,
                       pDigits = 3,
                       contDigits=1)
+    tableone.fullnames <- c(tableone.names, extras)
     tablecsv %>%
         as.data.frame %>%
         tibble::rownames_to_column(var = "rowname") %>%
         dplyr::filter(row_number() > 1) %>%
         format(justify = "left", trim = TRUE) %>%
         rowwise() %>%
-        mutate(id = gsub("([A-Za-z_0-9]+).*", "\\1", rowname)) %>%
-        mutate(present = id %in%  names(names)) %>%
-        mutate(rowname = ifelse(present == TRUE, names[[id]], rowname)) %>%
+        mutate(id = gsub("^ *([A-Za-z_0-9]+).*", "\\1", rowname)) %>%
+        mutate(present = id %in%  names(tableone.fullnames)) %>%
+        mutate(rowname = ifelse(present == TRUE, tableone.fullnames[[id]], rowname)) %>%
         select(rowname, Overall)
 }
 
 tableone <- function(dset) {
+
     tableone.names <- list("BL_AGE" = "Age, y (SD)",
                            "SEX" = "Female, N (%)",
                            "BMI" = "BMI, kg/m² (SD)",
@@ -39,10 +41,12 @@ tableone <- function(dset) {
                            "BL_USE_RX_C07" = "  Beta blockers, N (%)",
                            "BL_USE_RX_C08" = "  Calcium channel blockers, N (%)",
                            "BL_USE_RX_C09" = "  Agents acting on the RAS, N (%)")
+    extras <- list("1"  =  "  Light",
+                           "2"  =  "  Moderate",
+                           "3"  =  "  Heavy")
     tableone.factors <- c("SEX", "HYPERTENSION",  "ANYDRUG", "CURR_SMOKE", "DIAB",
                           "BL_USE_RX_C03", "BL_USE_RX_C07", "BL_USE_RX_C08", "BL_USE_RX_C09")
-
-    data <- characteristics(dset, tableone.names, tableone.factors)
+    data <- characteristics(dset, tableone.names, tableone.factors, extras)
 
     flextable(data = data) %>%
         set_header_labels(rowname = "Characteristics",
