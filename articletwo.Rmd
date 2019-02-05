@@ -21,7 +21,7 @@ Calculations ran at
 now <- format(Sys.time(), '%Y%m%d-%H%M%S')
 
 if (exists(args)) {
-    if ("time" %in% names(args) now <- args$time,
+    if ("time" %in% names(args) now <- args$time
     
     if("clean" %in% names(args)) {
         unlink("rds", recursive=TRUE)
