@@ -54,8 +54,7 @@ calculateglm <- function(dset,
         stats::glm(formula = as.formula(fo), family = fo.family, data = dset) %>%
             broom::tidy() %>%
                 dplyr::filter(grepl(filterstr, term)) %>%
-                dplyr::mutate(response = response, fo = fo) %>%
-                dplyr::select(-term)
+                dplyr::mutate(response = response, fo = fo)
     })
     data.table::rbindlist(glmlist, id = "model_name") %>%
         as.data.frame %>%

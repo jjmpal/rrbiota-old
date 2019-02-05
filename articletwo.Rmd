@@ -297,7 +297,6 @@ maas.results.df.signf <- maaslin$genus %>%
    dplyr::filter(Qval < 0.05) 
 
 maaslinplot <- plot_maaslin_heatmap_final(maas.results.df.signf %>% dplyr::filter(Variable != "HYPERTENSION"),
-                      xlab.text="Genera",
                       beta.maxabs=max(abs(maas.results.df.signf[,'beta'])),
                       order.by.category=FALSE)
 
@@ -312,6 +311,40 @@ writeimage(doc, 3, "cache/maaslin.png", fig3head, fig3foot)
 
 
 ## Figure 4
+
+```{r PC plot}
+pca.prcomp.df <- pca.prcomp$x[,1:5] %>% data.frame
+#pca.prcomp$sdev[1:20]^2/sum(pca.prcomp$sdev^2)
+#cumsum(pca.prcomp$sdev[1:20]^2/sum(pca.prcomp$sdev^2))
+
+X <- base::merge(meta(pseq.species), pca.prcomp.df, by=0, all=TRUE) %>%
+    dplyr::rename(Sample_ID = Row.names) 
+
+X.res <- lapply(vectortolist(paste0("PC", seq(5))), function(axis) {
+    modelstring <- paste0("%s ~  BL_AGE + SEX + BMI + CURR_SMOKE + Q57X + DIAB + BL_USE_RX_C03 + BL_USE_RX_C07 + BL_USE_RX_C08 + BL_USE_RX_C09 + ", axis)
+    calculateglm(X, modelstring = modelstring, filterstr = "PC")
+})
+
+Z.df <-  do.call(rbind.data.frame, X.res) %>%
+    merge(names.dset %>% select(Covariate, Category, Name), by.x ="response", by.y = "Covariate") %>%
+    dplyr::mutate(Qval = p.adjust(p.value, method="BH"),
+                  beta = estimate,
+                  Feature = term)
+
+p2 <- plot_maaslin_heatmap_final(Z.df , fname="Feature", pname="Name",
+                                  xlab.text = "PC", signif="Qval", cluster=FALSE,
+                                  v.title.name = "Effect size (PC)",
+                                  ystr="reorder(Name, Qval)", sign.name="Significance.PC",
+                                  no.sign.legend=TRUE)
+
+ggsave(file = "cache/pca.p2.png", plot = p2, height = 8, width = 8, dpi = 300) 
+
+
+
+```
+
+
+## Figure 5
 
 ```{r PCA heatmap}
 pca.axis <- pca.prcomp$x %>% data.frame
@@ -372,10 +405,10 @@ pca.pc3.gg <- ggplot(data=pca.loading.pc3.top20, aes(x=reorder(name, -PC3), y=10
    ggsave(file = "cache/pca.pc3.png", plot = pca.pc3.gg, height = 8, width = 8, dpi = 300) 
 ```
 
-```{r Write figure 4}
+```{r Write figure 5}
 fig4head <- "Bacteria causing dysentery and diarrhea contribute to third principal component"
 fig4foot <- sprintf("Top 20 bacterial contributors to third principal coordinate at species level. Centered log ratio transform is performed for the compositional data. Third principal component explain %.1f%% of the total variation. Plasmid DNA is denoted using star.", pca.percentage[3])
-writeimage(doc, 4, "cache/pca.pc3.png", fig4head, fig4foot)
+writeimage(doc, 5, "cache/pca.pc3.png", fig4head, fig4foot)
 ```
 
 ### Lactobacillus
