@@ -341,7 +341,7 @@ ggsave(file = "cache/pca.p2.png", plot = p2, height = 8, width = 8, dpi = 300)
 ```
 
 
-```{r Write figure 5}
+```{r Write figure 4}
 fig4head <- "P2"
 fig4foot <- ""
 writeimage(doc, 4, "cache/pca.p2.png", fig4head, fig4foot)
