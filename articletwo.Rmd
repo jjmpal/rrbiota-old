@@ -338,9 +338,13 @@ p2 <- plot_maaslin_heatmap_final(Z.df , fname="Feature", pname="Name",
                                   no.sign.legend=TRUE)
 
 ggsave(file = "cache/pca.p2.png", plot = p2, height = 8, width = 8, dpi = 300) 
+```
 
 
-
+```{r Write figure 5}
+fig4head <- "P2"
+fig4foot <- ""
+writeimage(doc, 4, "cache/pca.p2.png", fig4head, fig4foot)
 ```
 
 
@@ -406,9 +410,9 @@ pca.pc3.gg <- ggplot(data=pca.loading.pc3.top20, aes(x=reorder(name, -PC3), y=10
 ```
 
 ```{r Write figure 5}
-fig4head <- "Bacteria causing dysentery and diarrhea contribute to third principal component"
-fig4foot <- sprintf("Top 20 bacterial contributors to third principal coordinate at species level. Centered log ratio transform is performed for the compositional data. Third principal component explain %.1f%% of the total variation. Plasmid DNA is denoted using star.", pca.percentage[3])
-writeimage(doc, 5, "cache/pca.pc3.png", fig4head, fig4foot)
+fig5head <- "Bacteria causing dysentery and diarrhea contribute to third principal component"
+fig5foot <- sprintf("Top 20 bacterial contributors to third principal coordinate at species level. Centered log ratio transform is performed for the compositional data. Third principal component explain %.1f%% of the total variation. Plasmid DNA is denoted using star.", pca.percentage[3])
+writeimage(doc, 5, "cache/pca.pc3.png", fig5head, fig5foot)
 ```
 
 ### Lactobacillus
