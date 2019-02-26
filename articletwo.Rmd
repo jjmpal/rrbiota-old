@@ -122,7 +122,7 @@ Sample data has dimensions (`r dim(sample_data(pseq.species))`).
 ## Models
 
 ```{r matrix calculation}
-if (!file.exists("rds/bray.dist.m.species.rds") || !file.exists("rds/bray.dist.m.genus.rds")) {
+if (!file.exists("rds/bray.dist.m.species.rds")) {
     bray.dist.m.species <- calculate.beta.matrix(pseq.species)
     saveRDS(bray.dist.m.species, file = "rds/bray.dist.m.species.rds")
 } else {
@@ -448,4 +448,8 @@ maas.lacto.results.df.signf %>%
 
 ```{r Write docx to file}
 print(doc, target = paste0("report/articletwo-", now, ".docx"))
+```
+
+```{r save session}
+save.session(paste0("cache/session-", now, ".Rda"))
 ```
