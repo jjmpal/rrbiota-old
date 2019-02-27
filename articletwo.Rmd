@@ -189,7 +189,7 @@ maaslin$lacto.max  <- maaslinwrapper(pseq = pseq.species.lactobacillus.core,
                 looped = c("MAP", "SYSTM", "DIASM", "PULSEPRESSURE", "HYPERTENSION"),
                 forced =c("BL_AGE", "SEX", "BMI", "CURR_SMOKE", "Q57X", "DIAB", "BL_USE_RX_C03",
                           "BL_USE_RX_C07", "BL_USE_RX_C08", "BL_USE_RX_C09"),
-                taxa = paste0(lactotaxa collapse = ","))
+                taxa = paste0(lactotaxa, collapse = ","))
 ```
 
 ## Characteristics of the study sample. (Table 1.)
@@ -461,5 +461,5 @@ print(doc, target = paste0("report/articletwo-", now, ".docx"))
 ```
 
 ```{r save session}
-save.image(file = paste0("cache/session-", now, ".Rdata"))
+save.image(file = paste0("rds/session-", now, ".Rdata"))
 ```
