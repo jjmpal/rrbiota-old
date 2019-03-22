@@ -11,6 +11,7 @@ knitr::opts_chunk$set(cache.path = 'cache/', output.dir="cache/",
                       file.path = 'cache/', fig.path = 'cache/')
 
 dir.create("rds/", showWarnings = FALSE)
+dir.create("session/", showWarnings = FALSE)
 ```
 
 # Command line arguments
@@ -190,6 +191,7 @@ maaslin$lacto.max  <- maaslinwrapper(pseq = pseq.species.lactobacillus.core,
                 forced =c("BL_AGE", "SEX", "BMI", "CURR_SMOKE", "Q57X", "DIAB", "BL_USE_RX_C03",
                           "BL_USE_RX_C07", "BL_USE_RX_C08", "BL_USE_RX_C09"),
                 taxa = paste0(lactotaxa, collapse = ","))
+
 ```
 
 ## Characteristics of the study sample. (Table 1.)
@@ -430,25 +432,27 @@ writeimage(doc, 5, "cache/pca.pc3.png", fig5head, fig5foot)
 Lacto min
 
 ```{r Reading maaslin lacto min output}
-maas.lacto.results.df.signf <- maaslin$lacto.min %>%
+maaslin$lacto.min %>%
     merge(names.dset %>% select(Covariate, Category, Name), by.x ="Variable", by.y = "Covariate") %>%
     dplyr::mutate(Qval = p.adjust(P.value, method="BH"),
-                  beta = Coefficient) #%>%
-
-maas.lacto.results.df.signf %>%
-    select(Variable, Feature, P.value, Q.value) %>%
+                  beta = Coefficient) %>% 
+    select(Variable, Feature, Coefficient, P.value, Q.value) %>%
     arrange(Q.value) %>%
+    mutate_if(is.numeric, funs(ifelse(. < 0.01, sprintf("%.1e", .), round(., 2)))) %>%
     kable
 ```
 
 Lacto max
 
 ```{r Reading maaslin lacto max output}
-maas.lacto.results.df.signf <- maaslin$lacto.max %>%
+maaslin$lacto.max %>%
     merge(names.dset %>% select(Covariate, Category, Name), by.x ="Variable", by.y = "Covariate") %>%
     dplyr::mutate(Qval = p.adjust(P.value, method="BH"),
-                  beta = Coefficient) #%>%
-
+                  beta = Coefficient) %>%
+    select(Variable, Feature, Coefficient, P.value, Q.value) %>%
+    arrange(Q.value) %>%
+    mutate_if(is.numeric, funs(ifelse(. < 0.01, sprintf("%.1e", .), round(., 2)))) %>%
+    kable
 ```
 
 ```{r lactobacillus table}
