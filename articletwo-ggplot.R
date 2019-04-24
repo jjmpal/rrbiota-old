@@ -8,7 +8,7 @@ plot.alpha <- function(diversity,  colorlimit = 0.25) {
                              limits = c(-colorlimit, 0),
                              na.value = "black") +
         theme_classic(20) +
-        geom_point(aes(Name, y=0.5, shape=Qstar), show.legend=TRUE, color='black', size=20) +
+        geom_point(aes(Name, y=0.5, shape=Qstar), show.legend=FALSE, color='black', size=20) +
         scale_shape_manual(name="",
                            values=c('*'='*', ' '=' '),
                            labels=c("*"="significant at\nFDR 0.05", ' '=' '),

@@ -12,3 +12,4 @@ maaslin/
 *.config
 *.tsv
 reports/
+TAGS

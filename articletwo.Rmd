@@ -28,9 +28,13 @@ if (exists("args")) {
         unlink("rds", recursive=TRUE)
         unlink("cache", recursive=TRUE)
     }
+    if ("tags" %in% names(args)) 
+        rtags('~/phd/research/articletwo/', recursive = FALSE, pattern = '\\.[RrSs](rw|md)?$',ofile = '~/phd/research/articletwo/TAGS', verbose = TRUE, append = FALSE)
 }
 ```
 
+}
+```
 # Importing libraries:
 
 ```{r libraries, cache = FALSE}
@@ -58,7 +62,7 @@ library(pander)
 ```
 
 Session info
-
+ 
 ```{r Session info}
 pander(sessionInfo(), compact = TRUE)
 ```
@@ -116,6 +120,10 @@ Updating phyloseq objects
 ```{r updating phyloseq objects}
 phyloseq::sample_data(pseq.genus) <- phyloseq::sample_data(filter.phenotype.data(pseq.genus))
 phyloseq::sample_data(pseq.species) <- phyloseq::sample_data(filter.phenotype.data(pseq.species))
+```
+
+```{r test scaling}
+meta(pseq.genus) %>% summarize(mean(MAP), sd(MAP), mean(SYSTM), sd(SYSTM), mean(DIASM), sd(DIASM), mean(PULSEPRESSURE), sd(PULSEPRESSURE)) %>% kable
 ```
 
 Sample data has dimensions (`r dim(sample_data(pseq.species))`).
@@ -194,6 +202,7 @@ maaslin$lacto.max  <- maaslinwrapper(pseq = pseq.species.lactobacillus.core,
 
 ```
 
+
 ## Characteristics of the study sample. (Table 1.)
 
 ```{r Characteristics}
@@ -202,7 +211,7 @@ tbl1 <- tableone(meta(pseq.species))
 
 ```{r Write characteristics}
 tbl1head <- "Characteristics of the study sample."
-tbl1foot <- "Continuous variables are presented as mean (standard deviation). Exercise at free-timeis reported as not much (1), walk etc. (2), regular three hours or more or competitive sports (3). Categorical variables reported as absolute and relative frequencies. BP indicates blood pressure, BMI body mass index, RAS renin-angiotensin system."
+tbl1foot <- "Continuous variables are presented as mean (standard deviation). Categorical variables reported as absolute and relative frequencies. BP indicates blood pressure, BMI, body mass index, RAS, renin-angiotensin system."
 writetable(doc, tbl1, number = 1, tbl1head, tbl1foot)
 ```
 
@@ -212,20 +221,23 @@ writetable(doc, tbl1, number = 1, tbl1head, tbl1foot)
 dset.alpha <- meta.merge.alphadiversity(pseq.species)
 alphadiversity <- list(
     min = calculateglm(dset.alpha, modelstring = "%s ~ BL_AGE + SEX  + diversities_shannon"),
-    max = calculateglm(dset.alpha, modelstring = "%s ~ BL_AGE + SEX + BMI + CURR_SMOKE + Q57X + DIAB + BL_USE_RX_C03 + BL_USE_RX_C07 + BL_USE_RX_C08 + BL_USE_RX_C09  + diversities_shannon"))
+    max = calculateglm(dset.alpha, modelstring = "%s ~ BL_AGE + SEX + BMI + CURR_SMOKE + Q57X + DIAB + BL_USE_RX_C03 + BL_USE_RX_C07 + BL_USE_RX_C08 + BL_USE_RX_C09 + diversities_shannon"))
 diversities <- mergediversities(alphadiversity, adonis.species)
 ```
+
+Minimum coefficient for alpha diversity is `r rbind(diversities$min,
+diversities$max) %>% pull(estimate) %>% min`.
 
 ```{r save grob}
 alpha.diversity.min <- plot.alpha(diversities$min, colorlimit = 1.3)
 alpha.diversity.max <- plot.alpha(diversities$max, colorlimit = 1.3)
+
 beta.diversity.min <- plot.beta(diversities$min)
 beta.diversity.max <- plot.beta(diversities$max)
 
-
 gs4 <- list(alpha.diversity.min$yaxis,
             alpha.diversity.min$plot,
-            beta.diversity.min$plot,  
+            beta.diversity.min$plot,
             alpha.diversity.min$legend,
             alpha.diversity.min$xaxis,
             beta.diversity.min$xaxis,
@@ -238,27 +250,28 @@ gs4 <- list(alpha.diversity.min$yaxis,
             beta.diversity.max$xaxis,
             beta.diversity.max$xlab,
             text_grob("B.", size = 18))
-
+ 
 g4 <- arrangeGrob(grobs = gs4,
-                  layout_matrix = rbind(
+                   layout_matrix = rbind(
                       c(8,    NA,    NA, NA,   NA, NA, NA),
                       c(NA, 1,    2,    NA, 3, NA, NA),
                       c(NA, 1,    2,    NA, 3, NA, 4),
-                      c(NA, NA, 5,    NA,6, NA, 4),
-                      c(NA, NA, NA, NA,7, NA, 4),
-                      c(15,    NA,    NA, NA,   NA, NA, 4),
-                      c(NA, 9,    10,  NA,  11, NA, 4),
+                      c(NA, NA, 5,    NA,6, NA, NA),
+                      c(NA, NA, NA, NA,7, NA, NA),
+                      c(15,    NA,    NA, NA,   NA, NA, NA),
+                      c(NA, 9,    10,  NA,  11, NA, NA),
                       c(NA, 9,    10,  NA,  11, NA, NA),
                       c(NA, NA, 12,   NA, 13, NA, NA),
                       c(NA, NA, NA, NA,14, NA, NA)),
-                  widths=c(0.7, 4, 0.7, 0.1, 5, 0.7, 4),
+                  widths=c(0.7, 4, 0.7, 0.1, 5, 0.7, 3),
                   heights=rep(c(1, 1, 6, 1, 2), 2))
+
 ggsave(file = "cache/alpha-beta.png", plot=g4, height=6, width=9)
 ```
 
 ```{r Write figure 1}
-fig1head <- "alpha beta figure"
-fig1foot <- ""
+fig1head <- "Associations between BP variables and microbial diversity"
+fig1foot <- "Results in panel A are calculated using minimal model using only age and sex for covariates. Panel B has the full model where covariates are age, sex, BMI, smoker, exercise, and four antihypertensive medications. The blue tinted box on the left represents four linear and one logistic model where blood pressure variables are dependant variables and Shannon's index is included in covariates. The gray tinted bars represent beta diversity i.e. analysis of variance for Bray-Curtis distance matrix where blood pressure variables are included in covariates. Result marked with asterisk are significant at FDR 0.05. Permutational analysis for beta diverity has 1000 permutations (p=0.01)."
 writeimage(doc, 1, "cache/alpha-beta.png", fig1head, fig1foot)
 ```
 

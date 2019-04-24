@@ -35,12 +35,12 @@ tableone <- function(dset) {
                            "HYPERTENSION" = "Hypertension, N (%)",
                            "CURR_SMOKE" = "Current smoker, N (%)",
                            "DIAB" = "Diabetes mellitus, N (%)",
-                           "Q57X" = "Exercice, N (%)",
+                           "Q57X" = "Exercise, N (%)",
                            "ANYDRUG" = "Antihypertensive medication, N (%)",
                            "BL_USE_RX_C03" = "  Diuretics, N (%)",
                            "BL_USE_RX_C07" = "  Beta blockers, N (%)",
                            "BL_USE_RX_C08" = "  Calcium channel blockers, N (%)",
-                           "BL_USE_RX_C09" = "  Agents acting on the RAS, N (%)")
+                           "BL_USE_RX_C09" = "  RAS blockers, N (%)")
     extras <- list("1"  =  "  Light",
                            "2"  =  "  Moderate",
                            "3"  =  "  Heavy")

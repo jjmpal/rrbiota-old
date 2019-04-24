@@ -8,13 +8,18 @@ rename.genus  <- function (genus, markword = "Plasmid", mark = "*") {
     paste0(gsub("_", " ", name), star)
 }
 
+myscale <- function(x){
+  (x - mean(x, na.rm=TRUE)) / sd(x, na.rm=TRUE)
+}
+
 filter.phenotype.data <- function(pseq,
                                   included = c("DNA_OK", "MEN", "BL_AGE", "SYSTM", "DIASM", "BP_TREAT", "BMI",
                                                "CURR_SMOKE", "DIAB", "BL_USE_RX_C09", "Q57X", "BL_USE_RX_C03",
-                                               "BL_USE_RX_C07", "BL_USE_RX_C08"))
+                                               "BL_USE_RX_C07", "BL_USE_RX_C08")) {
     meta(pseq) %>%
         tibble::rownames_to_column(var = "rowname") %>%
         dplyr::select(rowname, included) %>%
+        stats::na.omit() %>%
         dplyr::mutate(ANYDRUG = factor(ifelse(BL_USE_RX_C03  == 1 | BL_USE_RX_C07 == 1 |
                                        BL_USE_RX_C08 == 1  | BL_USE_RX_C09 == 1, 1, 0)),
                       ANYEXERCICE = factor(ifelse(Q57X == 1, 0, 1)),
@@ -22,10 +27,18 @@ filter.phenotype.data <- function(pseq,
                       HYPERTENSION = factor(ifelse(SYSTM >= 140 | DIASM >= 90 | ANYDRUG == 1, 1, 0)),
                       SEX = factor(ifelse(MEN == "Female", 1, 0)),
                       MAP = 2./3.*DIASM + 1./3.*SYSTM) %>%
-         stats::na.omit() %>%
+        dplyr::mutate(oSYSTM = SYSTM,
+                      oDIASM = DIASM,
+                      oPULSEPRESSURE = PULSEPRESSURE,
+                      oMAP = MAP,
+                      SYSTM = myscale(SYSTM),
+                      DIASM = myscale(DIASM),
+                      PULSEPRESSURE = myscale(PULSEPRESSURE),
+                      MAP = myscale(MAP)) %>%
         dplyr::select(-MEN, -DNA_OK) %>%
         tibble::remove_rownames() %>%
         tibble::column_to_rownames(var = "rowname")
+}
 
 meta.merge.alphadiversity <- function(pseq, index = "shannon") {
     alphadiversity  <- microbiome::global(pseq, index = index)
