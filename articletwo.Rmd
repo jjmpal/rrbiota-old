@@ -29,7 +29,8 @@ if (exists("args")) {
         unlink("cache", recursive=TRUE)
     }
     if ("tags" %in% names(args)) 
-        rtags('~/phd/research/articletwo/', recursive = FALSE, pattern = '\\.[RrSs](rw|md)?$',ofile = '~/phd/research/articletwo/TAGS', verbose = TRUE, append = FALSE)
+        rtags('~/phd/research/articletwo/', recursive = FALSE, pattern = '\\.[RrSs](rw|md)?$',
+              ofile = '~/phd/research/articletwo/TAGS', verbose = TRUE, append = FALSE)
 }
 ```
 
@@ -122,10 +123,6 @@ phyloseq::sample_data(pseq.genus) <- phyloseq::sample_data(filter.phenotype.data
 phyloseq::sample_data(pseq.species) <- phyloseq::sample_data(filter.phenotype.data(pseq.species))
 ```
 
-```{r test scaling}
-meta(pseq.genus) %>% summarize(mean(MAP), sd(MAP), mean(SYSTM), sd(SYSTM), mean(DIASM), sd(DIASM), mean(PULSEPRESSURE), sd(PULSEPRESSURE)) %>% kable
-```
-
 Sample data has dimensions (`r dim(sample_data(pseq.species))`).
 
 ## Models
@@ -177,9 +174,18 @@ At genus level core has number of taxa `r ntaxa(pseq.genus.core)` (`r
 ntaxa(pseq.genus)`). For lactobacilli core has number of taxa `r
 ntaxa(pseq.species.lactobacillus.core)` (`r ntaxa(pseq.species.lactobacillus)`).
 
+```{r maalin manual, eval = FALSE}
+test.abud <- microbiome::abundances(microbiome::transform(pseq.genus.core, "compositional")) %>%
+    t %>%
+    as.data.frame
+df <- test.abud %>% mutate_all(funs(asin(sqrt(.))))
+```
+
 ```{r maaslin runs, results = 'hide'} 
 maaslin <- list()
-
+lm (Sutterella_Bacteria ~ MAP + BL_AGE + SEX + BMI + CURR_SMOKE + Q57X + DIAB + BL_USE_RX_C03 + 
+                           BL_USE_RX_C07 + BL_USE_RX_C08 + BL_USE_RX_C09, )
+                       
 maaslin$genus <- maaslinwrapper(pseq = pseq.genus.core,
                 looped = c("MAP", "SYSTM", "DIASM", "PULSEPRESSURE", "HYPERTENSION"),
                 forced = c("BL_AGE", "SEX", "BMI", "CURR_SMOKE", "Q57X", "DIAB", "BL_USE_RX_C03",
@@ -307,8 +313,8 @@ ggsave(file = "cache/pca.png", plot = pcaplot, height = 5, width = 9, dpi = 300)
 ```
 
 ```{r Write figure 2}
-fig2head <- "Tenth of bacterial variation can be explained by two first principal axes"
-fig2foot <- sprintf("Principal component analysis for bacterial abundances at species level. Centered log ratio transform is performed for the compositional data. First two axes explain %.1f%% of the variation. Research participants with hypertension are denoted by red dot.", sum(pca.percentage[1:2]))
+fig2head <- "Principal component analysis for bacterial abundances"
+fig2foot <- sprintf("Principal component analysis for bacterial abundances at species level. Centered log ratio transform is performed for the compositional data. First two axes explain %.1f%% of the variation. Centered log-ratio (CLR) tranformation is used for microbiome abundances.", sum(pca.percentage[1:2]))
 writeimage(doc, 2, "cache/pca.png", fig2head, fig2foot)
 ```
 
@@ -318,10 +324,12 @@ writeimage(doc, 2, "cache/pca.png", fig2head, fig2foot)
 maas.results.df.signf <- maaslin$genus %>%
     merge(names.dset %>% select(Covariate, Category, Name), by.x ="Variable", by.y = "Covariate") %>%
     dplyr::mutate(Qval = p.adjust(P.value, method="BH"),
-           beta = Coefficient) %>%
-   dplyr::filter(Qval < 0.05) 
-
-maaslinplot <- plot_maaslin_heatmap_final(maas.results.df.signf %>% dplyr::filter(Variable != "HYPERTENSION"),
+                  Feature = gsub("_Bacteria", "", Feature),
+                  beta = Coefficient) %>%
+    dplyr::filter(Qval < 0.05) %>%
+    arrange(Feature)
+ 
+maaslinplot <- plot_maaslin_heatmap_final(maas.results.df.signf %>% dplyr::filter(Variable!="HYPERTENSION"),
                       beta.maxabs=max(abs(maas.results.df.signf[,'beta'])),
                       order.by.category=FALSE)
 
@@ -332,112 +340,6 @@ ggsave(file = "cache/maaslin.png", plot = maaslinplot, height = 3, width = 7, dp
 fig3head <- ""
 fig3foot <- ""
 writeimage(doc, 3, "cache/maaslin.png", fig3head, fig3foot)
-```
-
-
-## Figure 4
-
-```{r PC plot}
-pca.prcomp.df <- pca.prcomp$x[,1:5] %>% data.frame
-#pca.prcomp$sdev[1:20]^2/sum(pca.prcomp$sdev^2)
-#cumsum(pca.prcomp$sdev[1:20]^2/sum(pca.prcomp$sdev^2))
-
-X <- base::merge(meta(pseq.species), pca.prcomp.df, by=0, all=TRUE) %>%
-    dplyr::rename(Sample_ID = Row.names) 
-
-X.res <- lapply(vectortolist(paste0("PC", seq(5))), function(axis) {
-    modelstring <- paste0("%s ~  BL_AGE + SEX + BMI + CURR_SMOKE + Q57X + DIAB + BL_USE_RX_C03 + BL_USE_RX_C07 + BL_USE_RX_C08 + BL_USE_RX_C09 + ", axis)
-    calculateglm(X, modelstring = modelstring, filterstr = "PC")
-})
-
-Z.df <-  do.call(rbind.data.frame, X.res) %>%
-    merge(names.dset %>% select(Covariate, Category, Name), by.x ="response", by.y = "Covariate") %>%
-    dplyr::mutate(Qval = p.adjust(p.value, method="BH"),
-                  beta = estimate,
-                  Feature = term)
-
-p2 <- plot_maaslin_heatmap_final(Z.df , fname="Feature", pname="Name",
-                                  xlab.text = "PC", signif="Qval", cluster=FALSE,
-                                  v.title.name = "Effect size (PC)",
-                                  ystr="reorder(Name, Qval)", sign.name="Significance.PC",
-                                  no.sign.legend=TRUE)
-
-ggsave(file = "cache/pca.p2.png", plot = p2, height = 8, width = 8, dpi = 300) 
-```
-
-
-```{r Write figure 4}
-fig4head <- "P2"
-fig4foot <- ""
-writeimage(doc, 4, "cache/pca.p2.png", fig4head, fig4foot)
-```
-
-
-## Figure 5
-
-```{r PCA heatmap}
-pca.axis <- pca.prcomp$x %>% data.frame
-pca.dset <- base::merge(meta(pseq.species), pca.axis[,1:5], by=0, all=TRUE) %>%
-  dplyr::rename(Sample_ID = Row.names)
-
-pca.dset %>% head
-
-pca.ret <- lapply(paste0("PC", seq(1,5)), function (pc) {
-    calculateglm(pca.dset,
-                 modelstring = paste("%s ~ BL_AGE + SEX + BMI + CURR_SMOKE + Q57X + DIAB + BL_USE_RX_C03 + BL_USE_RX_C07 + BL_USE_RX_C08 + BL_USE_RX_C09  +", pc),
-                 filterstr = "PC") %>%
-        select(response, estimate, p.value) %>%
-        mutate(model_name = pc)
-})
-
-pca.ret  %>%
-    data.table::rbindlist() %>%
-    as.data.frame %>%
-    mutate(p.value = p.adjust(p.value, method="BH")) %>%
-    arrange(p.value) %>%
-    kable
-```
-
-## Loadings for principal component axis 3 (Figure 5)
-
-```{r Main contributors of PC3}
-pca.rotation.abs <- abs(pca.prcomp$rotation)
-pca.loading <- sweep(pca.rotation.abs, 2, colSums(pca.rotation.abs), "/") %>%
-	    as.data.frame %>%
-    tibble::rownames_to_column(var = "term") %>%
-    mutate(name = rename.genus(term))
-	
-
-
-pca.loading.pc3.top20 <- pca.loading %>%
-    select(name, PC3) %>%
-    arrange(-PC3) %>%
-    head(20)
-
-pca.pc3.gg <- ggplot(data=pca.loading.pc3.top20, aes(x=reorder(name, -PC3), y=100*PC3)) +
-    geom_bar(stat="identity", width=0.5, position = position_dodge(preserve = "single")) +
-    theme_classic(20) +
-    theme(axis.text.x = element_text(angle = 90, vjust = 0.3, hjust = 1)) +
-    xlab("") +
-    ylab("Contribution (%)") +
-    scale_y_continuous(limits=c(0, 2.7), oob = rescale_none, expand = c(0,0)) +
-    theme(axis.title.x=element_blank(),
-          text = element_text(size=20),
-          legend.justification=c(1,0),
-          legend.position=c(1.03, 0.75),
-          legend.title=element_text(size = 20),
-          legend.direction="vertical",
-          legend.text=element_text(size = floor(0.75*20)),
-          legend.box.margin = margin(1, 1, 1, 1, "mm"),
-          legend.box.background = element_rect(colour = "black"),
-          aspect.ratio = 0.7)
-   ggsave(file = "cache/pca.pc3.png", plot = pca.pc3.gg, height = 8, width = 8, dpi = 300) 
-```
-
-```{r Write figure 5}
-fig5head <- "Bacteria causing dysentery and diarrhea contribute to third principal component"
-fig5foot <- sprintf("Top 20 bacterial contributors to third principal coordinate at species level. Centered log ratio transform is performed for the compositional data. Third principal component explain %.1f%% of the total variation. Plasmid DNA is denoted using star.", pca.percentage[3])
-writeimage(doc, 5, "cache/pca.pc3.png", fig5head, fig5foot)
 ```
 
 ### Lactobacillus
@@ -469,9 +371,6 @@ maaslin$lacto.max %>%
 ```
 
 ```{r lactobacillus table}
-allruns.unamb <- turkumetabolites::unambiguous.lmrank(dset$fr02, linear.lmrank)
-allruns.sup <- turkumetabolites::pub.lmrank(allruns.unamb,  p = 0.05/330)
-
 maaslin.lacto.max.table <- maaslin$lacto.max %>%
     dplyr::mutate(Qval = p.adjust(P.value, method="BH"),
                   beta_ci =sprintf("%.1E", Coefficient, NA),

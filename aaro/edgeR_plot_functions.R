@@ -138,7 +138,7 @@ plot_edgeR_fc_heatmap_final <- function (tables.df, xlab.text = "Phyla", logFC.m
   p
 }
 
-plot_maaslin_heatmap_final <- function (tables.df, xlab.text = "Phyla", beta.maxabs=NULL, text.size=10,
+plot_maaslin_heatmap_final <- function (tables.df, beta.maxabs=NULL, text.size=10,
                                         cluster=TRUE, signif=NULL, signif.th=0.05,
                                         fname='Feature', pname='Name',vname='beta',
                                         qvalues=NULL, colours=NULL, breaks=NULL, names.df=NULL,
@@ -229,7 +229,7 @@ plot_maaslin_heatmap_final <- function (tables.df, xlab.text = "Phyla", beta.max
   }
 
   vname2plot <- ifelse(discrete.colors, vname_discrete, vname)
-  p <- ggplot(tables.df, aes_string(x = paste0("reorder(", fname, " , as.numeric(",fname,"))"),
+  p <- ggplot(tables.df, aes_string(x = paste0("reorder(", fname, " , ",fname,")"),
                                     y = ystr,
                                     fill=vname2plot)) + geom_tile(colour="white", size=0.25)
 
@@ -263,7 +263,7 @@ plot_maaslin_heatmap_final <- function (tables.df, xlab.text = "Phyla", beta.max
   }
 
   p <- p + coord_fixed()
-  p <- p + xlab(xlab.text) + ylab("")
+  p <- p + xlab("") + ylab("")
   p <- p + theme_classic(text.size)
   p <- p + theme(axis.text.x = element_text(angle = 90, hjust = 1.0, vjust=0.5, size=floor(0.7*text.size)))
   p <- p + theme(axis.text.y = element_text(size=floor(0.7*text.size)))
