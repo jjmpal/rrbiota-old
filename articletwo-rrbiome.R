@@ -204,3 +204,7 @@ maaslinwrapper <- function(pseq, looped, forced, taxa, tempstr = "%s/temp/maasli
     setwd(cwd)
     ret
 }
+
+mygrep <- function(word, list, ignorecase = TRUE) {
+    list[grepl(word, list, ignore.case = ignorecase)]
+}

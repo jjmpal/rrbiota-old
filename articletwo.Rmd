@@ -342,6 +342,65 @@ writeimage(doc, 3, "cache/maaslin.png", fig3head, fig3foot)
 
 ### Lactobacillus
 
+```{r salt}
+lacto.meta <- meta(pseq.genus) %>%
+    tibble::rownames_to_column("id")
+
+lacto.abund <- subset_taxa(pseq.genus, Genus=="Lactobacillus") %>%
+    abundances(., transform = "clr") %>%
+    t %>%
+    as.data.frame %>%
+    tibble::rownames_to_column("id") %>%
+    setNames(tolower(replace.brackets(names(.))))
+
+lacto.full <- full_join(lacto.meta, lacto.abund, by = "id") %>%
+    dplyr::mutate(fake_salt = relevel(factor(dplyr::ntile(BL_AGE, 4)), ref='1'),
+                  lacto_groups = relevel(factor(dplyr::ntile(lactobacillus.bacteria, 4)), ref='1'))
+
+lacto.mean <- lacto.full %>%
+    group_by(fake_salt) %>%
+    summarize(estimate = t.test(lactobacillus.bacteria)$"estimate",
+              qi_low = t.test(lactobacillus.bacteria)$"conf.int"[1],
+              qi_high = t.test(lactobacillus.bacteria)$"conf.int"[2],
+              group = "mean")
+
+lacto.odds <- lacto.full %>%
+    group_by(lacto_groups) %>%
+    do(oddsmodel = glm(HYPERTENSION ~ lactobacillus.bacteria, family=binomial(link="logit"), data = .)) %>%
+    do(data.frame(
+        fake_salt = .$lacto_groups,
+        term = names(coef(.$oddsmodel)),
+        exp(cbind(coef(.$oddsmodel), confint(.$oddsmodel))))) %>%
+    dplyr::mutate(group = "odds") %>%
+    dplyr::rename(estimate = V1, qi_low = X2.5.., qi_high = X97.5..) %>%
+    filter(!grepl("Intercept", term)) %>%
+    select(-term)
+```
+
+
+```{r forest plot lacto, eval = FALSE}
+
+myforestplot <- function(data) {
+    ggplot(data = data,
+           aes(x = fake_salt, y = estimate, ymin = qi_low, ymax = qi_high)) +
+        facet_wrap(~group,strip.position="top",nrow=1,scales = "free_y") +
+        xlab('Group') +
+        ylab("Risk Ratio (95% Confidence Interval)")+
+        geom_pointrange()+
+        geom_hline(aes(fill=fake_salt), yintercept=1, linetype=2)+
+        geom_errorbar(aes(ymin=qi_low, ymax=qi_high),width=0.2,cex=1)+ 
+        theme(plot.title=element_text(size=16,face="bold"),
+              axis.text.x=element_text(face="bold"),
+              axis.title=element_text(size=12,face="bold"),
+              strip.background = element_blank(),
+              strip.placement = "outside") + 
+        ggplot2::theme_minimal() 
+}
+
+gsalt <- grid.arrange(myforestplot(lacto.mean),  myforestplot(lacto.odds), ncol=2)
+ggsave(file = "cache/salt-forest.png", plot=gsalt, height=6, width=9)
+```
+
 Lacto min
 
 ```{r Reading maaslin lacto min output}
@@ -406,8 +465,6 @@ typology.tbl2 <- data.frame(col_keys = c("Feature",
 tbl2 <- flextable(data = maaslin.lacto.max.table) %>%
     set_header_df(mapping = typology.tbl2, key = "col_keys") %>%
         flextable::theme_booktabs()
-writetable(doc, tbl2, number = 2, tbl2head, tbl2foot)
-print(doc, target = paste0("report/articletwo-test.docx"))
 ```
 
 ```{r write table 2}
