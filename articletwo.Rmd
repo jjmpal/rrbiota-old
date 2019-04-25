@@ -183,8 +183,6 @@ df <- test.abud %>% mutate_all(funs(asin(sqrt(.))))
 
 ```{r maaslin runs, results = 'hide'} 
 maaslin <- list()
-lm (Sutterella_Bacteria ~ MAP + BL_AGE + SEX + BMI + CURR_SMOKE + Q57X + DIAB + BL_USE_RX_C03 + 
-                           BL_USE_RX_C07 + BL_USE_RX_C08 + BL_USE_RX_C09, )
                        
 maaslin$genus <- maaslinwrapper(pseq = pseq.genus.core,
                 looped = c("MAP", "SYSTM", "DIASM", "PULSEPRESSURE", "HYPERTENSION"),
