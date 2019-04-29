@@ -80,6 +80,8 @@ dir.create("cache", showWarnings = FALSE)
 
 # Sources
 
+<details>
+  <summary>Toggle imported core</summary>
 ### Officer functions
 
 ```{r Officer importer, code=readLines("articletwo-officer.R")}
@@ -104,6 +106,7 @@ source("aaro/edgeR_plot_functions.R")
 source("articletwo-ggplot.R")
 ```
 
+</details>
 # Loading data
 	
 Loading descriptions for clinical data
