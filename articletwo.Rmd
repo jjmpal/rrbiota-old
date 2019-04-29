@@ -335,7 +335,7 @@ maaslinplot <- ggplot(maas.tables.df, aes(x = Feature, y = reorder(Name, my.plot
 ggsave(file = "cache/maaslin.png", plot = maaslinplot, height = 3, width = 7, dpi = 300)
 ```
 
-```{r Write figure 3}
+```{r Write figure 4}
 fig3head <- "Associations between genus level abundances and blood pressure variables"
 fig3foot <- "Only backteria with significant associations are shown. Blood pressure variables are normalized and abundances are arcsin-square root transformed. Dark gray color represents unsignificant associations."
 writeimage(doc, 3, "cache/maaslin.png", fig3head, fig3foot)
