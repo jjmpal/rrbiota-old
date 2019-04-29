@@ -170,44 +170,15 @@ if (!file.exists("rds/pca.prcomp.rds")) {
 
 ```{r core taxa}
 pseq.genus.core <- core(pseq.genus, detection = 0.001, prevalence = 0.01)
-pseq.species.lactobacillus <- subset_taxa(pseq.species, Genus=="Lactobacillus")
-pseq.species.lactobacillus.core <- core(pseq.species.lactobacillus, detection = 0.001, prevalence = 0.01)
-```
-
-At genus level core has number of taxa `r ntaxa(pseq.genus.core)` (`r
-ntaxa(pseq.genus)`). For lactobacilli core has number of taxa `r
-ntaxa(pseq.species.lactobacillus.core)` (`r ntaxa(pseq.species.lactobacillus)`).
-
-```{r maalin manual, eval = FALSE}
-test.abud <- microbiome::abundances(microbiome::transform(pseq.genus.core, "compositional")) %>%
-    t %>%
-    as.data.frame
-df <- test.abud %>% mutate_all(funs(asin(sqrt(.))))
 ```
 
 ```{r maaslin runs, results = 'hide'} 
 maaslin <- list()
-                       
 maaslin$genus <- maaslinwrapper(pseq = pseq.genus.core,
                 looped = c("MAP", "SYSTM", "DIASM", "PULSEPRESSURE", "HYPERTENSION"),
                 forced = c("BL_AGE", "SEX", "BMI", "CURR_SMOKE", "Q57X", "DIAB", "BL_USE_RX_C03",
                            "BL_USE_RX_C07", "BL_USE_RX_C08", "BL_USE_RX_C09"),
                 taxa = "Halapricum.Archaea-")
-
-lactotaxa <-c("Lactobacillus_delbrueckii.Bacteria", "Lactobacillus_ruminis.Bacteria", "Lactobacillus_acidophilus.Bacteria",
-                    "Lactobacillus_fermentum.Bacteria", "Lactobacillus_paracasei.Bacteria", "Lactobacillus_salivarius.Bacteria")
-
-maaslin$lacto.min <- maaslinwrapper(pseq = pseq.species.lactobacillus.core,
-                looped = c("MAP", "SYSTM", "DIASM", "PULSEPRESSURE", "HYPERTENSION"),
-                forced = c("BL_AGE", "SEX"),
-                taxa =  paste0(lactotaxa,  collapse = ","))
-
-maaslin$lacto.max  <- maaslinwrapper(pseq = pseq.species.lactobacillus.core,
-                looped = c("MAP", "SYSTM", "DIASM", "PULSEPRESSURE", "HYPERTENSION"),
-                forced =c("BL_AGE", "SEX", "BMI", "CURR_SMOKE", "Q57X", "DIAB", "BL_USE_RX_C03",
-                          "BL_USE_RX_C07", "BL_USE_RX_C08", "BL_USE_RX_C09"),
-                taxa = paste0(lactotaxa, collapse = ","))
-
 ```
 
 
