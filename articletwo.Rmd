@@ -80,33 +80,51 @@ dir.create("cache", showWarnings = FALSE)
 
 # Sources
 
-<details>
-  <summary>Toggle imported core</summary>
 ### Officer functions
+
+<details>
+  <summary>Open/Close</summary>
 
 ```{r Officer importer, code=readLines("articletwo-officer.R")}
 source("articletwo-officer.R")
 ```
 
+</details>
+
 ### RR biome functions
 
+<details>
+  <summary>Open/Close</summary>
+  
 ```{r RR biome functions, code=readLines("articletwo-rrbiome.R")}
 source("articletwo-rrbiome.R")
 ```
 
+</details>
+
 ### EdgeR plot functions
+
+<details>
+  <summary>Open/Close</summary>
 
 ```{r EdgeR functions, code=readLines("aaro/edgeR_plot_functions.R")}
 source("aaro/edgeR_plot_functions.R")
 ```
 
+</details>
+
 ### Plot functions
+
+<details>
+  <summary>Open/Close</summary>
 
 ```{r Plot functions, code=readLines("articletwo-ggplot.R")}
 source("articletwo-ggplot.R")
 ```
 
 </details>
+
+
 # Loading data
 	
 Loading descriptions for clinical data
