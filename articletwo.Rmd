@@ -34,8 +34,7 @@ if (exists("args")) {
 }
 ```
 
-}
-```
+
 # Importing libraries:
 
 ```{r libraries, cache = FALSE}
@@ -208,8 +207,8 @@ Minimum coefficient for alpha diversity is `r rbind(diversities$min,
 diversities$max) %>% pull(estimate) %>% min`.
 
 ```{r save grob}
-alpha.diversity.min <- plot.alpha(diversities$min, colorlimit = 1.3)
-alpha.diversity.max <- plot.alpha(diversities$max, colorlimit = 1.3)
+alpha.diversity.min <- plot.alpha(diversities$min, colorlimit = 0.5)
+alpha.diversity.max <- plot.alpha(diversities$max, colorlimit = 0.5)
 
 beta.diversity.min <- plot.beta(diversities$min)
 beta.diversity.max <- plot.beta(diversities$max)
@@ -250,7 +249,7 @@ ggsave(file = "cache/alpha-beta.png", plot=g4, height=6, width=9)
 
 ```{r Write figure 1}
 fig1head <- "Associations between BP variables and microbial diversity"
-fig1foot <- "Results in panel A are calculated using minimal model using only age and sex for covariates. Panel B has the full model where covariates are age, sex, BMI, smoker, exercise, and four antihypertensive medications. The blue tinted box on the left represents four linear and one logistic model where blood pressure variables are dependant variables and Shannon's index is included in covariates. The gray tinted bars represent beta diversity i.e. analysis of variance for Bray-Curtis distance matrix where blood pressure variables are included in covariates. Result marked with asterisk are significant at FDR 0.05. Permutational analysis for beta diverity has 1000 permutations (p=0.01)."
+fig1foot <- "Results in panel A are calculated using minimal model using only age and sex for covariates. Panel B has the full model where covariates are age, sex, BMI, smoker, exercise, and four antihypertensive medications. The blue tinted box on the left represents four linear and one logistic model where blood pressure variables are dependent variables and Shannon's index is included in covariates. The gray tinted bars represent beta diversity i.e. analysis of variance for Bray-Curtis distance matrix where blood pressure variables are included in covariates. Result marked with asterisk are significant at FDR 0.05. Permutational analysis for beta diversity has 1000 permutations (p=0.01)."
 writeimage(doc, 1, "cache/alpha-beta.png", fig1head, fig1foot)
 ```
 
@@ -287,7 +286,7 @@ ggsave(file = "cache/pca.png", plot = pcaplot, height = 5, width = 9, dpi = 300)
 
 ```{r Write figure 2}
 fig2head <- "Principal component analysis for bacterial abundances"
-fig2foot <- sprintf("Principal component analysis for bacterial abundances at species level. Centered log ratio transform is performed for the compositional data. First two axes explain %.1f%% of the variation. Centered log-ratio (CLR) tranformation is used for microbiome abundances.", sum(pca.percentage[1:2]))
+fig2foot <- sprintf("Principal component analysis for bacterial abundances at species level. Centered log ratio transform is performed for the compositional data. First two axes explain %.1f%% of the variation. Centered log-ratio (CLR) transformation is used for microbiome abundances.", sum(pca.percentage[1:2]))
 writeimage(doc, 2, "cache/pca.png", fig2head, fig2foot)
 ```
 
@@ -335,9 +334,9 @@ maaslinplot <- ggplot(maas.tables.df, aes(x = Feature, y = reorder(Name, my.plot
 ggsave(file = "cache/maaslin.png", plot = maaslinplot, height = 3, width = 7, dpi = 300)
 ```
 
-```{r Write figure 4}
+```{r Write figure 3}
 fig3head <- "Associations between genus level abundances and blood pressure variables"
-fig3foot <- "Only backteria with significant associations are shown. Blood pressure variables are normalized and abundances are arcsin-square root transformed. Dark gray color represents unsignificant associations."
+fig3foot <- "Only bacteria with significant associations are shown. Blood pressure variables are normalized and abundances are arcsin-square root transformed. Dark gray color represents insignificant associations."
 writeimage(doc, 3, "cache/maaslin.png", fig3head, fig3foot)
 ```
 
@@ -444,10 +443,10 @@ gsalt <- grid.arrange(
 ggsave(file = "cache/salt-forest.png", plot=gsalt, height=4, width=6, dpi = 300)
 ```
 
-```{r Write figure 3}
-fig3head <- "Associations between dietary salt, lactobacillus abundance, and odds for hypertensoin"
-fig3foot <- "In panel A we see lactobacillus abundances in different dietary salt groups. The mean value is adjusted using age and sex. In panel B we split paticipants in four groups by lactobacillus abundances and calulate odds ratio for hypertension. Age and sex are included in logistic model. Both panel show  95 % CI for respective variables."
-writeimage(doc, 3, "cache/salt-forest.png", fig3head, fig3foot)
+```{r Write figure 4}
+fig4head <- "Associations between dietary salt, lactobacillus abundance, and odds for hypertensoin"
+fig4foot <- "In panel A we see lactobacillus abundances in different dietary salt groups. The mean value is adjusted using age and sex. In panel B we split participants in four groups by lactobacillus abundances and caclulate odds ratio for hypertension. Age and sex are included in logistic model. A 95 % CI is drawn in both panels."
+writeimage(doc, 4, "cache/salt-forest.png", fig4head, fig4foot)
 ```
 
 ```{r Write docx to file}
