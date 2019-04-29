@@ -331,8 +331,8 @@ maaslinplot <- ggplot(maas.tables.df, aes(x = Feature, y = reorder(Name, my.plot
     xlab("") +
     ylab("") +
     theme_classic(10) +  
-    theme(axis.text.x = element_text(angle = 90, hjust = 1.0, vjust=0.5, size=7),
-          axis.text.y = element_text(size=7))
+    theme(axis.text.x = element_text(angle = 90, hjust = 1.0, vjust=0.5, size=10),
+          axis.text.y = element_text(size=10))
 
 ggsave(file = "cache/maaslin.png", plot = maaslinplot, height = 3, width = 7, dpi = 300)
 ```
