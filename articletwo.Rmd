@@ -315,10 +315,10 @@ my.plot.order <- function(x) {
 maas.all.pairs <- expand.grid(Feature = maas.results.df.signf %>% pull(Feature),
                          Name = maas.results.df.signf %>% pull(Name))
 maas.tables.df <- merge(maas.results.df.signf,
-                   all.pairs,
-                   all.y=TRUE,
-                   by.y=c('Feature', 'Name'),
-                   by.x=c('Feature', 'Name'))
+                        maas.all.pairs,
+                        all.y=TRUE,
+                        by.y=c('Feature', 'Name'),
+                        by.x=c('Feature', 'Name'))
 
 maaslinplot <- ggplot(maas.tables.df, aes(x = Feature, y = reorder(Name, my.plot.order(Name)), fill = beta)) +
     geom_tile(aes(fill = 1)) +
