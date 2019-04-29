@@ -251,7 +251,7 @@ ggsave(file = "cache/alpha-beta.png", plot=g4, height=6, width=9)
 ```
 
 ```{r Write figure 1}
-fig1head <- "Associations between BP variables and microbial diversity"
+fig1head <- "Associations between BP variables and microbial diversity."
 fig1foot <- "Results in panel A are calculated using minimal model using only age and sex for covariates. Panel B has the full model where covariates are age, sex, BMI, smoker, exercise, and four antihypertensive medications. The blue tinted box on the left represents four linear and one logistic model where blood pressure variables are dependent variables and Shannon's index is included in covariates. The gray tinted bars represent beta diversity i.e. analysis of variance for Bray-Curtis distance matrix where blood pressure variables are included in covariates. Result marked with asterisk are significant at FDR 0.05. Permutational analysis for beta diversity has 1000 permutations (p=0.01)."
 writeimage(doc, 1, "cache/alpha-beta.png", fig1head, fig1foot)
 ```
@@ -288,7 +288,7 @@ ggsave(file = "cache/pca.png", plot = pcaplot, height = 5, width = 9, dpi = 300)
 ```
 
 ```{r Write figure 2}
-fig2head <- "Principal component analysis for bacterial abundances"
+fig2head <- "Principal component analysis for bacterial abundances."
 fig2foot <- sprintf("Principal component analysis for bacterial abundances at species level. Centered log ratio transform is performed for the compositional data. First two axes explain %.1f%% of the variation. Centered log-ratio (CLR) transformation is used for microbiome abundances.", sum(pca.percentage[1:2]))
 writeimage(doc, 2, "cache/pca.png", fig2head, fig2foot)
 ```
@@ -301,15 +301,16 @@ maas.results.df.signf <- maaslin$genus %>%
     dplyr::mutate(Qval = p.adjust(P.value, method="BH"),
                   Feature = gsub("_Bacteria", "", Feature),
                   beta = Coefficient) %>%
-    dplyr::filter(Qval < 0.05, Variable != "HYPERTENSION") %>%
+    dplyr::filter(Qval < 0.05) %>%
     arrange(Feature)
 
 my.plot.order <- function(x) {
     y <- seq(length(x))
-    y[x == "Mean arterial pressure"] = 4
-    y[x == "Systolic BP"] = 3
-    y[x == "Diastolic BP"] = 2
-    y[x == "Pulse pressure"] = 1
+    y[x == "Systolic BP"] = 4
+    y[x == "Diastolic BP"] = 3
+    y[x == "Pulse pressure"] = 2
+    y[x == "Mean arterial pressure"] = 1
+    y[x == "Hypertension"] = 0
     y
 }
 
@@ -334,11 +335,13 @@ maaslinplot <- ggplot(maas.tables.df, aes(x = Feature, y = reorder(Name, my.plot
     theme(axis.text.x = element_text(angle = 90, hjust = 1.0, vjust=0.5, size=10),
           axis.text.y = element_text(size=10))
 
-ggsave(file = "cache/maaslin.png", plot = maaslinplot, height = 3, width = 7, dpi = 300)
+ggsave(file = "cache/maaslin.png", plot = maaslinplot, height = 3, width = 6, dpi = 300)
 ```
 
+Max value of abs beta is `r maas.results.df.signf %>% pull(Coefficient) %>% abs %>% max`.
+
 ```{r Write figure 3}
-fig3head <- "Associations between genus level abundances and blood pressure variables"
+fig3head <- "Associations between genus level abundances and blood pressure variables."
 fig3foot <- "Only bacteria with significant associations are shown. Blood pressure variables are normalized and abundances are arcsin-square root transformed. Dark gray color represents insignificant associations."
 writeimage(doc, 3, "cache/maaslin.png", fig3head, fig3foot)
 ```
@@ -447,8 +450,8 @@ ggsave(file = "cache/salt-forest.png", plot=gsalt, height=4, width=6, dpi = 300)
 ```
 
 ```{r Write figure 4}
-fig4head <- "Associations between dietary salt, lactobacillus abundance, and odds for hypertensoin"
-fig4foot <- "In panel A we see lactobacillus abundances in different dietary salt groups. The mean value is adjusted using age and sex. In panel B we split participants in four groups by lactobacillus abundances and caclulate odds ratio for hypertension. Age and sex are included in logistic model. A 95 % CI is drawn in both panels."
+fig4head <- "Associations between dietary salt, lactobacillus abundance, and odds for hypertension."
+fig4foot <- "In panel A we see lactobacillus abundances in different dietary salt groups. The mean value is adjusted using age and sex. In panel B we split participants in four groups by lactobacillus abundances and calculate odds ratio for hypertension. Age and sex are included in logistic model. A 95 % CI is drawn in both panels."
 writeimage(doc, 4, "cache/salt-forest.png", fig4head, fig4foot)
 ```
 
