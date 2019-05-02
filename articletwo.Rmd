@@ -63,6 +63,7 @@ library(pander)
 library(ggpubr)
 library(broom)
 library(ggfortify)
+library(RColorBrewer)
 ```
 
 Session info
@@ -217,10 +218,19 @@ writetable(doc, tbl1, number = 1, tbl1head, tbl1foot)
 ## Alpha & Beta plot (Figure 1.)
 
 ```{r alphabeta definitions}
-dset.alpha <- meta.merge.alphadiversity(pseq.species)
+dset.alpha <- meta.merge.alphadiversity(pseq.species) %>%
+    mutate(diversities_shannon = scale(diversities_shannon),
+           MAP = oMAP,
+           PULSEPRESSURE = oPULSEPRESSURE,
+           SYSTM = oSYSTM,
+           DIASM = oDIASM)
+
 alphadiversity <- list(
-    min = calculateglm(dset.alpha, modelstring = "%s ~ BL_AGE + SEX  + diversities_shannon"),
-    max = calculateglm(dset.alpha, modelstring = "%s ~ BL_AGE + SEX + BMI + CURR_SMOKE + Q57X + DIAB + BL_USE_RX_C03 + BL_USE_RX_C07 + BL_USE_RX_C08 + BL_USE_RX_C09 + diversities_shannon"))
+    min = calculateglm(dset.alpha,
+                       modelstring = "%s ~ BL_AGE + SEX  + diversities_shannon"),
+    max = calculateglm(dset.alpha,
+                       modelstring = "%s ~ BL_AGE + SEX + BMI + CURR_SMOKE + Q57X + DIAB + BL_USE_RX_C03 + BL_USE_RX_C07 + BL_USE_RX_C08 + BL_USE_RX_C09 + diversities_shannon"))
+
 diversities <- mergediversities(alphadiversity, adonis.species)
 ```
 
@@ -228,8 +238,8 @@ Minimum coefficient for alpha diversity is `r rbind(diversities$min,
 diversities$max) %>% pull(estimate) %>% min`.
 
 ```{r save grob}
-alpha.diversity.min <- plot.alpha(diversities$min, colorlimit = 0.5)
-alpha.diversity.max <- plot.alpha(diversities$max, colorlimit = 0.5)
+alpha.diversity.min <- plot.alpha(diversities$min, colorlimit = 0.6)
+alpha.diversity.max <- plot.alpha(diversities$max, colorlimit = 0.6)
 
 beta.diversity.min <- plot.beta(diversities$min)
 beta.diversity.max <- plot.beta(diversities$max)
@@ -332,31 +342,85 @@ my.plot.order <- function(x) {
     y
 }
 
-
 maas.all.pairs <- expand.grid(Feature = maas.results.df.signf %>% pull(Feature),
                          Name = maas.results.df.signf %>% pull(Name))
 maas.tables.df <- merge(maas.results.df.signf,
                         maas.all.pairs,
                         all.y=TRUE,
                         by.y=c('Feature', 'Name'),
-                        by.x=c('Feature', 'Name'))
+                        by.x=c('Feature', 'Name')) %>%
+    mutate(p.groups = cut(P.value*ifelse(Coefficient < 0, -1, 1),
+                          breaks = c(-0.05, -0.01, -0.001, 0, 0.001, 0.01, 0.05),
+                          labels = c("beta < 0, p < 0.05",
+                                     "beta < 0, p < 0.01",
+                                     "beta < 0, p < 0.001",
+                                     "beta > 0, p < 0.001",
+                                     "beta > 0, p < 0.01",
+                                     "beta > 0, p < 0.05")))
 
-maaslinplot <- ggplot(maas.tables.df, aes(x = Feature, y = reorder(Name, my.plot.order(Name)), fill = beta)) +
-    geom_tile(aes(fill = 1)) +
-    geom_tile(colour="white", size=0.25) +
-    scale_fill_distiller(palette = "RdBu", name = "Effect size",
-                         limits=c(-0.003, 0.003), breaks = c(-0.003, 0, 0.003), na.value="grey30") +
+mycolors <- c("beta < 0, p < 0.05" = "#B2182B",
+              "beta < 0, p < 0.01" = "#EF8A62",
+              "beta < 0, p < 0.001" = "#FDDBC7",
+              "beta > 0, p < 0.001" = "#D1E5F0",
+              "beta > 0, p < 0.01" = "#67A9CF",
+              "beta > 0, p < 0.05" = "#2166AC",
+              "NA" = "gray50")
+
+maaslinplot <- ggplot(maas.tables.df, aes(x = Feature,
+                                          y = reorder(Name, my.plot.order(Name)),
+                                          fill = p.groups)) +
+    geom_tile(color = "white", aes(fill = "NA")) +
+    geom_tile(color = "white") +
+    scale_fill_manual(values = mycolors, name = "P-value", na.translate = F) +
+    scale_x_discrete() +
     coord_fixed() +
     xlab("") +
     ylab("") +
     theme_classic(10) +  
     theme(axis.text.x = element_text(angle = 90, hjust = 1.0, vjust=0.5, size=10),
           axis.text.y = element_text(size=10))
-
 ggsave(file = "cache/maaslin.png", plot = maaslinplot, height = 3, width = 6, dpi = 300)
 ```
 
 Max value of abs beta is `r maas.results.df.signf %>% pull(Coefficient) %>% abs %>% max`.
+
+```{r scatter plots}
+scatter.signf.bacteria <- paste0(maas.results.df.signf %>% pull(Feature) %>% unique %>% tolower, ".bacteria")
+
+scatter.meta <- meta(pseq.genus) %>%
+    tibble::rownames_to_column("id") %>%
+      mutate(MAP = oMAP,
+           PULSEPRESSURE = oPULSEPRESSURE,
+           SYSTM = oSYSTM,
+           DIASM = oDIASM) %>%
+    gather("keym", "valuem", c(SYSTM, DIASM, MAP, PULSEPRESSURE))
+
+scatter.abund <- abundances(pseq.genus, transform = "compositional") %>%
+    t %>%
+    as.data.frame %>%
+    tibble::rownames_to_column("id") %>%
+    setNames(tolower(replace.brackets(names(.)))) %>%
+    select(id, scatter.signf.bacteria) %>%
+    gather(key, value, -id) %>%
+    mutate(value = asin(sqrt(value)))
+
+scatter.full <- full_join(scatter.meta, scatter.abund, by = "id")
+
+scatterplot <- ggplot(scatter.full, aes(y = valuem, x = value)) +
+    facet_wrap(~key + keym, ncol=4, scales = "fixed") +
+    geom_point(size=0.1, shape=1) +
+    geom_smooth(method=lm, se=TRUE, size=0.5, color = 'Black') +
+    stat_poly_eq(formula = "y ~ x",
+                 aes(label = paste(..eq.label.., ..rr.label.., sep = "~~~")),
+                 label.y =  -4,
+                 parse = TRUE,
+                 size = 2.5) +
+    ylab("asin(sqrt(abundance))") +
+    ggplot2::theme_minimal()
+
+ggsave(file = "cache/scatter.png", plot = scatterplot, height = 20, width = 10, dpi = 300)
+```
+
 
 ```{r Write figure 3}
 fig3head <- "Associations between genus level abundances and blood pressure variables."

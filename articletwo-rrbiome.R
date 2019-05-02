@@ -156,12 +156,13 @@ vectortolist <- function(c) {
   l
 }
 
-mergediversities <- function(alphadiversity, betadiversity) {
+mergediversities <- function(alphadiversity, betadiversity,
+                             responses = c("MAP", "SYSTM", "DIASM", "PULSEPRESSURE", "HYPERTENSION")) {
     lapply(vectortolist(names(alphadiversity)), function(x) {
         alpha.select <- alphadiversity[[x]] %>% select(estimate, p.value, response)
         beta.rbind <- betadiversity[[x]] %>%
             data.table::rbindlist(id = "model_name") %>%
-            dplyr::filter(term %in% c("MAP", "SYSTM", "DIASM", "PULSEPRESSURE", "HYPERTENSION")) %>%
+            dplyr::filter(term %in% responses) %>%
             dplyr::select(response, R2)
         merge( alpha.select , beta.rbind, by = "response") %>%
             merge(names.dset %>% select(Covariate, Category, Name), by.x ="response", by.y = "Covariate") %>%
