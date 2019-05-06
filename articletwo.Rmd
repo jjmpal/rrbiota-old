@@ -31,6 +31,8 @@ if (exists("args")) {
     if ("tags" %in% names(args)) 
         rtags('~/phd/research/articletwo/', recursive = FALSE, pattern = '\\.[RrSs](rw|md)?$',
               ofile = '~/phd/research/articletwo/TAGS', verbose = TRUE, append = FALSE)
+    if ("loadlast" %in% names(args) )
+        load(paste0("session/", sort(list.files("session"), decreasing = TRUE)[1]))
 }
 ```
 
@@ -195,11 +197,19 @@ pseq.genus.core <- core(pseq.genus, detection = 0.001, prevalence = 0.01)
 
 ```{r maaslin runs, results = 'hide'} 
 maaslin <- list()
+
+genus.core.bacteria <- pseq.genus.core %>%
+    abundances %>%
+    rownames %>%
+    replace.brackets %>%
+    mygrep(".Bacteria$", .)
+
+
 maaslin$genus <- maaslinwrapper(pseq = pseq.genus.core,
                 looped = c("MAP", "SYSTM", "DIASM", "PULSEPRESSURE", "HYPERTENSION"),
                 forced = c("BL_AGE", "SEX", "BMI", "CURR_SMOKE", "Q57X", "DIAB", "BL_USE_RX_C03",
                            "BL_USE_RX_C07", "BL_USE_RX_C08", "BL_USE_RX_C09"),
-                taxa = "Halapricum.Archaea-")
+                taxa = paste0(genus.core.bacteria, collapse = ","))
 ```
 
 
@@ -392,34 +402,85 @@ scatter.meta <- meta(pseq.genus) %>%
       mutate(MAP = oMAP,
            PULSEPRESSURE = oPULSEPRESSURE,
            SYSTM = oSYSTM,
-           DIASM = oDIASM) %>%
-    gather("keym", "valuem", c(SYSTM, DIASM, MAP, PULSEPRESSURE))
+           DIASM = oDIASM)
 
-scatter.abund <- abundances(pseq.genus, transform = "compositional") %>%
+scatter.abund <- abundances(pseq.genus, transform = "clr") %>%
     t %>%
     as.data.frame %>%
     tibble::rownames_to_column("id") %>%
     setNames(tolower(replace.brackets(names(.)))) %>%
     select(id, scatter.signf.bacteria) %>%
-    gather(key, value, -id) %>%
-    mutate(value = asin(sqrt(value)))
+    mutate_at(.vars = vars(scatter.signf.bacteria), .funs = funs(myscale(.)))
 
 scatter.full <- full_join(scatter.meta, scatter.abund, by = "id")
 
-scatterplot <- ggplot(scatter.full, aes(y = valuem, x = value)) +
-    facet_wrap(~key + keym, ncol=4, scales = "fixed") +
-    geom_point(size=0.1, shape=1) +
-    geom_smooth(method=lm, se=TRUE, size=0.5, color = 'Black') +
-    stat_poly_eq(formula = "y ~ x",
-                 aes(label = paste(..eq.label.., ..rr.label.., sep = "~~~")),
-                 label.y =  -4,
-                 parse = TRUE,
-                 size = 2.5) +
-    ylab("asin(sqrt(abundance))") +
-    ggplot2::theme_minimal()
+scatter.combinations <- expand.grid(cc("SYSTM", "DIASM", "PULSEPRESSURE", "MAP"),
+                                    c2l(scatter.signf.bacteria)) %>%
+    setNames(c("rr", "abund"))
 
+scatter.plot <- function(df,
+                         maas.results,
+                         rr,
+                         abund,
+                         covariates = c("BL_AGE", "SEX", "BMI", "CURR_SMOKE", "Q57X", "DIAB",
+                                        "BL_USE_RX_C03", "BL_USE_RX_C07", "BL_USE_RX_C08",
+                                        "BL_USE_RX_C09"),
+                         prediction = TRUE,
+                         plots = TRUE) {
+    fo <- sprintf("%s ~ %s + %s", rr, abund, paste0(covariates, collapse="+"))
+    model <- lm(as.formula(fo), data = df)
+
+    if (prediction == FALSE) return(model %>% summary)
+    
+    df.predict <- data.frame(BPV = seq(-5,5,0.1)) %>%
+        mutate(SEX = as.factor(0),
+               BL_AGE = df %>% pull(BL_AGE) %>% mean,
+               BMI = df %>% pull(BMI) %>% mean,
+               CURR_SMOKE = as.factor(0),
+               Q57X = as.factor(1),
+               DIAB = 0,
+               BL_USE_RX_C03 = as.factor(0),
+               BL_USE_RX_C07 = as.factor(0),
+               BL_USE_RX_C08 = as.factor(0),
+               BL_USE_RX_C09 = as.factor(0),
+               !!abund := seq(-5,5,0.1)
+               )
+    prediction <- cbind(df.predict, predict(model, df.predict, interval = 'confidence'))
+
+    if (plots == FALSE) return(prediction)
+
+    feature <- firstup(gsub(".bacteria", "", replace.brackets(abund)))
+    qval.maaslin <- maas.results %>%
+        dplyr::filter(Feature == feature, Value == rr) %>%
+        nrow
+    
+    if (qval.maaslin == 0) { return (ggplot() + ggplot2::theme_minimal()) }
+    pval <- pub.p(summary(model)$coef[2,4])
+    rsqr <- signif(summary(model)$adj.r.squared, 2)
+    slope <- signif(model$coef[[2]], 2)
+
+    ggplot(prediction, aes_string(x = abund, y = "fit")) +
+        geom_line() +
+        geom_point(size=0.1, shape=1, aes_string(x = abund, y = rr, color = "SEX"),
+                   data = df) +
+        labs(title = sprintf("Adj R2 = %s, Slope = %s, p = %s", rsqr, slope, pval)) +
+        xlab(feature) +
+        ylab(rr) +
+        ylim(0,200) +
+        ggplot2::theme_minimal() +
+        theme(plot.title = element_text(size=8)) +
+        theme(legend.position="none")
+}
+
+scatterplots <- lapply(data.frame(t(scatter.combinations)),
+                       function(x)
+                           scatter.plot(scatter.full, maas.results.df.signf, x$rr, x$abund))
+
+
+scatterplot <- do.call("grid.arrange", c(scatterplots, ncol=4))
 ggsave(file = "cache/scatter.png", plot = scatterplot, height = 20, width = 10, dpi = 300)
 ```
+
 
 
 ```{r Write figure 3}

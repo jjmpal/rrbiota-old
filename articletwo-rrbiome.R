@@ -209,3 +209,25 @@ maaslinwrapper <- function(pseq, looped, forced, taxa, tempstr = "%s/temp/maasli
 mygrep <- function(word, list, ignorecase = TRUE) {
     list[grepl(word, list, ignore.case = ignorecase)]
 }
+
+cc <- function(...) {
+    c2l(c(...))
+}
+
+
+c2l <- function(c) {
+    l <- as.list(c)
+    names(l) <- c
+    l
+}
+
+pub.p <- function(p, Nfdr = FALSE) {
+    p <- as.numeric(p)
+    if (Nfdr) p <- p.adjust(p, method="BH", n = Nfdr)
+    ifelse(p < 0.01, ifelse(p<0.001, sprintf("%.2e", p), sprintf("%.3f", p)), sprintf("%.2f", p))
+}
+
+firstup <- function(x) {
+  substr(x, 1, 1) <- toupper(substr(x, 1, 1))
+  x
+}
