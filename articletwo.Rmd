@@ -308,8 +308,8 @@ pcoa.df %>% pull(STATETREATMENT)
 
 pcoa.plot <- ggplot(data=pcoa.df, aes(x=Axis.1, y=Axis.2, color = STATETREATMENT, shape = STATETREATMENT)) +
     geom_point(size=0.4, alpha=0.4) +
-    xlab(paste("PCoA axis 1,", round(100*eig.fracs[1],1), "%")) +
-    ylab(paste("PCoA axis 2,", round(100*eig.fracs[2],1), "%")) +
+    xlab(sprintf("PCoA Axis 1 (%.1f%%)", 100*eig.fracs[1])) +
+    ylab(sprintf("PCoA Axis 2 (%.1f%%)", 100*eig.fracs[2])) +
     scale_colour_manual(name = "State and treatment",
                         labels = c("Hypertensive, medication",
                                    "Hypertensive, no medication",
