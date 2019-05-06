@@ -341,7 +341,7 @@ ggsave(file = "cache/pcoa-species.png", plot=pcoa.plot, height=5, width=5, dpi =
 ```{r Write figure 2}
 fig2head <- "Principal coordinate analysis for bacterial abundances."
 fig2foot <- sprintf("Principal coordinate analysis for bacterial abundances at species level. Bray-Curtis distances are calculated for abundances after compositional transformation. First two axes explain %.1f%% of the variation.", round(100*sum(eig.fracs[1:2]),1))
-writeimage(doc, 2, "cache/pca.png", fig2head, fig2foot)
+writeimage(doc, 2, "cache/pcoa-species.png", fig2head, fig2foot)
 ```
 
 ## Direct associations between genus level and blood pressure variables (figure 3)
