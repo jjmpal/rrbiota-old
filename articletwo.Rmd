@@ -300,45 +300,47 @@ writeimage(doc, 1, "cache/alpha-beta.png", fig1head, fig1foot)
 pcoa.vectors <- pcoa.ordinate$vectors %>% as.data.frame
 eig.fracs <- pcoa.ordinate$values$Relative_eig
 pcoa.df <- merge(pcoa.vectors %>% select(Axis.1, Axis.2),
-                 meta(pseq.species), by=0, all = TRUE)
+                 meta(pseq.species), by=0, all = TRUE) %>%
+    mutate(STATETREATMENT = factor(paste0(HYPERTENSION, ANYDRUG),
+                                   levels = c("11", "10", "01", "00")))
 
-colnames(pcoa.df)
+pcoa.df %>% pull(STATETREATMENT) 
 
-pcoa.plot <- ggplot(data=pcoa.df, aes(x=Axis.1, y=Axis.2, color = HYPERTENSION, shape = ANYDRUG)) +
+pcoa.plot <- ggplot(data=pcoa.df, aes(x=Axis.1, y=Axis.2, color = STATETREATMENT, shape = STATETREATMENT)) +
     geom_point(size=0.4, alpha=0.4) +
     xlab(paste("PCoA axis 1,", round(100*eig.fracs[1],1), "%")) +
     ylab(paste("PCoA axis 2,", round(100*eig.fracs[2],1), "%")) +
-    scale_color_manual(values=c("blue", "red"),
-                       name= "Hypertension",
-                       breaks=c("1", "0"),
-                       labels=c("Yes", "No")) +
-    scale_shape_manual(values=c(4, 1),
-                       name = "BP-medication",
-                       breaks = c("1", "0"),
-                       labels = c("Yes", "No")) +
+    scale_colour_manual(name = "State and treatment",
+                        labels = c("Hypertensive, medication",
+                                   "Hypertensive, no medication",
+                                   "Normotensive, no medication"),
+                        breaks=c("11", "10", "00"),
+                        values = c("red", "red", "blue", "blue")) +   
+    scale_shape_manual(name = "State and treatment",
+                       labels = c("Hypertensive, medication",
+                                  "Hypertensive, no medication",
+                                  "Normotensive, no medication"),
+                       breaks = c("11", "10", "00"),
+                       values = c(4, 1, 1))+
     coord_fixed() +
     scale_x_continuous(breaks=seq(-100, 100, 20)) +
     scale_y_continuous(breaks=seq(-30, 30, 10)) +
     theme_classic() +
-    guides(colour = guide_legend(override.aes = list(size=6, shape = 15)),
-           shape = guide_legend(override.aes = list(size=6))) +
+    guides(colour = guide_legend(override.aes = list(size=4))) +
     theme(text = element_text(size=14),
-          legend.title = element_text(size = 12),
+          legend.title = element_blank(),
           legend.text=element_text(size=10),
           legend.justification=c(1,0),
           legend.position=c(1,0),
-          legend.margin=margin(t = 0, unit='cm'),
+          legend.margin=margin(t = 1, unit='mm'),
           legend.background = element_rect(fill=alpha('gray', 0.1)))
 
-ggsave(file = "cache/pcoa-species.png", plot=pcoa.plot, height=5, width=7, dpi = 300)
-
-
-
+ggsave(file = "cache/pcoa-species.png", plot=pcoa.plot, height=5, width=5, dpi = 300)
 ```
 
 ```{r Write figure 2}
-fig2head <- "Principal component analysis for bacterial abundances."
-fig2foot <- sprintf("Principal component analysis for bacterial abundances at species level. Centered log ratio transform is performed for the compositional data. First two axes explain %.1f%% of the variation. Centered log-ratio (CLR) transformation is used for microbiome abundances.", sum(pca.percentage[1:2]))
+fig2head <- "Principal coordinate analysis for bacterial abundances."
+fig2foot <- sprintf("Principal coordinate analysis for bacterial abundances at species level. Bray-Curtis distances are calculated for abundances after compositional transformation. First two axes explain %.1f%% of the variation.", round(100*sum(eig.fracs[1:2]),1))
 writeimage(doc, 2, "cache/pca.png", fig2head, fig2foot)
 ```
 
