@@ -185,7 +185,7 @@ if (!file.exists("rds/bray.dist.m.species.rds")) {
 if (!file.exists("rds/pcoa.ordinate.rds")) {
     pcoa.abundances <- microbiome::transform(pseq.species, 'compositional')
     pcoa.ordinate <- ordinate(pcoa.abundances, method="PCoA", distance="bray")
-    saveRDS(pca.prcomp, file = "rds/pcoa.ordinate.rds")
+    saveRDS(pcoa.ordinate, file = "rds/pcoa.ordinate.rds")
 } else {
     pcoa.ordinate <- readRDS("rds/pcoa.ordinate.rds")
 }
