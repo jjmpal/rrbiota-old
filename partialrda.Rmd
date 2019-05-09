@@ -1,0 +1,76 @@
+---
+title: "Partial RDA"
+author: "Joonatan Palmu"
+date: "`r format(Sys.time(), '%d.%m.%Y')`"
+output: html_document
+---
+	
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(include = TRUE, xecho = TRUE, message = FALSE, results='asis', cache=FALSE, warning=FALSE)
+knitr::opts_chunk$set(cache.path = 'cache/', output.dir="cache/",
+                      file.path = 'cache/', fig.path = 'cache/')
+
+dir.create("rds/", showWarnings = FALSE)
+dir.create("session/", showWarnings = FALSE)
+```
+
+```{r libraries, cache = FALSE}
+library(dplyr)
+library(vegan)
+library(tibble)
+```
+
+```{r data, eval = FALSE}
+rda.abundances  <- as.matrix(t(microbiome::abundances(microbiome::transform(pseq.species, "clr"))))
+permutest(rda.species, method="direct", perm=100)
+rda.species <- rda(rda.abundances ~ MAP + Condition(BL_AGE + SEX + BMI + CURR_SMOKE + Q57X + DIAB +
+                       BL_USE_RX_C03 + BL_USE_RX_C07 + BL_USE_RX_C08 + BL_USE_RX_C09),
+                   data = meta(pseq.species))
+saveRDS(rda.species, file = "rda.specids.rds")
+```
+
+```{r load}
+rda.species <- readRDS("rda.specids.rds")
+```
+
+```{r variance}
+data.frame(Inertia = c(
+               Conditioned = summary(rda.species)$partial.chi,
+               Constrained = summary(rda.species)$constr.chi,
+               Unconstrained = summary(rda.species)$unconst.chi)) %>%
+    tibble::rownames_to_column("Variance") %>%
+    mutate(Proportion = Inertia/sum(Inertia)) %>%
+    mutate_at(2:2, funs(round(., 1))) %>%
+    mutate_at(3:3, funs(round(., 5))) %>%
+    kable
+```
+
+```{r direct}
+permutest(rda.species, method="direct", perm=100)
+```
+
+```{r axis}
+permutest(rda.species, method="axis", perm=100)
+```
+
+```{r term}
+permutest(rda.species, method="term", perm=100)
+```
+
+```{r rda plot}
+jpeg(file="cache/rda.jpg", res = 300, width = 20, height = 20, units = 'cm')
+plot(rda.species)
+dev.off()
+```
+
+```{r loading, eval = FALSE}
+loadings <- as.data.frame(rda.species$CA$v.eig[,1:2])
+
+rda.species %>% str
+
+loadings %>% str
+```
+
+```{r save session}
+save.image(file = paste0("session/rda.Rdata"))
+```
