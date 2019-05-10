@@ -17,60 +17,149 @@ dir.create("session/", showWarnings = FALSE)
 ```{r libraries, cache = FALSE}
 library(dplyr)
 library(vegan)
+library(broom)
 library(tibble)
 library(knitr)
-
+library(phyloseq)
+library(microbiome)
 ```
 
-```{r data, eval = FALSE}
-rda.abundances  <- as.matrix(t(microbiome::abundances(microbiome::transform(pseq.species, "clr"))))
-permutest(rda.species, method="direct", perm=100)
-rda.species <- rda(rda.abundances ~ MAP + Condition(BL_AGE + SEX + BMI + CURR_SMOKE + Q57X + DIAB +
+### RR biome functions
+
+<details>
+  <summary>Open/Close</summary>
+  
+```{r RR biome functions, code=readLines("articletwo-rrbiome.R")}
+source("articletwo-rrbiome.R")
+```
+
+</details>
+
+
+```{r functions}
+myresults.table <- function(model) {
+    data.frame(Inertia = c(
+                   Conditioned = summary(model)$partial.chi,
+                   Constrained = summary(model)$constr.chi,
+                   Unconstrained = summary(model)$unconst.chi)) %>%
+        tibble::rownames_to_column("Variance") %>%
+        mutate(Proportion = Inertia/sum(Inertia)) %>%
+        mutate_at(2:2, funs(round(., 1))) %>%
+        mutate_at(3:3, funs(round(., 5))) %>%
+        kable
+}
+
+anotab <- function(x) {
+    EPS <- sqrt(.Machine$double.eps)
+    Pval <- (colSums(sweep(x$F.perm, 2, x$F.0 - EPS, ">=")) + 1)/(x$nperm + 1)
+    anotab <- data.frame(x$df, x$chi, c(x$F.0, NA), c(Pval, NA))
+    colnames(anotab) <- c("Df", "Inertia", "F", "Pr(>F)")
+    rownames(anotab) <- c(x$termlabels, "Residual")
+    class(anotab) <- c("anova", "data.frame")
+    anotab 
+}
+```
+
+Loading phyloseq object
+
+```{r data}
+pseq.genus <- readRDS("data/phfinrisk_genus_all_drop50k_2018-11-16.RDs")
+pseq.species <- readRDS("data/phfinrisk_species_all_drop50k_2018-12-21.RDs")
+pseq.genus.core <- core(pseq.genus, detection = 0.001, prevalence = 0.01)
+```
+
+Updating phyloseq objects
+
+```{r updating phyloseq objects}
+phyloseq::sample_data(pseq.genus) <- phyloseq::sample_data(filter.phenotype.data(pseq.genus))
+phyloseq::sample_data(pseq.species) <- phyloseq::sample_data(filter.phenotype.data(pseq.species))
+```
+
+
+```{r data}
+rda.abundances.species  <- microbiome::transform(pseq.species, "clr") %>%
+    microbiome::abundances() %>%
+    t() %>%
+    as.matrix()
+
+rda.abundances.genus  <- microbiome::transform(pseq.genus, "clr") %>%
+    microbiome::abundances() %>%
+    t() %>%
+    as.matrix()
+
+rda.abundances.genus.core  <- microbiome::transform(pseq.genus.core, "clr") %>%
+    microbiome::abundances() %>%
+    t() %>%
+    as.matrix()
+```
+
+```{r models}
+rda.species <- rda(rda.abundances.species ~ MAP +
+                       Condition(BL_AGE + SEX + BMI + CURR_SMOKE + Q57X + DIAB +
                        BL_USE_RX_C03 + BL_USE_RX_C07 + BL_USE_RX_C08 + BL_USE_RX_C09),
                    data = meta(pseq.species))
-saveRDS(rda.species, file = "rda.specids.rds")
+rda.genus <- rda(rda.abundances.genus ~ MAP +
+                       Condition(BL_AGE + SEX + BMI + CURR_SMOKE + Q57X + DIAB +
+                       BL_USE_RX_C03 + BL_USE_RX_C07 + BL_USE_RX_C08 + BL_USE_RX_C09),
+                 data = meta(pseq.genus))
+rda.genus.core <- rda(rda.abundances.genus.core ~ MAP +
+                       Condition(BL_AGE + SEX + BMI + CURR_SMOKE + Q57X + DIAB +
+                       BL_USE_RX_C03 + BL_USE_RX_C07 + BL_USE_RX_C08 + BL_USE_RX_C09),
+                   data = meta(pseq.genus.core))
+
 ```
 
-```{r load}
-rda.species <- readRDS("rda.specids.rds")
+```{r myresults species}
+myresults.table(rda.species)
 ```
 
-```{r variance}
-data.frame(Inertia = c(
-               Conditioned = summary(rda.species)$partial.chi,
-               Constrained = summary(rda.species)$constr.chi,
-               Unconstrained = summary(rda.species)$unconst.chi)) %>%
-    tibble::rownames_to_column("Variance") %>%
-    mutate(Proportion = Inertia/sum(Inertia)) %>%
-    mutate_at(2:2, funs(round(., 1))) %>%
-    mutate_at(3:3, funs(round(., 5))) %>%
-    kable
+```{r myresults genus}
+myresults.table(rda.genus)
 ```
 
-```{r direct}
-permutest(rda.species, method="direct", perm=100)
+```{r myresults genus core}
+myresults.table(rda.genus.core)
 ```
 
-```{r axis}
-permutest(rda.species, method="axis", perm=100)
+# ANOVAs
+
+Species
+
+```{r anova species}
+anova.species <- permutest(rda.species, method="reduced", perm=1)
+anova.species %>% anotab %>% kable
 ```
 
-```{r term}
-permutest(rda.species, method="term", perm=100)
+Genus
+
+```{r anova genus}
+anova.genus <- permutest(rda.genus, method="reduced", perm=1)
+anova.genus %>% anotab %>% kable
 ```
 
-```{r rda plot}
-jpeg(file="cache/rda.jpg", res = 300, width = 20, height = 20, units = 'cm')
+```{r anova genus core}
+anova.genus.core <- permutest(rda.genus.core, method="reduced", perm=1)
+anova.genus.core %>% anotab %>% kable
+```
+
+# Plots
+
+Species
+
+```{r rda plot species}
 plot(rda.species)
-dev.off()
 ```
 
-```{r loading, eval = FALSE}
-loadings <- as.data.frame(rda.species$CA$v.eig[,1:2])
+Genus
 
-rda.species %>% str
+```{r rda plot species}
+plot(rda.genus)
+```
 
-loadings %>% str
+Genus core
+
+```{r rda plot species}
+plot(rda.genus.core)
 ```
 
 ```{r save session}
