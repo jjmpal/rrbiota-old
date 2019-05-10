@@ -76,7 +76,7 @@ phyloseq::sample_data(pseq.species) <- phyloseq::sample_data(filter.phenotype.da
 ```
 
 
-```{r data}
+```{r transformations}
 rda.abundances.species  <- microbiome::transform(pseq.species, "clr") %>%
     microbiome::abundances() %>%
     t() %>%
