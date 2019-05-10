@@ -18,6 +18,8 @@ dir.create("session/", showWarnings = FALSE)
 library(dplyr)
 library(vegan)
 library(tibble)
+library(knitr)
+
 ```
 
 ```{r data, eval = FALSE}
