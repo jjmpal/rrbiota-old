@@ -1,5 +1,5 @@
 ---
-title: "Partial RDA"
+title: "Randomforest"
 author: "Joonatan Palmu"
 date: "`r format(Sys.time(), '%d.%m.%Y')`"
 output: html_document
@@ -65,7 +65,6 @@ Loading phyloseq object
 ```{r data}
 pseq.genus <- readRDS("data/phfinrisk_genus_all_drop50k_2018-11-16.RDs")
 pseq.species <- readRDS("data/phfinrisk_species_all_drop50k_2018-12-21.RDs")
-pseq.genus.core <- core(pseq.genus, detection = 0.001, prevalence = 0.01)
 ```
 
 Updating phyloseq objects
@@ -73,6 +72,7 @@ Updating phyloseq objects
 ```{r updating phyloseq objects}
 phyloseq::sample_data(pseq.genus) <- phyloseq::sample_data(filter.phenotype.data(pseq.genus))
 phyloseq::sample_data(pseq.species) <- phyloseq::sample_data(filter.phenotype.data(pseq.species))
+pseq.genus.core <- core(pseq.genus, detection = 0.001, prevalence = 0.01)
 ```
 
 
