@@ -152,13 +152,13 @@ plot(rda.species)
 
 Genus
 
-```{r rda plot species}
+```{r rda plot genus}
 plot(rda.genus)
 ```
 
 Genus core
 
-```{r rda plot species}
+```{r rda plot genus core}
 plot(rda.genus.core)
 ```
 
