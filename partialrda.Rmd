@@ -22,6 +22,8 @@ library(tibble)
 library(knitr)
 library(phyloseq)
 library(microbiome)
+library(purrr)
+library(parallel)
 ```
 
 ### RR biome functions
@@ -35,30 +37,6 @@ source("articletwo-rrbiome.R")
 
 </details>
 
-
-```{r functions}
-myresults.table <- function(model) {
-    data.frame(Inertia = c(
-                   Conditioned = summary(model)$partial.chi,
-                   Constrained = summary(model)$constr.chi,
-                   Unconstrained = summary(model)$unconst.chi)) %>%
-        tibble::rownames_to_column("Variance") %>%
-        mutate(Proportion = Inertia/sum(Inertia)) %>%
-        mutate_at(2:2, funs(round(., 1))) %>%
-        mutate_at(3:3, funs(round(., 5))) %>%
-        kable
-}
-
-anotab <- function(x) {
-    EPS <- sqrt(.Machine$double.eps)
-    Pval <- (colSums(sweep(x$F.perm, 2, x$F.0 - EPS, ">=")) + 1)/(x$nperm + 1)
-    anotab <- data.frame(x$df, x$chi, c(x$F.0, NA), c(Pval, NA))
-    colnames(anotab) <- c("Df", "Inertia", "F", "Pr(>F)")
-    rownames(anotab) <- c(x$termlabels, "Residual")
-    class(anotab) <- c("anova", "data.frame")
-    anotab 
-}
-```
 
 Loading phyloseq object
 
@@ -93,78 +71,75 @@ rda.abundances.genus.core  <- microbiome::transform(pseq.genus.core, "clr") %>%
     as.matrix()
 ```
 
-```{r models}
-rda.species <- rda(rda.abundances.species ~ MAP +
-                       Condition(BL_AGE + SEX + BMI + CURR_SMOKE + Q57X + DIAB +
-                       BL_USE_RX_C03 + BL_USE_RX_C07 + BL_USE_RX_C08 + BL_USE_RX_C09),
-                   data = meta(pseq.species))
-rda.genus <- rda(rda.abundances.genus ~ MAP +
-                       Condition(BL_AGE + SEX + BMI + CURR_SMOKE + Q57X + DIAB +
-                       BL_USE_RX_C03 + BL_USE_RX_C07 + BL_USE_RX_C08 + BL_USE_RX_C09),
-                 data = meta(pseq.genus))
-rda.genus.core <- rda(rda.abundances.genus.core ~ MAP +
-                       Condition(BL_AGE + SEX + BMI + CURR_SMOKE + Q57X + DIAB +
-                       BL_USE_RX_C03 + BL_USE_RX_C07 + BL_USE_RX_C08 + BL_USE_RX_C09),
-                   data = meta(pseq.genus.core))
-
+```{r model function}
+modelfunction <- function(x, rda.abund, df.meta) {
+    covariates <- c("BL_AGE", "SEX", "BMI", "CURR_SMOKE", "Q57X",
+                   "DIAB", "BL_USE_RX_C03", "BL_USE_RX_C07",
+                   "BL_USE_RX_C08", "BL_USE_RX_C09")
+    fo <- sprintf("rda.abund ~ %s + Condition(%s)", x, paste0(covariates, collapse = "+"))
+    model <- rda(as.formula(fo), data = df.meta)
+    anova.term <- anova(model, by="term", perm=100)
+    data.frame(var = as.character(x),
+               beta = coef(model)[,1][[ifelse(x == "HYPERTENSION", "HYPERTENSION1", x)]],
+               RDA.Conditioned = summary(model)$partial.chi,
+               RDA.Constrained = summary(model)$constr.chi,
+               RDA.Unconstrained = summary(model)$unconst.chi,
+               p.anova = anova.term[["Pr(>F)"]][1],
+               fo = fo)
+}
 ```
 
-```{r myresults species}
-myresults.table(rda.species)
+```{r return parser}
+returnparser <- function(ret){
+    res <- do.call(rbind, ret) %>%
+        mutate(RDA.total =  RDA.Conditioned + RDA.Constrained + RDA.Unconstrained,
+               RDA.Conditioned.percent = RDA.Conditioned/RDA.total,
+               RDA.Constrained.percent = RDA.Constrained/RDA.total,
+               RDA.Unconstrained.percent = RDA.Unconstrained/RDA.total
+               ) 
+
+    res %>%
+        dplyr::select(var,
+                      beta,
+                      p.anova,
+                      RDA.Conditioned.percent,
+                      RDA.Constrained.percent,
+                      RDA.Unconstrained.percent) %>%
+        kable()
+}
 ```
 
-```{r myresults genus}
-myresults.table(rda.genus)
+## Species
+
+```{r models species}
+ret.species <- mclapply(c2l("SYSTM", "DIASM", "PULSEPRESSURE", "MAP", "HYPERTENSION"),
+              modelfunction,
+              rda.abund = rda.abundances.species,
+              df.meta = meta(pseq.species),
+              mc.cores = 5)
+returnparser(ret.species)
 ```
 
-```{r myresults genus core}
-myresults.table(rda.genus.core)
+## Genus
+
+```{r models genus}
+ret.genus <- mclapply(c2l("SYSTM", "DIASM", "PULSEPRESSURE", "MAP", "HYPERTENSION"),
+              modelfunction,
+              rda.abund = rda.abundances.genus,
+              df.meta = meta(pseq.genus),
+              mc.cores = 5)
+returnparser(ret.genus)
 ```
 
-# ANOVAs
+## Genus core
 
-Species
-
-```{r anova species test}
-anova.species <- permutest(rda.species, method="reduced", perm=)
-anova.species %>% anotab %>% kable
-```
-
-```{r anova species}
-anova.species <- permutest(rda.species, method="reduced", perm=100)
-anova.species %>% anotab %>% kable
-```
-
-Genus
-
-```{r anova genus}
-anova.genus <- permutest(rda.genus, method="reduced", perm=100)
-anova.genus %>% anotab %>% kable
-```
-
-```{r anova genus core}
-anova.genus.core <- permutest(rda.genus.core, method="reduced", perm=100)
-anova.genus.core %>% anotab %>% kable
-```
-
-# Plots
-
-Species
-
-```{r rda plot species}
-plot(rda.species)
-```
-
-Genus
-
-```{r rda plot genus}
-plot(rda.genus)
-```
-
-Genus core
-
-```{r rda plot genus core}
-plot(rda.genus.core)
+```{r models genus core}
+ret.genus.core <- mclapply(c2l("SYSTM", "DIASM", "PULSEPRESSURE", "MAP", "HYPERTENSION"),
+              modelfunction,
+              rda.abund = rda.abundances.genus.core,
+              df.meta = meta(pseq.genus.core),
+              mc.cores = 5)
+returnparser(ret.genus.core)
 ```
 
 ```{r save session}

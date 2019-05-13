@@ -34,7 +34,14 @@ filter.phenotype.data <- function(pseq,
                       SYSTM = myscale(SYSTM),
                       DIASM = myscale(DIASM),
                       PULSEPRESSURE = myscale(PULSEPRESSURE),
-                      MAP = myscale(MAP)) %>%
+                      MAP = myscale(MAP),
+                      DIAB = as.factor(DIAB),
+                      SEX = as.factor(SEX),
+                      Q57X = as.factor(Q57X),
+                      BL_USE_RX_C03 = as.factor(BL_USE_RX_C03),
+                      BL_USE_RX_C07 = as.factor(BL_USE_RX_C07),
+                      BL_USE_RX_C08 = as.factor(BL_USE_RX_C08),
+                      BL_USE_RX_C09 = as.factor(BL_USE_RX_C09)) %>%
         dplyr::select(-MEN, -DNA_OK) %>%
         tibble::remove_rownames() %>%
         tibble::column_to_rownames(var = "rowname")
@@ -215,9 +222,9 @@ cc <- function(...) {
 }
 
 
-c2l <- function(c) {
-    l <- as.list(c)
-    names(l) <- c
+c2l <- function(...) {
+    l <- as.list(c(...))
+    names(l) <- c(...)
     l
 }
 
