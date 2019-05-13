@@ -126,19 +126,19 @@ myresults.table(rda.genus.core)
 Species
 
 ```{r anova species}
-anova.species <- permutest(rda.species, method="reduced", perm=1)
+anova.species <- permutest(rda.species, method="reduced", perm=100)
 anova.species %>% anotab %>% kable
 ```
 
 Genus
 
 ```{r anova genus}
-anova.genus <- permutest(rda.genus, method="reduced", perm=1)
+anova.genus <- permutest(rda.genus, method="reduced", perm=100)
 anova.genus %>% anotab %>% kable
 ```
 
 ```{r anova genus core}
-anova.genus.core <- permutest(rda.genus.core, method="reduced", perm=1)
+anova.genus.core <- permutest(rda.genus.core, method="reduced", perm=100)
 anova.genus.core %>% anotab %>% kable
 ```
 
