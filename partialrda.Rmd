@@ -70,6 +70,7 @@ rda.abundances.genus.core  <- microbiome::transform(pseq.genus.core, "clr") %>%
     t() %>%
     as.matrix()
 ```
+## All models
 
 ```{r model function}
 modelfunction <- function(x, rda.abund, df.meta) {
@@ -109,7 +110,7 @@ returnparser <- function(ret){
 }
 ```
 
-## Species
+### Species
 
 ```{r models species}
 ret.species <- mclapply(c2l("SYSTM", "DIASM", "PULSEPRESSURE", "MAP", "HYPERTENSION"),
@@ -120,7 +121,7 @@ ret.species <- mclapply(c2l("SYSTM", "DIASM", "PULSEPRESSURE", "MAP", "HYPERTENS
 returnparser(ret.species)
 ```
 
-## Genus
+### Genus
 
 ```{r models genus}
 ret.genus <- mclapply(c2l("SYSTM", "DIASM", "PULSEPRESSURE", "MAP", "HYPERTENSION"),
@@ -131,7 +132,7 @@ ret.genus <- mclapply(c2l("SYSTM", "DIASM", "PULSEPRESSURE", "MAP", "HYPERTENSIO
 returnparser(ret.genus)
 ```
 
-## Genus core
+### Genus core
 
 ```{r models genus core}
 ret.genus.core <- mclapply(c2l("SYSTM", "DIASM", "PULSEPRESSURE", "MAP", "HYPERTENSION"),
@@ -140,6 +141,56 @@ ret.genus.core <- mclapply(c2l("SYSTM", "DIASM", "PULSEPRESSURE", "MAP", "HYPERT
               df.meta = meta(pseq.genus.core),
               mc.cores = 5)
 returnparser(ret.genus.core)
+```
+
+## Example model (species, systole)
+
+RDA model
+
+```{r rda}
+ex.rda <- rda(rda.abundances.species ~ SYSTM + Condition(BL_AGE + SEX + BMI + CURR_SMOKE + Q57X
+                                                        + DIAB + BL_USE_RX_C03 + BL_USE_RX_C07 +
+                                                        + BL_USE_RX_C08 + BL_USE_RX_C09),
+              data = meta(pseq.species))
+```
+
+RDA summary
+
+```{r rda summary}
+data.frame(Inertia = c(
+                   Conditioned = summary(ex.rda)$partial.chi,
+                   Constrained = summary(ex.rda)$constr.chi,
+                   Unconstrained = summary(ex.rda)$unconst.chi)) %>%
+        tibble::rownames_to_column("Variance") %>%
+        mutate(Proportion = Inertia/sum(Inertia)) %>%
+        mutate_at(2:2, funs(round(., 1))) %>%
+        mutate_at(3:3, funs(round(., 5))) %>%
+        kable
+```
+
+RDA r-squares
+
+```{r rda rsqr}
+RsquareAdj(ex.rda)$r.squared %>% kable
+```
+
+RDA coefficients
+
+```{r rda coef}
+coef(ex.rda) %>% kable
+```
+
+Anova
+
+```{r anova}
+anova.term <- anova(ex.rda, by="term", perm=100)
+anova.term %>% kable
+```
+
+Plot
+
+```{r rda plot}
+plot(ex.rda)
 ```
 
 ```{r save session}
