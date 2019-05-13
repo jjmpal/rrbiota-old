@@ -125,6 +125,11 @@ myresults.table(rda.genus.core)
 
 Species
 
+```{r anova species test}
+anova.species <- permutest(rda.species, method="reduced", perm=)
+anova.species %>% anotab %>% kable
+```
+
 ```{r anova species}
 anova.species <- permutest(rda.species, method="reduced", perm=1)
 anova.species %>% anotab %>% kable
