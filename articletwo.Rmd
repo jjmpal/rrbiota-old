@@ -139,18 +139,16 @@ names.dset <- getdescriptions()
 Loading phyloseq object
 
 ```{r data}
-pseq.genus <- readRDS("data/phfinrisk_genus_all_drop50k_2018-11-16.RDs")
-pseq.species <- readRDS("data/phfinrisk_species_all_drop50k_2018-12-21.RDs")
+pseq.genus <- import_filter_data("data/phfinrisk_genus_all_drop50k_2018-11-16.RDs")
+pseq.species <- import_filter_data("data/phfinrisk_species_all_drop50k_2018-12-21.RDs")
 ```
 
-Updating phyloseq objects
+At species level meta has dimensions (`r dim(meta(pseq.species))`) and
+there ntaxa is `r ntaxa(pseq.species)`, and at genus level meta has
+dimensions (`r dim(meta(pseq.genus))`) and there ntaxa is `r
+ntaxa(pseq.genus)`.
 
-```{r updating phyloseq objects}
-phyloseq::sample_data(pseq.genus) <- phyloseq::sample_data(filter.phenotype.data(pseq.genus))
-phyloseq::sample_data(pseq.species) <- phyloseq::sample_data(filter.phenotype.data(pseq.species))
-```
 
-Sample data has dimensions (`r dim(sample_data(pseq.species))`).
 
 ## Models
 
@@ -190,6 +188,11 @@ if (!file.exists("rds/pcoa.ordinate.rds")) {
     pcoa.ordinate <- readRDS("rds/pcoa.ordinate.rds")
 }
 ```
+
+```{r core taxa}
+pseq.genus.core <- core(pseq.genus, detection = 0.001, prevalence = 0.01)
+```
+
 
 ```{r maaslin runs, results = 'hide'} 
 maaslin <- list()

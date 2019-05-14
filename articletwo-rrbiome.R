@@ -82,6 +82,12 @@ calculateglm <- function(dset,
                       conf.high = estimate + qnorm(1- 0.05/2) * std.error)
 }
 
+import_filter_data <- function(file) {
+    pseq.full <- readRDS(file)
+    phyloseq::sample_data(pseq.full) <- phyloseq::sample_data(filter.phenotype.data(pseq.full))
+    return(pseq.full)
+}
+
 import_salt_pseq <- function(file = "data/phfinrisk_genus_all_drop50k_2018-11-16.RDs") {
     pseq.salt <- readRDS(file)
 
