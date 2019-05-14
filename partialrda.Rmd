@@ -73,11 +73,11 @@ rda.abundances.genus.core  <- microbiome::transform(pseq.genus.core, "clr") %>%
 ## All models
 
 ```{r model function}
-modelfunction <- function(x, rda.abund, df.meta) {
+modelfunction <- function(x, rda.abund, df.meta, modelstr = "rda.abund ~ %s + Condition(%s)") {
     covariates <- c("BL_AGE", "SEX", "BMI", "CURR_SMOKE", "Q57X",
                    "DIAB", "BL_USE_RX_C03", "BL_USE_RX_C07",
                    "BL_USE_RX_C08", "BL_USE_RX_C09")
-    fo <- sprintf("rda.abund ~ %s + Condition(%s)", x, paste0(covariates, collapse = "+"))
+    fo <- sprintf(modelstr, x, paste0(covariates, collapse = "+"))
     model <- rda(as.formula(fo), data = df.meta)
     anova.term <- anova(model, by="term", perm=100)
     data.frame(var = as.character(x),
@@ -191,6 +191,18 @@ Plot
 
 ```{r rda plot}
 plot(ex.rda)
+```
+
+## Non-partial RDA species
+
+```{r models species}
+ret.species <- mclapply(c2l("SYSTM", "DIASM", "PULSEPRESSURE", "MAP", "HYPERTENSION"),
+              modelfunction,
+              rda.abund = rda.abundances.species,
+              df.meta = meta(pseq.species),
+              modelstr = "rda.abund ~ %s + %s",
+              mc.cores = 5)
+returnparser(ret.species)
 ```
 
 ```{r save session}
