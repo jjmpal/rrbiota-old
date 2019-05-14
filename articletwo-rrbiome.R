@@ -82,6 +82,25 @@ calculateglm <- function(dset,
                       conf.high = estimate + qnorm(1- 0.05/2) * std.error)
 }
 
+import_salt_pseq <- function(file = "data/phfinrisk_genus_all_drop50k_2018-11-16.RDs") {
+    pseq.salt <- readRDS(file)
+
+    pseq.salt.meta <- meta(pseq.salt) %>%
+        tibble::rownames_to_column(var = "rowname") %>%
+        mutate(SEX = factor(ifelse(MEN == "Female", 1, 0)),
+               ANYDRUG = factor(ifelse(BL_USE_RX_C03  == 1 | BL_USE_RX_C07 == 1 |
+                                       BL_USE_RX_C08 == 1  | BL_USE_RX_C09 == 1, 1, 0)),
+               HYPERTENSION = factor(ifelse(SYSTM >= 140 | DIASM >= 90 | ANYDRUG == 1, 1, 0)),
+               dUNA = myscale(NA.)) %>%
+        select("rowname", "BL_AGE", "SEX", "dUNA", "HYPERTENSION") %>%
+        na.omit %>%
+        tibble::remove_rownames() %>%
+        tibble::column_to_rownames(var = "rowname")
+    
+    phyloseq::sample_data(pseq.salt) <- phyloseq::sample_data(pseq.salt.meta)
+    return(pseq.salt)
+}
+
 calculateadonis <- function(dset,
                             matrix,
                             responses = list(model_1 = "MAP", model_2 = "SYSTM", model_3 = "DIASM",

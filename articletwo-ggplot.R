@@ -77,3 +77,31 @@ plot.beta <- function(diversity, fig.permar2.text = "R2 of variable \nin Bray-Cu
                   xaxis = plot.gtable.beta.diversity$grobs[[7]],
                   xlab = plot.xlab.beta.diversity))
 }
+
+myforestplot <- function(data,
+                         xlab = "",
+                         ylab = "",
+                         interceptone = FALSE,
+                         subtitle = "",
+                         my_y_scale = scale_y_continuous()) {
+    ggplot(data = data,
+           aes(x = term, y = estimate, ymin = conf.low, ymax = conf.high)) +
+        geom_point() +
+        { if (interceptone) geom_hline(aes(fill=fake_salt), yintercept=1, linetype=2) } +
+        geom_errorbar(width=0.1)+ 
+        ggplot2::theme_minimal()  +
+        theme(plot.title=element_text(size=16),
+              axis.title=element_text(size=12),
+              strip.background = element_blank()) +
+        theme(panel.border = element_blank(),
+              panel.grid.major = element_blank(),
+              panel.grid.minor = element_blank(),
+              axis.ticks.x = element_line(),
+              axis.ticks.y = element_line(),
+              axis.line = element_line(colour = "black")) +
+        scale_x_discrete(labels=c("Q1", "Q2", "Q3", "Q4")) +
+        my_y_scale + 
+        xlab(xlab) +
+        ylab(ylab) +
+        labs(subtitle = subtitle)
+}
