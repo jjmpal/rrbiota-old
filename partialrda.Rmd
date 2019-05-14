@@ -1,5 +1,5 @@
 ---
-title: "Randomforest"
+title: "Redundancy analysis for hypertension"
 author: "Joonatan Palmu"
 date: "`r format(Sys.time(), '%d.%m.%Y')`"
 output: html_document
@@ -79,7 +79,7 @@ modelfunction <- function(x, rda.abund, df.meta, modelstr = "rda.abund ~ %s + Co
                    "BL_USE_RX_C08", "BL_USE_RX_C09")
     fo <- sprintf(modelstr, x, paste0(covariates, collapse = "+"))
     model <- rda(as.formula(fo), data = df.meta)
-    anova.term <- anova(model, by="term", perm=100)
+    anova.term <- anova(model, by="term", perm=1000)
     data.frame(var = as.character(x),
                beta = coef(model)[,1][[ifelse(x == "HYPERTENSION", "HYPERTENSION1", x)]],
                RDA.Conditioned = summary(model)$partial.chi,
@@ -183,7 +183,7 @@ coef(ex.rda) %>% kable
 Anova
 
 ```{r anova}
-anova.term <- anova(ex.rda, by="term", perm=100)
+anova.term <- anova(ex.rda, by="term", perm=1000)
 anova.term %>% kable
 ```
 
