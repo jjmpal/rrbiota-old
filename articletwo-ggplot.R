@@ -105,3 +105,14 @@ myforestplot <- function(data,
         ylab(ylab) +
         labs(subtitle = subtitle)
 }
+
+
+gvlma.table.plot <- function(model) {
+    { sink("/dev/null");
+        gvlma.model <- gvlma::gvlma(model)
+        gvlma.modek.summary <- summary(gvlma.model)
+        ; sink(); }
+    ret <- list("table" = gvlma.modek.summary,
+                 "plot" = gvlma.model)
+    return(ret)
+}

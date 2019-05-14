@@ -528,6 +528,15 @@ lm.lacto.duna <- lm(lactobacillus.bacteria ~ dUNA + BL_AGE + SEX, data = df.genu
 lm.lacto.duna %>% tidy %>% kable
 ```
 
+```{r abund salt lm continuous checks table}
+gvlma.table.plot(lm.lacto.duna)$table %>% kable
+```
+
+```{r abund salt lm continuous checks plot, fig.width=12, fig.height=8}
+gvlma.table.plot(lm.lacto.duna)$plot %>% plot
+```
+
+
 ### Salt groups
 
 Association between lactobacillus and salt groups
@@ -539,9 +548,12 @@ lm.lacto.saltgroup %>% tidy %>% kable
 
 Assesment for linear model asuumptions
 
+```{r abund salt lm group checks table}
+gvlma.table.plot(lm.lacto.saltgroup)$table %>% kable
+```
+
 ```{r abund salt lm group checks plot, fig.width=12, fig.height=8}
-par(mfrow=c(3,3))
-plot(gvlma::gvlma(lm.lacto.saltgroup), onepage = FALSE)
+gvlma.table.plot(lm.lacto.saltgroup)$plot %>% plot
 ```
 
 Anova between lactobacillus and salt groups
