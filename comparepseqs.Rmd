@@ -97,6 +97,35 @@ res %>%
     kable
 ```
 
+
+```{r matrix calculation}
+if (!file.exists("rds/comparepseqs_bray_matrix.rds")) {
+    bray.dist.matrix <- mclapply(pseq, function(x) calculate.beta.matrix(x), mc.cores = 4)
+    saveRDS(bray.dist.matrix, file = "rds/comparepseqs_bray_matrix.rds")
+} else {
+    bray.dist.matrix  <- readRDS("rds/comparepseqs_bray_matrix.rds")
+}
+```
+
+ ```{r adonis calculation, eval = FALSE}
+ if (!file.exists("rds/adonis.species.rds")) {
+     adonis.species = list()
+     adonis.species$min <- calculateadonis(dset = meta(pseq.species),
+                                           matrix = bray.dist.m.species,
+                                           covariates = c("BL_AGE", "SEX"),
+                                           npermutations = 1000)
+     adonis.species$max <- calculateadonis(dset = meta(pseq.species),
+                                           matrix = bray.dist.m.species,
+                                           covariates = c("BL_AGE", "SEX", "BMI", "CURR_SMOKE", "Q57X", "DIAB",
+                                                          "BL_USE_RX_C03", "BL_USE_RX_C07", "BL_USE_RX_C08", "BL_USE_RX_C09"),
+                                           npermutations = 1000)
+     saveRDS(adonis.species, file = "rds/adonis.species.rds")
+    } else {
+     adonis.species  <- readRDS("rds/adonis.species.rds")
+}
+```
+
+
 ```{r save session}
 save.image(file = paste0("session/comparepseqs.Rdata"))
 ```
