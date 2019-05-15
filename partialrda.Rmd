@@ -41,51 +41,47 @@ source("articletwo-rrbiome.R")
 Loading phyloseq object
 
 ```{r data}
-pseq.genus <- readRDS("data/phfinrisk_genus_all_drop50k_2018-11-16.RDs")
-pseq.species <- readRDS("data/phfinrisk_species_all_drop50k_2018-12-21.RDs")
-```
-
-Updating phyloseq objects
-
-```{r updating phyloseq objects}
-phyloseq::sample_data(pseq.genus) <- phyloseq::sample_data(filter.phenotype.data(pseq.genus))
-phyloseq::sample_data(pseq.species) <- phyloseq::sample_data(filter.phenotype.data(pseq.species))
+pseq.genus <- import_filter_data("data/phfinrisk_genus_all_drop50k_2018-11-16.RDs")
+pseq.species <- import_filter_data("data/phfinrisk_species_all_drop50k_2018-12-21.RDs")
 pseq.genus.core <- core(pseq.genus, detection = 0.001, prevalence = 0.01)
 ```
 
+```{r abundances to matrix function}
+transform.matrix <- function(pseq, transformation = "clr") {
+    microbiome::transform(pseq, transformation) %>%
+        microbiome::abundances() %>%
+            t() %>%
+            as.matrix()
+ }
+```
 
 ```{r transformations}
-rda.abundances.species  <- microbiome::transform(pseq.species, "clr") %>%
-    microbiome::abundances() %>%
-    t() %>%
-    as.matrix()
-
-rda.abundances.genus  <- microbiome::transform(pseq.genus, "clr") %>%
-    microbiome::abundances() %>%
-    t() %>%
-    as.matrix()
-
-rda.abundances.genus.core  <- microbiome::transform(pseq.genus.core, "clr") %>%
-    microbiome::abundances() %>%
-    t() %>%
-    as.matrix()
+rda.abundances.species  <- transform.matrix(pseq.species)
+rda.abundances.genus  <- transform.matrix(pseq.genus)
+rda.abundances.genus.core  <- transform.matrix(pseq.genus.core)
 ```
 ## All models
 
 ```{r model function}
-modelfunction <- function(x, rda.abund, df.meta, modelstr = "rda.abund ~ %s + Condition(%s)") {
+modelfunction <- function(x,
+                          rda.abund,
+                          df.meta,
+                          modelstr = "rda.abund ~ %s + Condition(%s)",
+                          permutations = 1000) {
     covariates <- c("BL_AGE", "SEX", "BMI", "CURR_SMOKE", "Q57X",
                    "DIAB", "BL_USE_RX_C03", "BL_USE_RX_C07",
                    "BL_USE_RX_C08", "BL_USE_RX_C09")
     fo <- sprintf(modelstr, x, paste0(covariates, collapse = "+"))
     model <- rda(as.formula(fo), data = df.meta)
-    anova.term <- anova(model, by="term", perm=1000)
+    anova.term <- anova(model, by="term", perm=permutations)
     data.frame(var = as.character(x),
                beta = coef(model)[,1][[ifelse(x == "HYPERTENSION", "HYPERTENSION1", x)]],
-               RDA.Conditioned = summary(model)$partial.chi,
-               RDA.Constrained = summary(model)$constr.chi,
-               RDA.Unconstrained = summary(model)$unconst.chi,
-               p.anova = anova.term[["Pr(>F)"]][1],
+               conditioned = ifelse("partial.chi" %in% names(summary(model)),
+                                        summary(model)$partial.chi,
+                                        0),
+               constrained = summary(model)$constr.chi,
+               unconstrained = summary(model)$unconst.chi,
+                p.anova = anova.term[["Pr(>F)"]][1],
                fo = fo)
 }
 ```
@@ -93,19 +89,19 @@ modelfunction <- function(x, rda.abund, df.meta, modelstr = "rda.abund ~ %s + Co
 ```{r return parser}
 returnparser <- function(ret){
     res <- do.call(rbind, ret) %>%
-        mutate(RDA.total =  RDA.Conditioned + RDA.Constrained + RDA.Unconstrained,
-               RDA.Conditioned.percent = RDA.Conditioned/RDA.total,
-               RDA.Constrained.percent = RDA.Constrained/RDA.total,
-               RDA.Unconstrained.percent = RDA.Unconstrained/RDA.total
+        mutate(RDA.total =  conditioned + constrained + unconstrained,
+               conditioned = conditioned/RDA.total,
+               constrained = constrained/RDA.total,
+               unconstrained = unconstrained/RDA.total
                ) 
 
     res %>%
         dplyr::select(var,
                       beta,
                       p.anova,
-                      RDA.Conditioned.percent,
-                      RDA.Constrained.percent,
-                      RDA.Unconstrained.percent) %>%
+                      conditioned,
+                      constrained,
+                      unconstrained) %>%
         kable()
 }
 ```
@@ -195,13 +191,19 @@ plot(ex.rda)
 
 ## Non-partial RDA species
 
-```{r models species}
+```{r species non condition covariatesmodels test, eval = FALSE}
+rda.subset <- rda.abundances.species[1:100, 1:100]
+meta.subset <- meta(pseq.species) %>%
+    tibble::rownames_to_column("id") %>%
+    dplyr::filter(id %in% rownames(rda.subset)) 
+
 ret.species <- mclapply(c2l("SYSTM", "DIASM", "PULSEPRESSURE", "MAP", "HYPERTENSION"),
               modelfunction,
-              rda.abund = rda.abundances.species,
-              df.meta = meta(pseq.species),
+              rda.abund = rda.subset,
+              df.meta = meta.subset,
               modelstr = "rda.abund ~ %s + %s",
               mc.cores = 5)
+
 returnparser(ret.species)
 ```
 
