@@ -633,7 +633,7 @@ adjmean.lacto.saltgroup <- predict(lm.lacto.saltgroup,
     dplyr::rename(estimate = fit,
                   conf.low = lwr,
                   conf.high = upr) %>%
-    rownames::tibble_to_column("term")
+    tibble::rownames_to_column("term")
 ```
 
 
@@ -678,7 +678,7 @@ calculateglm(df.genus.salt,
 Assesment for linear model asumptions
 
 ```{r table map lactobacillus}
-gvlma.table.plot(lm(log(MAP) ~ lactobacillus.bacteria + BL_AGE + SEX, data = df.genus.salt))$table %>% kable
+gvlma.table.plot(lm(MAP ~ lactobacillus.bacteria + BL_AGE + SEX, data = df.genus.salt))$table %>% kable
 ```
 
 ```{r plot map lactobacillus, fig.width=12, fig.height=14}
