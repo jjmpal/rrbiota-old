@@ -1,0 +1,102 @@
+---
+title: "Compare pseqs"
+author: "Joonatan Palmu"
+date: "`r format(Sys.time(), '%d.%m.%Y')`"
+output: html_document
+---
+	
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(include = TRUE, xecho = TRUE, message = FALSE, results='asis', cache=FALSE, warning=FALSE)
+knitr::opts_chunk$set(cache.path = 'cache/', output.dir="cache/",
+                      file.path = 'cache/', fig.path = 'cache/')
+
+dir.create("rds/", showWarnings = FALSE)
+dir.create("session/", showWarnings = FALSE)
+```
+
+```{r Command line arguments}
+now <- format(Sys.time(), '%Y%m%d-%H%M%S')
+
+if (exists("args")) {
+    if ("time" %in% names(args)) now <- args$time
+    
+    if("clean" %in% names(args)) {
+        unlink("rds", recursive=TRUE)
+        unlink("cache", recursive=TRUE)
+    }
+    if ("loadlast" %in% names(args) )
+        load(paste0("session/", sort(list.files("session"), decreasing = TRUE)[1]))
+}
+```
+
+# Importing libraries:
+
+```{r libraries}
+library(dplyr)
+library(tibble)
+library(phyloseq)
+library(microbiome)
+library(parallel)
+library(knitr)
+```
+
+### RR biome functions
+
+<details>
+  <summary>Open/Close</summary>
+  
+```{r RR biome functions, code=readLines("articletwo-rrbiome.R")}
+source("articletwo-rrbiome.R")
+```
+
+</details>
+
+# Loading data
+
+ phyloseq-objektit: 1) SHOGUN 2) CENTRIFUGE 3) NCBI70 4) GTDB 5) 16S
+
+```{r data}
+pseq = list()
+pseq$shogun <- import_filter_data("data/phfinrisk_species_all_drop50k_2018-12-21.RDs")
+pseq$R16S <- import_filter_data("data/phfinrisk_16S_otu_raw_2019-02-19.RDs")
+pseq$gtdb <- import_filter_data("data/phfinrisk_gtdb_species_all_drop50k_2019-01-14.RDs")
+pseq$ncbi <- import_filter_data("data/phfinrisk_custom70_species_all_2019-01-29.RDs")
+#pseq$centrifuge <- import_filter_data("data/phfinrisk_centrifuge_species_all_2018-11-30.RDs")
+```
+
+```{r alpha diversities}
+dset <- mclapply(pseq, function(x) meta.merge.alphadiversity(x) %>%
+                                   mutate(diversities_shannon = scale(diversities_shannon)),
+                 mc.cores = 4)
+
+fo.alpha.min <- "%s ~ BL_AGE + SEX  + diversities_shannon"
+
+alpha.min <- mclapply(dset, function(x) calculateglm(x, modelstring = fo.alpha.min),
+                 mc.cores = 4)
+
+fo.alpha.full <- "%s ~ BL_AGE + SEX + BMI + CURR_SMOKE + Q57X + DIAB + BL_USE_RX_C03 + BL_USE_RX_C07 + BL_USE_RX_C08 + BL_USE_RX_C09 + diversities_shannon"
+
+alpha.full <- mclapply(dset, function(x) calculateglm(x, modelstring = fo.alpha.full),
+                 mc.cores = 4)
+```
+
+```{r join alphas}
+sfx <- names(dset)
+res <- alpha.full[[1]]
+
+for(i in head(seq_along(alpha.full), -1)) {
+    res <- merge(res,
+                 alpha.full[[i+1]],
+                 all = TRUE,
+                 suffixes = paste0("_", sfx[i:(i+1)]),
+                 by = c("model_name", "term", "response"))
+}
+
+res %>%
+    dplyr::select(response, starts_with("estimate_")) %>%
+    kable
+```
+
+```{r save session}
+save.image(file = paste0("session/comparepseqs.Rdata"))
+```
