@@ -535,7 +535,7 @@ lm.lacto.duna %>% tidy %>% kable
 gvlma.table.plot(lm.lacto.duna)$table %>% kable
 ```
 
-```{r abund salt lm continuous checks plot, fig.width=12, fig.height=8}
+```{r abund salt lm continuous checks plot, fig.width=12, fig.height=14}
 gvlma.table.plot(lm.lacto.duna)$plot %>% plot
 ```
 
@@ -555,7 +555,7 @@ Assesment for linear model asuumptions
 gvlma.table.plot(lm.lacto.saltgroup)$table %>% kable
 ```
 
-```{r abund salt lm group checks plot, fig.width=12, fig.height=8}
+```{r abund salt lm group checks plot, fig.width=12, fig.height=14}
 gvlma.table.plot(lm.lacto.saltgroup)$plot %>% plot
 ```
 
