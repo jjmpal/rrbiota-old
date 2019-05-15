@@ -10,7 +10,7 @@ knitr::opts_chunk$set(include = TRUE, xecho = TRUE, message = FALSE, results='as
 knitr::opts_chunk$set(cache.path = 'cache/', output.dir="cache/",
                       file.path = 'cache/', fig.path = 'cache/')
 
-dir.create("rds/", showWarnings = FALSE)
+dir.create("rds-comparepseqs/", showWarnings = FALSE)
 dir.create("session/", showWarnings = FALSE)
 ```
 
@@ -21,7 +21,7 @@ if (exists("args")) {
     if ("time" %in% names(args)) now <- args$time
     
     if("clean" %in% names(args)) {
-        unlink("rds", recursive=TRUE)
+        unlink("rds-comparepseqs", recursive=TRUE)
         unlink("cache", recursive=TRUE)
     }
     if ("loadlast" %in% names(args) )
@@ -99,11 +99,11 @@ res %>%
 
 
 ```{r matrix calculation}
-if (!file.exists("rds/comparepseqs_bray_matrix.rds")) {
+if (!file.exists("rds-comparepseqs/comparepseqs_bray_matrix.rds")) {
     bray.dist.matrix <- mclapply(pseq, function(x) calculate.beta.matrix(x), mc.cores = 4)
-    saveRDS(bray.dist.matrix, file = "rds/comparepseqs_bray_matrix.rds")
+    saveRDS(bray.dist.matrix, file = "rds-comparepseqs/comparepseqs_bray_matrix.rds")
 } else {
-    bray.dist.matrix  <- readRDS("rds/comparepseqs_bray_matrix.rds")
+    bray.dist.matrix  <- readRDS("rds-comparepseqs/comparepseqs_bray_matrix.rds")
 }
 ```
 
