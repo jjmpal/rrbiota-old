@@ -97,8 +97,15 @@ import_salt_pseq <- function(file = "data/phfinrisk_genus_all_drop50k_2018-11-16
                ANYDRUG = factor(ifelse(BL_USE_RX_C03  == 1 | BL_USE_RX_C07 == 1 |
                                        BL_USE_RX_C08 == 1  | BL_USE_RX_C09 == 1, 1, 0)),
                HYPERTENSION = factor(ifelse(SYSTM >= 140 | DIASM >= 90 | ANYDRUG == 1, 1, 0)),
+               PULSEPRESSURE = SYSTM - DIASM,
+               MAP = 2./3.*DIASM + 1./3.*SYSTM,
+               SYSTM = myscale(SYSTM),
+               DIASM = myscale(DIASM),
+               PULSEPRESSURE = myscale(PULSEPRESSURE),
+               MAP = myscale(MAP),
                dUNA = myscale(NA.)) %>%
-        select("rowname", "BL_AGE", "SEX", "dUNA", "HYPERTENSION") %>%
+        select("rowname", "BL_AGE", "SEX", "dUNA", "HYPERTENSION", "SYSTM",
+               "DIASM", "PULSEPRESSURE", "MAP") %>%
         na.omit %>%
         tibble::remove_rownames() %>%
         tibble::column_to_rownames(var = "rowname")
