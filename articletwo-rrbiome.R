@@ -13,12 +13,14 @@ myscale <- function(x){
 }
 
 filter.phenotype.data <- function(pseq,
-                                  included = c("DNA_OK", "MEN", "BL_AGE", "SYSTM", "DIASM", "BP_TREAT", "BMI",
-                                               "CURR_SMOKE", "DIAB", "BL_USE_RX_C09", "Q57X", "BL_USE_RX_C03",
-                                               "BL_USE_RX_C07", "BL_USE_RX_C08")) {
+                                  included = c("MEN", "BL_AGE", "SYSTM", "DIASM", "BMI",
+                                               "CURR_SMOKE", "DIAB", "BL_USE_RX_C09", "Q57X",
+                                               "BL_USE_RX_C03",
+                                               "BL_USE_RX_C07", "BL_USE_RX_C08"),
+                                  excluded) {
     meta(pseq) %>%
         tibble::rownames_to_column(var = "rowname") %>%
-        dplyr::select(rowname, included) %>%
+        dplyr::select(rowname, included[!included %in% excluded]) %>%
         stats::na.omit() %>%
         dplyr::mutate(ANYDRUG = factor(ifelse(BL_USE_RX_C03  == 1 | BL_USE_RX_C07 == 1 |
                                        BL_USE_RX_C08 == 1  | BL_USE_RX_C09 == 1, 1, 0)),
@@ -35,14 +37,14 @@ filter.phenotype.data <- function(pseq,
                       DIASM = myscale(DIASM),
                       PULSEPRESSURE = myscale(PULSEPRESSURE),
                       MAP = myscale(MAP),
-                      DIAB = as.factor(DIAB),
+#                      DIAB = ifelse("DIAB" %in% excluded, NA, as.factor(DIAB)),
                       SEX = as.factor(SEX),
                       Q57X = as.factor(Q57X),
                       BL_USE_RX_C03 = as.factor(BL_USE_RX_C03),
                       BL_USE_RX_C07 = as.factor(BL_USE_RX_C07),
                       BL_USE_RX_C08 = as.factor(BL_USE_RX_C08),
                       BL_USE_RX_C09 = as.factor(BL_USE_RX_C09)) %>%
-        dplyr::select(-MEN, -DNA_OK) %>%
+        dplyr::select(-MEN) %>%
         tibble::remove_rownames() %>%
         tibble::column_to_rownames(var = "rowname")
 }
@@ -82,9 +84,10 @@ calculateglm <- function(dset,
                       conf.high = estimate + qnorm(1- 0.05/2) * std.error)
 }
 
-import_filter_data <- function(file) {
+import_filter_data <- function(file, excluded = c()) {
     pseq.full <- readRDS(file)
-    phyloseq::sample_data(pseq.full) <- phyloseq::sample_data(filter.phenotype.data(pseq.full))
+    pseq.meta <- filter.phenotype.data(pseq.full, excluded = excluded)
+    phyloseq::sample_data(pseq.full) <- phyloseq::sample_data(pseq.meta)
     return(pseq.full)
 }
 

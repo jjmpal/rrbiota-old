@@ -38,6 +38,7 @@ library(phyloseq)
 library(microbiome)
 library(parallel)
 library(knitr)
+library(gridExtra)
 ```
 
 ### RR biome functions
@@ -47,6 +48,17 @@ library(knitr)
   
 ```{r RR biome functions, code=readLines("articletwo-rrbiome.R")}
 source("articletwo-rrbiome.R")
+```
+
+</details>
+
+### Plot functions
+
+<details>
+  <summary>Open/Close</summary>
+
+```{r Plot functions, code=readLines("articletwo-ggplot.R")}
+source("articletwo-ggplot.R")
 ```
 
 </details>
@@ -61,30 +73,99 @@ pseq$shogun <- import_filter_data("data/phfinrisk_species_all_drop50k_2018-12-21
 pseq$R16S <- import_filter_data("data/phfinrisk_16S_otu_raw_2019-02-19.RDs")
 pseq$gtdb <- import_filter_data("data/phfinrisk_gtdb_species_all_drop50k_2019-01-14.RDs")
 pseq$ncbi <- import_filter_data("data/phfinrisk_custom70_species_all_2019-01-29.RDs")
-#pseq$centrifuge <- import_filter_data("data/phfinrisk_centrifuge_species_all_2018-11-30.RDs")
+pseq$centrifuge <- import_filter_data("data/phfinrisk_centrifuge_species_all_2018-11-30.RDs",
+                                      excluded = c("DIAB"))
 ```
 
 ```{r alpha diversities}
 dset <- mclapply(pseq, function(x) meta.merge.alphadiversity(x) %>%
-                                   mutate(diversities_shannon = scale(diversities_shannon)),
-                 mc.cores = 4)
+                                             mutate(diversities_shannon = scale(diversities_shannon)),
+                           mc.cores = length(pseq))
 
 fo.alpha.min <- "%s ~ BL_AGE + SEX  + diversities_shannon"
+fo.alpha.full <- "%s ~ BL_AGE + SEX + BMI + CURR_SMOKE + Q57X + BL_USE_RX_C03 + BL_USE_RX_C07 + BL_USE_RX_C08 + BL_USE_RX_C09 + diversities_shannon" # MISSING DIAB
 
-alpha.min <- mclapply(dset, function(x) calculateglm(x, modelstring = fo.alpha.min),
-                 mc.cores = 4)
-
-fo.alpha.full <- "%s ~ BL_AGE + SEX + BMI + CURR_SMOKE + Q57X + DIAB + BL_USE_RX_C03 + BL_USE_RX_C07 + BL_USE_RX_C08 + BL_USE_RX_C09 + diversities_shannon"
-
-alpha.full <- mclapply(dset, function(x) calculateglm(x, modelstring = fo.alpha.full),
-                 mc.cores = 4)
+alphadiversity <-  mclapply(dset, function(x)
+    list(min =  calculateglm(x, modelstring = fo.alpha.min),
+         full = calculateglm(x, modelstring = fo.alpha.full)),
+    mc.cores = length(pseq))
 ```
 
-```{r join alphas}
-sfx <- names(dset)
-res <- alpha.full[[1]]
 
-for(i in head(seq_along(alpha.full), -1)) {
+```{r dissimilarity matrix}
+if (!file.exists("rds-comparepseqs/comparepseqs_bray_matrix.rds")) {
+    bray.dist.matrix <- mclapply(pseq, function(x) calculate.beta.matrix(x), mc.cores = length(pseq))
+    saveRDS(bray.dist.matrix, file = "rds-comparepseqs/comparepseqs_bray_matrix.rds")
+} else {
+    bray.dist.matrix  <- readRDS("rds-comparepseqs/comparepseqs_bray_matrix.rds")
+}
+```
+
+ ```{r adonis calculation}
+ if (!file.exists("rds-comparepseqs/beta.diversity.rds")) {
+     covariates.min <- c("BL_AGE", "SEX")
+     covariates.full <- c("BL_AGE", "SEX", "BMI", "CURR_SMOKE",
+                          "Q57X", "BL_USE_RX_C03", "BL_USE_RX_C07",
+                          "BL_USE_RX_C08", "BL_USE_RX_C09")
+
+     betadiversity <- mclapply(c2l(names(pseq)), function(x)
+         list(min = calculateadonis(dset = meta(pseq[[x]]),
+                                    matrix = bray.dist.matrix[[x]],
+                                    covariates = covariates.min,
+                                    npermutations = 1000),
+              full = calculateadonis(dset = meta(pseq[[x]]),
+                                           matrix = bray.dist.matrix[[x]],
+                                           covariates = covariates.full
+                                           npermutations = 1000)
+         mc.cores = length(pseq))
+     saveRDS(betadiversity, file = "rds-comparepseqs/beta.diversity.rds")
+    } else {
+     betadiversity <- readRDS("rds-comparepseqs/beta.diversity.rds")
+}
+```
+
+
+```{r plot alpha diversity, eval = FALSE}
+beta.min <- lapply(c2l(names(pseq)), function(x) {
+    alpha.min[[x]] %>% mutate(R2 = 0) %>% select(model_name, R2, response)
+})
+
+beta.min[[1]] %>%
+         data.table::rbindlist(id = "model_name")
+
+#            dplyr::filter(term %in% responses) %>%
+            dplyr::select(response, R2)
+
+diversity.min <- mergediversities(alpha.min, beta.min)
+
+
+alpha.plot.min <- mclapply(alpha.min, function(x) { mergediversities(x, 
+                               },
+                               ## plot.alpha(x %>%
+                               ##                    mutate(Name = term,
+                               ##                           R2 = 0,
+                               ##                           Qstar = ifelse(p.value < 0.05, '*', ' ')),
+                               ##                    colorlimit = 0.6),
+                           mc.cores = length(pseq))
+
+gs4 <- c(list("yaxis" = alpha.plot.min[[1]]$yaxis,
+              "xaxis" = alpha.plot.min[[1]]$xaxis),
+              lapply(alpha.plot.min, function(x) x$plot))
+
+g4.firstline <- c(1, seq(3, length(alpha.plot.min)+2))
+g4.secondline <- c(NA, rep(2, length(alpha.plot.min)))
+
+g4 <- arrangeGrob(grobs = gs4, layout_matrix = rbind(g4.firstline, g4.secondline))
+
+ggsave(file = "cache/pseqdiff-alpha-min.png", plot=g4, height=6, width=9)
+                       
+```
+
+```{r join alphas, eval = FALSE}
+sfx <- names(dset)
+res <- alpha.min[[1]]
+
+for(i in head(seq_along(alpha.min), -1)) {
     res <- merge(res,
                  alpha.full[[i+1]],
                  all = TRUE,
@@ -92,40 +173,16 @@ for(i in head(seq_along(alpha.full), -1)) {
                  by = c("model_name", "term", "response"))
 }
 
+res %>% colnames
+
 res %>%
-    dplyr::select(response, starts_with("estimate_")) %>%
-    mutate_at(vars(starts_with("estimate_")), .funs = list(diff = ~(.-estimate_shogun)/estimate_shogun)) %>%
-    select(response, sort(names(.))) %>%
-    kable
+    dplyr::select(response, starts_with("estimate_"), starts_with("p.value"))
+
 ```
 
 
-```{r matrix calculation}
-if (!file.exists("rds-comparepseqs/comparepseqs_bray_matrix.rds")) {
-    bray.dist.matrix <- mclapply(pseq, function(x) calculate.beta.matrix(x), mc.cores = 4)
-    saveRDS(bray.dist.matrix, file = "rds-comparepseqs/comparepseqs_bray_matrix.rds")
-} else {
-    bray.dist.matrix  <- readRDS("rds-comparepseqs/comparepseqs_bray_matrix.rds")
-}
-```
 
- ```{r adonis calculation, eval = FALSE}
- if (!file.exists("rds/adonis.species.rds")) {
-     adonis.species = list()
-     adonis.species$min <- calculateadonis(dset = meta(pseq.species),
-                                           matrix = bray.dist.m.species,
-                                           covariates = c("BL_AGE", "SEX"),
-                                           npermutations = 1000)
-     adonis.species$max <- calculateadonis(dset = meta(pseq.species),
-                                           matrix = bray.dist.m.species,
-                                           covariates = c("BL_AGE", "SEX", "BMI", "CURR_SMOKE", "Q57X", "DIAB",
-                                                          "BL_USE_RX_C03", "BL_USE_RX_C07", "BL_USE_RX_C08", "BL_USE_RX_C09"),
-                                           npermutations = 1000)
-     saveRDS(adonis.species, file = "rds/adonis.species.rds")
-    } else {
-     adonis.species  <- readRDS("rds/adonis.species.rds")
-}
-```
+
 
 
 ```{r save session}

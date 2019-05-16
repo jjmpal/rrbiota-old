@@ -46,7 +46,9 @@ plot.alpha <- function(diversity,  colorlimit = 0.25) {
                 legend = plot.alpha.diversity.legend))
 }
 
-plot.beta <- function(diversity, fig.permar2.text = "R2 of variable \nin Bray-Curtis distance", fig.textsize = 15) {
+plot.beta <- function(diversity,
+                      fig.permar2.text = "R2 of variable \nin Bray-Curtis distance",
+                      fig.textsize = 15) {
     plot.beta.diversity <- ggplot(diversity, aes(x = reorder(Name, R2), y= R2)) +
         geom_bar(stat="identity", color="black") +
         coord_flip() +
