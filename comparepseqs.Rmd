@@ -94,6 +94,8 @@ for(i in head(seq_along(alpha.full), -1)) {
 
 res %>%
     dplyr::select(response, starts_with("estimate_")) %>%
+    mutate_at(vars(starts_with("estimate_")), .funs = list(diff = ~(.-estimate_shogun)/estimate_shogun)) %>%
+    select(response, sort(names(.))) %>%
     kable
 ```
 
