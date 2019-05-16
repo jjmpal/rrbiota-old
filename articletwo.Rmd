@@ -520,9 +520,12 @@ fig3foot <- "Only bacteria with significant associations are shown. Blood pressu
 writeimage(doc, 3, "cache/maaslin.png", fig3head, fig3foot)
 ```
 
-### Lactobacillus
+## Lactobacillus (figure 4)
 
-Load genus data with dU-NA and combine it in a data frame with clr transformed lactobacillus abundances.
+The fourth and final step is to study how the amount of dietary salt
+affect the lactobacillus abundances and how these abundances affect
+the odds for hypertension. We load genus data with dU-NA and combine
+it in a data frame with CLR transformed lactobacillus abundances.
 
 ```{r lacto data frame}
 pseq.genus.salt <- import_salt_pseq("data/phfinrisk_genus_all_drop50k_2018-11-16.RDs")
@@ -541,10 +544,10 @@ df.genus.salt <- meta(pseq.genus.salt) %>%
                   lacto_groups = relevel(factor(dplyr::ntile(lactobacillus.bacteria, 3)), ref='1'))
 ```
 
-Characteristics in salt analysis
+Characteristics in salt analysis. Analyses are limited by the number
+of participants with collected dU-NA.
 
 ```{r salt characteristics}
-
 pseq.genus.salt %>%
     meta %>%
     gather(key,value) %>%
@@ -553,73 +556,77 @@ pseq.genus.salt %>%
                        Mean = mean(as.numeric(value), na.rm = TRUE),
                        sd = sd(as.numeric(value), na.rm = TRUE),
                        NAs = sum(is.na(value))))  %>%
+    mutate_if(is.numeric, round, 2) %>%
     kable()
-
-
 ```
 
-### Daily urine natrium
+### How sodium affects lactobacillus abundances?
 
-Associations between lactobacillus and dU-NA
+Associations between continuous dU-NA and lactobacillus abundances.
 
 ```{r abund salt lm continuous}
 lm.lacto.duna <- lm(lactobacillus.bacteria ~ dUNA + BL_AGE + SEX, data = df.genus.salt)
-lm.lacto.duna %>% tidy %>% kable
+lm.lacto.duna %>% tidy %>% mutate_if(is.numeric, round, 3) %>% kable
 ```
+
+Testing assumptions for linear regression analysis
 
 ```{r abund salt lm continuous checks table}
 gvlma.table.plot(lm.lacto.duna)$table %>% kable
 ```
 
+Diagnostic plots for linear model
+
 ```{r abund salt lm continuous checks plot, fig.width=12, fig.height=14}
 gvlma.table.plot(lm.lacto.duna)$plot %>% plot
 ```
 
-### Salt groups
+### Is there associations between salt groups and abudances?
 
-Association between lactobacillus and salt groups
+Associations between categorical dU-NA split in three equal size groups and lactobacillus abundances
 
 ```{r abund salt lm group}
 lm.lacto.saltgroup <- lm(lactobacillus.bacteria ~ salt_groups + BL_AGE + SEX, data = df.genus.salt)
-lm.lacto.saltgroup %>% tidy %>% kable
+lm.lacto.saltgroup %>% tidy %>% mutate_if(is.numeric, round, 3) %>% kable
 ```
 
-
-Assesment for linear model asuumptions
+Testing assumptions for linear regression analysis
 
 ```{r abund salt lm group checks table}
 gvlma.table.plot(lm.lacto.saltgroup)$table %>% kable
 ```
 
+Diagnostic plots for linear model
+
 ```{r abund salt lm group checks plot, fig.width=12, fig.height=14}
 gvlma.table.plot(lm.lacto.saltgroup)$plot %>% plot
 ```
 
-```{r equal variance}
-bartlett.test(lactobacillus.bacteria ~ salt_groups, data = df.genus.salt)
-```
+Bartlett's test for equality of variance gives p = `r
+bartlett.test(lactobacillus.bacteria ~ salt_groups, data =
+df.genus.salt)$p.value`. 
 
-```{r one way test salt groups}
-oneway.test(lactobacillus.bacteria ~ salt_groups, data = df.genus.salt, var.equal = TRUE)
-```
+One-way test assuming normal distributions gives for equal mean p = `r
+oneway.test(lactobacillus.bacteria ~ salt_groups, data =
+df.genus.salt, var.equal = TRUE)$p.value`.
 
-Anova between lactobacillus and salt groups
+Analysing also differences between salt groups using ANOVA.
 
 ```{r salt anova}
 aov.lacto.saltgroup <- aov(lactobacillus.bacteria ~ salt_groups + BL_AGE + SEX, data = df.genus.salt)
 aov.lacto.saltgroup %>% xtable %>% kable
 ```
 
-Tukey's range test for lactobacillus and salt groups
+Tukey's range for pairwise test between salt groups
 
 ```{r salt HSD}
 hsd.lacto.saltgroup <- TukeyHSD(aov.lacto.saltgroup, "salt_groups")
 hsd.lacto.saltgroup$salt_groups %>% kable
 ```
 
-### Adjusted means
+### Adjusting means for forest plot
 
-Calculate adjusted means for lactobacillus 
+Calculate adjusted means for lactobacillus assuming male sex and mean age.
 
 ```{r lacto adjusted means}
 df.genus.salt.unadjusted <- with(df.genus.salt, data.frame(salt_groups = as.factor(seq(3)),
@@ -637,53 +644,32 @@ adjmean.lacto.saltgroup <- predict(lm.lacto.saltgroup,
 ```
 
 
-### Odds for hypertension
+## Is there associations between lactobacillus abudance and hypertension?
 
-Odds for hypertension
-
-```{r glm htn lacto groups}
-glm.hypertension.lactogroup <- glm(HYPERTENSION ~ lacto_groups + BL_AGE + SEX,
-                  family = binomial(link=logit),
-                  data = df.genus.salt) %>%
-    broom::tidy(conf.int = TRUE, conf.level = 0.95, exponentiate = TRUE)
-glm.hypertension.lactogroup %>% kable
-```
-
-```{r glm htn lacto continuous}
-glm.hypertension.lactocontinuous <- glm(HYPERTENSION ~ lactobacillus.bacteria + BL_AGE + SEX,
-                  family = binomial(link=logit),
-                  data = df.genus.salt) %>%
-    broom::tidy(conf.int = TRUE, conf.level = 0.95, exponentiate = TRUE)
-glm.hypertension.lactocontinuous %>% kable
-```
-
-Daily urine sodium and BP
-
-```{r dUNA RR}
-calculateglm(df.genus.salt, modelstring = "%s ~ dUNA + BL_AGE + SEX", filterstr = "dUNA") %>%
-    select(response, term, estimate, p.value) %>%
-    kable
-```
-
-Daily urine sodium and BP
+Studying associations between blood pressure variables and lactobacillus abundances
 
 ```{r lactobacillus RR}
 calculateglm(df.genus.salt,
              modelstring = "%s ~ lactobacillus.bacteria + BL_AGE + SEX",
-             filterstr = "lactobacillus") %>%
-    select(response, term, estimate, p.value) %>%
+             filterstr = "lactobacillus") %>% 
+    select(response, term, estimate, std.error, p.value) %>%
+    mutate_if(is.numeric, round, 3) %>%
     kable
 ```
 
-Assesment for linear model asumptions
+Checking assumptions for linear regression for MAP
 
 ```{r table map lactobacillus}
 gvlma.table.plot(lm(MAP ~ lactobacillus.bacteria + BL_AGE + SEX, data = df.genus.salt))$table %>% kable
 ```
 
+Diagnostic plots for linear model
+
 ```{r plot map lactobacillus, fig.width=12, fig.height=14}
 gvlma.table.plot(lm(MAP ~ lactobacillus.bacteria + BL_AGE + SEX, data = df.genus.salt))$plot %>% plot
 ```
+
+
 
 ```{r odds htn lacto}
 odds.hypertension.lactogroup <- glm.hypertension.lactogroup %>%
@@ -691,9 +677,29 @@ odds.hypertension.lactogroup <- glm.hypertension.lactogroup %>%
     select(term, estimate, conf.low, conf.high) %>%
     add_row(term = "lacto_groups1", estimate = 1.0, conf.low = NA, conf.high = NA) %>%
     dplyr::filter(grepl("lacto", term))
+odds.hypertension.lactogroup %>% kable
 ```
 
-### Twin-forest plot
+Odds for hypertension by categorical lactobacillus abundance.
+
+```{r glm htn lacto groups}
+glm.hypertension.lactogroup <- glm(HYPERTENSION ~ lacto_groups + BL_AGE + SEX,
+                  family = binomial(link=logit),
+                  data = df.genus.salt) %>%
+    broom::tidy(conf.int = TRUE, conf.level = 0.95, exponentiate = TRUE) %>%
+
+odds.hypertension.lactogroup <- glm.hypertension.lactogroup %>%
+    filter(!grepl("Intercept", term)) %>%
+    select(term, estimate, conf.low, conf.high) %>%
+    add_row(term = "lacto_groups1", estimate = 1.0, conf.low = NA, conf.high = NA) %>%
+    dplyr::filter(grepl("lacto", term))
+
+glm.hypertension.lactogroup %>%
+    mutate_if(is.numeric, round, 3) %>%
+    kable
+```
+
+## Twin-forest plot
 
 ```{r forest plot lacto}
 gsalt <- grid.arrange(
