@@ -710,7 +710,6 @@ g.odds.autoplot <- autoplot(glm.hypertension.lactogroup,
                             size = 0.1) +
     theme_minimal()
 ggsave(file = "cache/odds-autoplot.png", plot=g.odds.autoplot, height=10, width=6, dpi = 300)
-
 ```
 
 ## Twin-forest plot
