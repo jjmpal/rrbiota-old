@@ -103,24 +103,23 @@ if (!file.exists("rds-comparepseqs/comparepseqs_bray_matrix.rds")) {
 ```
 
  ```{r adonis calculation}
-bray.dist.matrix %>% str
-
- if (!file.exists("rds-comparepseqs/beta.diversity.rds")) {
-     covariates.min <- c("BL_AGE", "SEX")
-     covariates.full <- c("BL_AGE", "SEX", "BMI", "CURR_SMOKE",
-                          "Q57X", "BL_USE_RX_C03", "BL_USE_RX_C07",
-                          "BL_USE_RX_C08", "BL_USE_RX_C09")
-
-     betadiversity <- mclapply(c2l(names(pseq)), function(x)
-         list(min = calculateadonis(dset = meta(pseq[[x]]),
+if (!file.exists("rds-comparepseqs/beta.diversity.rds")) {
+    covariates.min <- c("BL_AGE", "SEX")
+    covariates.full <- c("BL_AGE", "SEX", "BMI", "CURR_SMOKE",
+                         "Q57X", "BL_USE_RX_C03", "BL_USE_RX_C07",
+                         "BL_USE_RX_C08", "BL_USE_RX_C09")
+    
+    betadiversity <- mclapply(c2l(names(pseq)), function(x)
+        list(min = calculateadonis(dset = meta(pseq[[x]]),
+                                   matrix = bray.dist.matrix[[x]],
+                                   covariates = covariates.min,
+                                   npermutations = 1),
+             full = calculateadonis(dset = meta(pseq[[x]]),
                                     matrix = bray.dist.matrix[[x]],
-                                    covariates = covariates.min,
-                                    npermutations = 1000),
-              full = calculateadonis(dset = meta(pseq[[x]]),
-                                           matrix = bray.dist.matrix[[x]],
-                                           covariates = covariates.full,
-                                           npermutations = 1000),
-              mc.cores = length(pseq)))
+                                    covariates = covariates.full,
+                                    npermutations = 1)),
+        mc.cores = length(pseq))
+     
      saveRDS(betadiversity, file = "rds-comparepseqs/beta.diversity.rds")
     } else {
      betadiversity <- readRDS("rds-comparepseqs/beta.diversity.rds")
@@ -130,9 +129,36 @@ bray.dist.matrix %>% str
 
 ```{r plot alpha diversity, eval = FALSE}
 
-betadiversity
+str(betadiversity)
+
+a <- mergediversities(alphadiversity[["ncbi"]], betadiversity[["ncbi"]])
+
+alphadiversity[["ncbi"]]
+betadiversity[["ncbi"]]
+
+names(betadiversity)
+betadiversity[[""]]
+
+ alpha.select <- alphadiversity[["R16S"]][["min"]] %>% select(estimate, p.value, response)
+
+beta.rbind <- betadiversity[["R16S"]][["min"]] %>%
+    data.table::rbindlist(id = "model_name")
+
+%>%
+            dplyr::filter(term %in% responses) %>%
+            dplyr::select(response, R2)
+
+
+        merge( alpha.select , beta.rbind, by = "response") %>%
+            merge(names.dset %>% select(Covariate, Category, Name), by.x ="response", by.y = "Covariate") %>%
+            mutate(Qstar = ifelse(p.value < 0.05, '*', ' '))
+    })
+
+vectortolist(names(alphadiversity[["R16S"]]))
+
+c2l(names(pseq))
 beta.min <- lapply(c2l(names(pseq)), function(x) {
-    alpha.min[[x]] %>% mutate(R2 = 0) %>% select(model_name, R2, response)
+    mergediversities(alphadiversity[[x]], betadiversity[[x]])
 })
 
 beta.min[[1]] %>%
@@ -144,14 +170,8 @@ beta.min[[1]] %>%
 diversity.min <- mergediversities(alpha.min, beta.min)
 
 
-alpha.plot.min <- mclapply(alpha.min, function(x) { mergediversities(x, 
-                               },
-                               ## plot.alpha(x %>%
-                               ##                    mutate(Name = term,
-                               ##                           R2 = 0,
-                               ##                           Qstar = ifelse(p.value < 0.05, '*', ' ')),
-                               ##                    colorlimit = 0.6),
-                           mc.cores = length(pseq))
+alpha.plot.min <- mclapply(alpha.min, function(x) { mergediversities(},
+                               mc.cores = length(pseq))
 
 gs4 <- c(list("yaxis" = alpha.plot.min[[1]]$yaxis,
               "xaxis" = alpha.plot.min[[1]]$xaxis),
