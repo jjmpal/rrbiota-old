@@ -89,7 +89,7 @@ fo.alpha.full <- "%s ~ BL_AGE + SEX + BMI + CURR_SMOKE + Q57X + BL_USE_RX_C03 + 
 alphadiversity <-  mclapply(dset, function(x)
     list(min =  calculateglm(x, modelstring = fo.alpha.min),
          full = calculateglm(x, modelstring = fo.alpha.full)),
-    mc.cores = length(pseq))
+    mc.cores = length(dset))
 ```
 
 
@@ -100,6 +100,7 @@ if (!file.exists("rds-comparepseqs/comparepseqs_bray_matrix.rds")) {
 } else {
     bray.dist.matrix  <- readRDS("rds-comparepseqs/comparepseqs_bray_matrix.rds")
 }
+rm(pseq)
 ```
 
  ```{r adonis calculation}
@@ -110,21 +111,22 @@ if (!file.exists("rds-comparepseqs/beta.diversity.rds")) {
                          "Q57X", "BL_USE_RX_C03", "BL_USE_RX_C07",
                          "BL_USE_RX_C08", "BL_USE_RX_C09")
     
-    betadiversity <- mclapply(c2l(names(pseq)), function(x)
-        list(min = calculateadonis(dset = meta(pseq[[x]]),
+    betadiversity <- mclapply(c2l(names(dset)), function(x)
+        list(min = calculateadonis(dset = dset[[x]],
                                    matrix = bray.dist.matrix[[x]],
                                    covariates = covariates.min,
                                    npermutations = 1000),
-             full = calculateadonis(dset = meta(pseq[[x]]),
+             full = calculateadonis(dset = dset[[x]],
                                     matrix = bray.dist.matrix[[x]],
                                     covariates = covariates.full,
                                     npermutations = 1000)),
-        mc.cores = length(pseq))
+        mc.cores = length(dset))
      
      saveRDS(betadiversity, file = "rds-comparepseqs/beta.diversity.rds")
     } else {
-     betadiversity <- readRDS("rds-comparepseqs/beta.diversity.rds")
-}
+        betadiversity <- readRDS("rds-comparepseqs/beta.diversity.rds")
+    }
+rm(bray.dist.matrix)
 ```
 
 
