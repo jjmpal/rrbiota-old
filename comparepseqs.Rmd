@@ -104,6 +104,7 @@ if (!file.exists("rds-comparepseqs/comparepseqs_bray_matrix.rds")) {
 
  ```{r adonis calculation}
 if (!file.exists("rds-comparepseqs/beta.diversity.rds")) {
+
     covariates.min <- c("BL_AGE", "SEX")
     covariates.full <- c("BL_AGE", "SEX", "BMI", "CURR_SMOKE",
                          "Q57X", "BL_USE_RX_C03", "BL_USE_RX_C07",
@@ -113,11 +114,11 @@ if (!file.exists("rds-comparepseqs/beta.diversity.rds")) {
         list(min = calculateadonis(dset = meta(pseq[[x]]),
                                    matrix = bray.dist.matrix[[x]],
                                    covariates = covariates.min,
-                                   npermutations = 1),
+                                   npermutations = 1000),
              full = calculateadonis(dset = meta(pseq[[x]]),
                                     matrix = bray.dist.matrix[[x]],
                                     covariates = covariates.full,
-                                    npermutations = 1)),
+                                    npermutations = 1000)),
         mc.cores = length(pseq))
      
      saveRDS(betadiversity, file = "rds-comparepseqs/beta.diversity.rds")
@@ -128,8 +129,6 @@ if (!file.exists("rds-comparepseqs/beta.diversity.rds")) {
 
 
 ```{r plot alpha diversity, eval = FALSE}
-
-str(betadiversity)
 
 a <- mergediversities(alphadiversity[["ncbi"]], betadiversity[["ncbi"]])
 
