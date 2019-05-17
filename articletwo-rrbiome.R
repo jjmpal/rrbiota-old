@@ -273,3 +273,8 @@ firstup <- function(x) {
   substr(x, 1, 1) <- toupper(substr(x, 1, 1))
   x
 }
+
+mykable <- function(x, ...) {
+  capture.output(x <- print(x))
+  knitr::kable(x, ...)
+}

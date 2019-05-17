@@ -6,7 +6,8 @@ output: html_document
 ---
 	
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(include = TRUE, xecho = TRUE, message = FALSE, results='asis', cache=FALSE, warning=FALSE)
+knitr::opts_chunk$set(include = TRUE, xecho = TRUE, message = FALSE, results='asis',
+                      cache=FALSE, warning=FALSE)
 knitr::opts_chunk$set(cache.path = 'cache/', output.dir="cache/",
                       file.path = 'cache/', fig.path = 'cache/')
 

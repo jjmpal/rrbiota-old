@@ -39,6 +39,7 @@ library(microbiome)
 library(parallel)
 library(knitr)
 library(gridExtra)
+library(vegan)
 ```
 
 ### RR biome functions
@@ -102,6 +103,8 @@ if (!file.exists("rds-comparepseqs/comparepseqs_bray_matrix.rds")) {
 ```
 
  ```{r adonis calculation}
+bray.dist.matrix %>% str
+
  if (!file.exists("rds-comparepseqs/beta.diversity.rds")) {
      covariates.min <- c("BL_AGE", "SEX")
      covariates.full <- c("BL_AGE", "SEX", "BMI", "CURR_SMOKE",
@@ -115,9 +118,9 @@ if (!file.exists("rds-comparepseqs/comparepseqs_bray_matrix.rds")) {
                                     npermutations = 1000),
               full = calculateadonis(dset = meta(pseq[[x]]),
                                            matrix = bray.dist.matrix[[x]],
-                                           covariates = covariates.full
-                                           npermutations = 1000)
-         mc.cores = length(pseq))
+                                           covariates = covariates.full,
+                                           npermutations = 1000),
+              mc.cores = length(pseq)))
      saveRDS(betadiversity, file = "rds-comparepseqs/beta.diversity.rds")
     } else {
      betadiversity <- readRDS("rds-comparepseqs/beta.diversity.rds")
@@ -126,6 +129,8 @@ if (!file.exists("rds-comparepseqs/comparepseqs_bray_matrix.rds")) {
 
 
 ```{r plot alpha diversity, eval = FALSE}
+
+betadiversity
 beta.min <- lapply(c2l(names(pseq)), function(x) {
     alpha.min[[x]] %>% mutate(R2 = 0) %>% select(model_name, R2, response)
 })
