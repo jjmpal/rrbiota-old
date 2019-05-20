@@ -108,7 +108,7 @@ ret <- list()
 
 for (key in names(rds)) {
     pseq <- import_filter_data(rds[[key]] ,excluded = c("DIAB"))
-    dset <- meta.merge.alphadiversity(dset) %>%
+    dset <- meta.merge.alphadiversity(pseq) %>%
         mutate(diversities_shannon = scale(diversities_shannon))
 
     alphadiversity <- list(min =  calculateglm(dset, modelstring = fo.alpha.min),
