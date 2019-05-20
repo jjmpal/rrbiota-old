@@ -111,8 +111,8 @@ for (key in names(rds)) {
     dset <- meta.merge.alphadiversity(x) %>%
         mutate(diversities_shannon = scale(diversities_shannon))
 
-    alphadiversity <- list(min =  calculateglm(x, modelstring = fo.alpha.min),
-                           full = calculateglm(x, modelstring = fo.alpha.full))
+    alphadiversity <- list(min =  calculateglm(dset, modelstring = fo.alpha.min),
+                           full = calculateglm(dset, modelstring = fo.alpha.full))
 
     saveRDS(alphadiversity,
             file = paste0("rds-comparepseqs/alpha-", key , ".rds"))
