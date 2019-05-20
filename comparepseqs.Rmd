@@ -82,9 +82,7 @@ source("articletwo-ggplot.R")
 
  phyloseq-objektit: 1) SHOGUN 2) CENTRIFUGE 3) NCBI70 4) GTDB 5) 16S
 
-#         "data/phfinrisk_16S_otu_raw_2019-02-19.RDs",
-     #         "data/phfinrisk_gtdb_species_all_drop50k_2019-01-14.RDs",
-     #         "data/phfinrisk_custom70_species_all_2019-01-29.RDs",
+
 
 
 ```{r constants}
@@ -98,8 +96,11 @@ covariates.full <- c("BL_AGE", "SEX", "BMI", "CURR_SMOKE",
 ```
 
 ```{r rds files}
-rds <- list("shogun" = "data/phfinrisk_species_all_drop50k_2018-12-21.RDs",
-            "centrifuge" = "data/phfinrisk_centrifuge_species_all_2018-11-30.RDs")
+rds <- list("R16S" = "data/phfinrisk_16S_otu_raw_2019-02-19.RDs",
+            "shogun" = "data/phfinrisk_species_all_drop50k_2018-12-21.RDs",
+            "centrifuge" = "data/phfinrisk_centrifuge_species_all_2018-11-30.RDs",
+            "gtdb" = "data/phfinrisk_gtdb_species_all_drop50k_2019-01-14.RDs",
+            "ncbi" = "data/phfinrisk_custom70_species_all_2019-01-29.RDs")
 ```
 
 ```{r models}
