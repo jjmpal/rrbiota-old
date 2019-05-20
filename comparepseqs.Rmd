@@ -14,6 +14,12 @@ dir.create("rds-comparepseqs/", showWarnings = FALSE)
 dir.create("session/", showWarnings = FALSE)
 ```
 
+```{r packrat, include = FALSE, eval = FALSE}
+packrat::opts$ignored.packages(c("Maaslin", "finriskmetagcommon", "biomformat",
+                                 "microbiome", "phyloseq" ))
+packrat::snapshot()
+```
+
 ```{r Command line arguments}
 now <- format(Sys.time(), '%Y%m%d-%H%M%S')
 
@@ -25,11 +31,19 @@ if (exists("args")) {
         unlink("cache", recursive=TRUE)
     }
     if ("loadlast" %in% names(args) )
-        load(paste0("session/", sort(list.files("session"), decreasing = TRUE)[1]))
+        load("session/comparepseqs.Rdata")
 }
 ```
 
 # Importing libraries:
+
+```{r install, eval = FALSE, include = FALSE}
+source("https://bioconductor.org/biocLite.R")
+biocLite("BiocInstaller")
+library(BiocInstaller)
+source("http://www.bioconductor.org/biocLite.R")
+biocLite("microbiome")
+```
 
 ```{r libraries}
 library(dplyr)
@@ -68,69 +82,70 @@ source("articletwo-ggplot.R")
 
  phyloseq-objektit: 1) SHOGUN 2) CENTRIFUGE 3) NCBI70 4) GTDB 5) 16S
 
-```{r data}
-pseq = list()
-pseq$shogun <- import_filter_data("data/phfinrisk_species_all_drop50k_2018-12-21.RDs")
-pseq$R16S <- import_filter_data("data/phfinrisk_16S_otu_raw_2019-02-19.RDs")
-pseq$gtdb <- import_filter_data("data/phfinrisk_gtdb_species_all_drop50k_2019-01-14.RDs")
-pseq$ncbi <- import_filter_data("data/phfinrisk_custom70_species_all_2019-01-29.RDs")
-pseq$centrifuge <- import_filter_data("data/phfinrisk_centrifuge_species_all_2018-11-30.RDs",
-                                      excluded = c("DIAB"))
-```
+#         "data/phfinrisk_16S_otu_raw_2019-02-19.RDs",
+     #         "data/phfinrisk_gtdb_species_all_drop50k_2019-01-14.RDs",
+     #         "data/phfinrisk_custom70_species_all_2019-01-29.RDs",
 
-```{r alpha diversities}
-dset <- mclapply(pseq, function(x) meta.merge.alphadiversity(x) %>%
-                                             mutate(diversities_shannon = scale(diversities_shannon)),
-                           mc.cores = length(pseq))
 
+```{r constants}
 fo.alpha.min <- "%s ~ BL_AGE + SEX  + diversities_shannon"
 fo.alpha.full <- "%s ~ BL_AGE + SEX + BMI + CURR_SMOKE + Q57X + BL_USE_RX_C03 + BL_USE_RX_C07 + BL_USE_RX_C08 + BL_USE_RX_C09 + diversities_shannon" # MISSING DIAB
 
-alphadiversity <-  mclapply(dset, function(x)
-    list(min =  calculateglm(x, modelstring = fo.alpha.min),
-         full = calculateglm(x, modelstring = fo.alpha.full)),
-    mc.cores = length(dset))
-```
-
-
-```{r dissimilarity matrix}
-if (!file.exists("rds-comparepseqs/comparepseqs_bray_matrix.rds")) {
-    bray.dist.matrix <- mclapply(pseq, function(x) calculate.beta.matrix(x), mc.cores = length(pseq))
-    saveRDS(bray.dist.matrix, file = "rds-comparepseqs/comparepseqs_bray_matrix.rds")
-} else {
-    bray.dist.matrix  <- readRDS("rds-comparepseqs/comparepseqs_bray_matrix.rds")
-}
-rm(pseq)
-```
-
- ```{r adonis calculation}
-if (!file.exists("rds-comparepseqs/beta.diversity.rds")) {
-
-    covariates.min <- c("BL_AGE", "SEX")
-    covariates.full <- c("BL_AGE", "SEX", "BMI", "CURR_SMOKE",
+covariates.min <- c("BL_AGE", "SEX")
+covariates.full <- c("BL_AGE", "SEX", "BMI", "CURR_SMOKE",
                          "Q57X", "BL_USE_RX_C03", "BL_USE_RX_C07",
                          "BL_USE_RX_C08", "BL_USE_RX_C09")
-    
-    betadiversity <- mclapply(c2l(names(dset)), function(x)
-        list(min = calculateadonis(dset = dset[[x]],
-                                   matrix = bray.dist.matrix[[x]],
-                                   covariates = covariates.min,
-                                   npermutations = 1000),
-             full = calculateadonis(dset = dset[[x]],
-                                    matrix = bray.dist.matrix[[x]],
-                                    covariates = covariates.full,
-                                    npermutations = 1000)),
-        mc.cores = length(dset))
-     
-     saveRDS(betadiversity, file = "rds-comparepseqs/beta.diversity.rds")
-    } else {
-        betadiversity <- readRDS("rds-comparepseqs/beta.diversity.rds")
-    }
-rm(bray.dist.matrix)
 ```
+
+```{r rds files}
+rds <- list("shogun" = "data/phfinrisk_species_all_drop50k_2018-12-21.RDs",
+            "centrifuge" = "data/phfinrisk_centrifuge_species_all_2018-11-30.RDs")
+```
+
+```{r models}
+ret <- list()
+
+for (key in names(rds)) {
+    pseq <- import_filter_data(rds[[key]] ,excluded = c("DIAB"))
+    dset <- meta.merge.alphadiversity(x) %>%
+        mutate(diversities_shannon = scale(diversities_shannon))
+
+    alphadiversity <- list(min =  calculateglm(x, modelstring = fo.alpha.min),
+                           full = calculateglm(x, modelstring = fo.alpha.full))
+
+    saveRDS(alphadiversity,
+            file = paste0("rds-comparepseqs/alpha-", key , ".rds"))
+    
+    bray.dist.matrix <- calculate.beta.matrix(pseq)
+
+    betadiversity <- list(min = calculateadonis(dset = dset,
+                                                matrix = bray.dist.matrix,
+                                                covariates = covariates.min,
+                                                npermutations = 1000),
+                          full = calculateadonis(dset = dset,
+                                                 matrix = bray.dist.matrix,
+                                                 covariates = covariates.full,
+                                                 npermutations = 1000))
+
+    saveRDS(betadiversity,
+            file = paste0("rds-comparepseqs/alpha-", key , ".rds"))
+
+    ret[[key]] = list("alphadiversity"  = alphadiversity,
+                      "betadiversity" = betadiversity)
+}
+```
+
+
 
 
 ```{r plot alpha diversity, eval = FALSE}
+
+alphadiversity[["ncbi"]]
+betadiversity[["ncbi"]]
+
+betadiversity
+
+ls()
 
 a <- mergediversities(alphadiversity[["ncbi"]], betadiversity[["ncbi"]])
 

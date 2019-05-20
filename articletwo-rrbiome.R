@@ -213,7 +213,7 @@ mergediversities <- function(alphadiversity, betadiversity,
 }
 
 getdescriptions <- function() {
-    data("phfinrisk_metadatadesc", package="finriskmetagcommon")
+#    data("phfinrisk_metadatadesc", package="finriskmetagcommon")
     names.dset <- filter(phfinrisk_metadatadesc,
                          Ignored.Covariate.in.Cross.Sectional.Analysis.Aaro20181115==0)
     bind_rows(names.dset,
@@ -278,3 +278,6 @@ mykable <- function(x, ...) {
   capture.output(x <- print(x))
   knitr::kable(x, ...)
 }
+
+
+
