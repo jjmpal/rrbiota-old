@@ -32,6 +32,9 @@ if (exists("args")) {
     }
     if ("loadlast" %in% names(args) )
         load("session/comparepseqs.Rdata")
+
+    if ("subset" %in% names(args))
+        subset.run <- args$subset
 }
 ```
 
@@ -102,6 +105,16 @@ rds <- list("shogun" = "data/phfinrisk_species_all_drop50k_2018-12-21.RDs",
             "ncbi" = "data/phfinrisk_custom70_species_all_2019-01-29.RDs",
             "R16S" = "data/phfinrisk_16S_otu_raw_2019-02-19.RDs")
 ```
+
+```{r subset runs}
+if (exists(subset.run)) {
+    rds <- rds[[subset.run]]
+}
+
+
+print(rds)
+quit()
+``` 
 
 ```{r models}
 ret <- list()
@@ -231,13 +244,4 @@ res %>% colnames
 res %>%
     dplyr::select(response, starts_with("estimate_"), starts_with("p.value"))
 
-```
-
-
-
-
-
-
-```{r save session}
-save.image(file = paste0("session/comparepseqs.Rdata"))
 ```
