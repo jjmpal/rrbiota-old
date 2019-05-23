@@ -34,7 +34,7 @@ if (exists("args")) {
         load("session/comparepseqs.Rdata")
 
     if ("subset" %in% names(args))
-        subset.run <- args$subset
+        subset.run <- as.numeric(args$subset)
 }
 ```
 
