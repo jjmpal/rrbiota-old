@@ -111,8 +111,8 @@ if (exists(subset.run)) {
     rds <- rds[[subset.run]]
 }
 
-
-print(rds)
+message(paste0("Subset ", subset.run))
+message(rds)
 quit()
 ``` 
 
