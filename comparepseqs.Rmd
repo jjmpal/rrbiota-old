@@ -96,11 +96,11 @@ covariates.full <- c("BL_AGE", "SEX", "BMI", "CURR_SMOKE",
 ```
 
 ```{r rds files}
-rds <- list("R16S" = "data/phfinrisk_16S_otu_raw_2019-02-19.RDs",
-            "shogun" = "data/phfinrisk_species_all_drop50k_2018-12-21.RDs",
+rds <- list("shogun" = "data/phfinrisk_species_all_drop50k_2018-12-21.RDs",
             "centrifuge" = "data/phfinrisk_centrifuge_species_all_2018-11-30.RDs",
             "gtdb" = "data/phfinrisk_gtdb_species_all_drop50k_2019-01-14.RDs",
-            "ncbi" = "data/phfinrisk_custom70_species_all_2019-01-29.RDs")
+            "ncbi" = "data/phfinrisk_custom70_species_all_2019-01-29.RDs",
+            "R16S" = "data/phfinrisk_16S_otu_raw_2019-02-19.RDs")
 ```
 
 ```{r models}
@@ -119,6 +119,9 @@ for (key in names(rds)) {
     
     bray.dist.matrix <- calculate.beta.matrix(pseq)
 
+    saveRDS(bray.dist.matrix,
+            file = paste0("rds-comparepseqs/bray-", key , ".rds"))
+    
     betadiversity <- list(min = calculateadonis(dset = dset,
                                                 matrix = bray.dist.matrix,
                                                 covariates = covariates.min,
@@ -136,53 +139,61 @@ for (key in names(rds)) {
 }
 ```
 
+```{r plot, eval = FALSE}
+plotlist <- list()
+
+for (key in names(rds)) {
+    diversities <- mergediversities(ret[[key]][["alphadiversity"]],
+                                    ret[[key]][["betadiversity"]])
+
+    alpha.diversity.min <- plot.alpha(diversities$min, colorlimit = 0.6)
+    alpha.diversity.max <- plot.alpha(diversities$max, colorlimit = 0.6)
+
+    beta.diversity.min <- plot.beta(diversities$min)
+    beta.diversity.max <- plot.beta(diversities$max)
+
+    gs4 <- list(alpha.diversity.min$yaxis,
+                alpha.diversity.min$plot,
+                beta.diversity.min$plot,
+                alpha.diversity.min$legend,
+                alpha.diversity.min$xaxis,
+                beta.diversity.min$xaxis,
+                beta.diversity.min$xlab,
+                text_grob("A.", size = 18),
+                alpha.diversity.max$yaxis,
+                alpha.diversity.max$plot,
+                beta.diversity.max$plot,  
+                alpha.diversity.max$xaxis,
+                beta.diversity.max$xaxis,
+                beta.diversity.max$xlab,
+                text_grob("B.", size = 18))
+    
+    g4 <- arrangeGrob(grobs = gs4,
+                      layout_matrix = rbind(
+                          c(8,    NA,    NA, NA,   NA, NA, NA),
+                          c(NA, 1,    2,    NA, 3, NA, NA),
+                          c(NA, 1,    2,    NA, 3, NA, 4),
+                          c(NA, NA, 5,    NA,6, NA, NA),
+                          c(NA, NA, NA, NA,7, NA, NA),
+                          c(15,    NA,    NA, NA,   NA, NA, NA),
+                          c(NA, 9,    10,  NA,  11, NA, NA),
+                          c(NA, 9,    10,  NA,  11, NA, NA),
+                          c(NA, NA, 12,   NA, 13, NA, NA),
+                          c(NA, NA, NA, NA,14, NA, NA)),
+                      widths=c(0.7, 4, 0.7, 0.1, 5, 0.7, 3),
+                      heights=rep(c(1, 1, 6, 1, 2), 2))
+
+    ggsave(file = paste0("cache/alpha-beta-", key , ".png"), plot=g4, height=6, width=9)
+    plotlist[[key]] = g4
+}
+```
 
 
 
 ```{r plot alpha diversity, eval = FALSE}
 
-alphadiversity[["ncbi"]]
-betadiversity[["ncbi"]]
-
-betadiversity
-
-ls()
-
-a <- mergediversities(alphadiversity[["ncbi"]], betadiversity[["ncbi"]])
-
-alphadiversity[["ncbi"]]
-betadiversity[["ncbi"]]
-
-names(betadiversity)
-betadiversity[[""]]
-
- alpha.select <- alphadiversity[["R16S"]][["min"]] %>% select(estimate, p.value, response)
-
-beta.rbind <- betadiversity[["R16S"]][["min"]] %>%
-    data.table::rbindlist(id = "model_name")
-
-%>%
-            dplyr::filter(term %in% responses) %>%
-            dplyr::select(response, R2)
-
-
-        merge( alpha.select , beta.rbind, by = "response") %>%
-            merge(names.dset %>% select(Covariate, Category, Name), by.x ="response", by.y = "Covariate") %>%
-            mutate(Qstar = ifelse(p.value < 0.05, '*', ' '))
-    })
-
-vectortolist(names(alphadiversity[["R16S"]]))
-
-c2l(names(pseq))
-beta.min <- lapply(c2l(names(pseq)), function(x) {
-    mergediversities(alphadiversity[[x]], betadiversity[[x]])
-})
-
-beta.min[[1]] %>%
-         data.table::rbindlist(id = "model_name")
-
-#            dplyr::filter(term %in% responses) %>%
-            dplyr::select(response, R2)
+alphadiversity <- readRDS("rds-comparepseqs/alpha-R16S.rds")
+alphadiversity
 
 diversity.min <- mergediversities(alpha.min, beta.min)
 
