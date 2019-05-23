@@ -107,7 +107,7 @@ rds <- list("shogun" = "data/phfinrisk_species_all_drop50k_2018-12-21.RDs",
 ```
 
 ```{r subset runs}
-if (exists(subset.run)) {
+if (exists("subset.run")) {
     message(paste0("Subset ", subset.run))
     rds <- rds[[subset.run]]
 }
