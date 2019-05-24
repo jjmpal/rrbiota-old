@@ -237,31 +237,6 @@ tbl1foot <- "Continuous variables are presented as mean (standard deviation). Ca
 writetable(doc, tbl1, number = 1, tbl1head, tbl1foot)
 ```
 
-## Firmicutes bacteroides ratio
-
-Firmicutes:Bacteroidetes ratio 
-
-```{r firmicutes bacteroides, eval = FALSE}
-bfratio <- function (x) {
-    a <- transform(aggregate_taxa(x, level = "Phylum"), "compositional")
-    b <- abundances(a)["Bacteroidetes",]
-    f <- abundances(a)["Firmicutes",]  
-    #data.frame(Bacteroidetes = b, Firmicutes = f, Ratio = b/f)
-    b/f
-}
-
-packageVersion("microbiome")
-
-bfratio(pseq.species)
-
-phy3 <- aggregate_taxa(pseq.species, level = "Phylum")
-aggregate_taxa
-
- transform(aggregate_taxa(x, level = "Phylum"), "compositional")
-sessionInfo()
-    
-```
-
 ## Alpha & Beta plot (Figure 1.)
 
 ```{r alphabeta definitions}
