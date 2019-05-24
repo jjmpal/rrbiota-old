@@ -101,7 +101,7 @@ myforestplot <- function(data,
               axis.ticks.x = element_line(),
               axis.ticks.y = element_line(),
               axis.line = element_line(colour = "black")) +
-        scale_x_discrete(labels=c("Q1", "Q2", "Q3", "Q4")) +
+        scale_x_discrete(labels=c("T1", "T2", "T3")) +
         my_y_scale + 
         xlab(xlab) +
         ylab(ylab) +
