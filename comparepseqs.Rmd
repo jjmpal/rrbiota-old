@@ -41,6 +41,9 @@ if (exists("args")) {
 # Importing libraries:
 
 ```{r install, eval = FALSE, include = FALSE}
+install.packages("BiocManager")
+BiocManager::install("phyloseq")
+
 source("https://bioconductor.org/biocLite.R")
 biocLite("BiocInstaller")
 library(BiocInstaller)
@@ -98,6 +101,10 @@ covariates.full <- c("BL_AGE", "SEX", "BMI", "CURR_SMOKE",
                          "BL_USE_RX_C08", "BL_USE_RX_C09")
 ```
 
+```{r rds subset, eval = FALSE}
+subset.run <- 3
+```
+
 ```{r rds files}
 rds <- list("shogun" = "data/phfinrisk_species_all_drop50k_2018-12-21.RDs",
             "centrifuge" = "data/phfinrisk_centrifuge_species_all_2018-11-30.RDs",
@@ -117,34 +124,56 @@ if (exists("subset.run")) {
 ret <- list()
 
 for (key in names(rds)) {
-    pseq <- import_filter_data(rds[[key]] ,excluded = c("DIAB"))
-    dset <- meta.merge.alphadiversity(pseq) %>%
-        mutate(diversities_shannon = scale(diversities_shannon))
+    missing = list()
 
-    alphadiversity <- list(min =  calculateglm(dset, modelstring = fo.alpha.min),
-                           full = calculateglm(dset, modelstring = fo.alpha.full))
+    if (!file.exists(paste0("rds-comparepseqs/alpha-", key , ".rds"))) {
+        missing$alpha = TRUE
+    } else {
+        alphadiversity <- readRDS(file = paste0("rds-comparepseqs/alpha-", key , ".rds"))
+    }
 
-    saveRDS(alphadiversity,
-            file = paste0("rds-comparepseqs/alpha-", key , ".rds"))
+    if (!file.exists(paste0("rds-comparepseqs/bray-", key , ".rds"))) {
+        missing$bray = TRUE
+    } else {
+        bray.dist.matrix <- readRDS(file = paste0("rds-comparepseqs/bray-", key , ".rds"))
+    }
     
-    bray.dist.matrix <- calculate.beta.matrix(pseq)
+    if (!file.exists(paste0("rds-comparepseqs/beta-", key , ".rds"))) {
+        missing$beta = TRUE
+    } else {
+        betadiversity <- readRDS(file = paste0("rds-comparepseqs/beta-", key , ".rds"))
+    }
 
-    saveRDS(bray.dist.matrix,
-            file = paste0("rds-comparepseqs/bray-", key , ".rds"))
+    if (length(missing) > 0) {
+        pseq <- import_filter_data(rds[[key]] ,excluded = c("DIAB"))
+        dset <- meta.merge.alphadiversity(pseq) %>%
+            mutate(diversities_shannon = scale(diversities_shannon))
+
+        if ("alpha" %in% names(missing)) {
+            alphadiversity <- list(min =  calculateglm(dset, modelstring = fo.alpha.min),
+                                   full = calculateglm(dset, modelstring = fo.alpha.full))
+            saveRDS(alphadiversity, file = paste0("rds-comparepseqs/alpha-", key , ".rds"))
+        }
+
+        if ("bray" %in% names(missing)) {
+            bray.dist.matrix <- calculate.beta.matrix(pseq)
+            saveRDS(bray.dist.matrix, file = paste0("rds-comparepseqs/bray-", key , ".rds"))
+        }
     
-    betadiversity <- list(min = calculateadonis(dset = dset,
-                                                matrix = bray.dist.matrix,
-                                                covariates = covariates.min,
-                                                npermutations = 1000),
-                          full = calculateadonis(dset = dset,
-                                                 matrix = bray.dist.matrix,
-                                                 covariates = covariates.full,
-                                                 npermutations = 1000))
+        if ("beta" %in% names(missing)) {        
+            betadiversity <- list(min = calculateadonis(dset = dset,
+                                                        matrix = bray.dist.matrix,
+                                                        covariates = covariates.min,
+                                                        npermutations = 1000),
+                                  full = calculateadonis(dset = dset,
+                                                         matrix = bray.dist.matrix,
+                                                         covariates = covariates.full,
+                                                         npermutations = 1000))
+            saveRDS(betadiversity, file = paste0("rds-comparepseqs/beta-", key , ".rds"))
+        }
+    }
 
-    saveRDS(betadiversity,
-            file = paste0("rds-comparepseqs/alpha-", key , ".rds"))
-
-    ret[[key]] = list("alphadiversity"  = alphadiversity,
+    ret[[key]] = list("alphadiversity" = alphadiversity,
                       "betadiversity" = betadiversity)
 }
 ```
@@ -153,6 +182,8 @@ for (key in names(rds)) {
 plotlist <- list()
 
 for (key in names(rds)) {
+    alphadiversity <- readRDS(file = paste0("rds-comparepseqs/alpha-", key , ".rds"))
+
     diversities <- mergediversities(ret[[key]][["alphadiversity"]],
                                     ret[[key]][["betadiversity"]])
 
