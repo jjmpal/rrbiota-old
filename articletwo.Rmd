@@ -209,16 +209,13 @@ pseq.genus.core <- core(pseq.genus, detection = 0.001, prevalence = 0.01)
 
 ```{r maaslin runs, results = 'hide'} 
 if (!file.exists("rds/maaslin.rds")) {
+
     maaslin <- list()
     genus.core.bacteria <- pseq.genus.core %>%
         abundances %>%
         rownames %>%
         replace.brackets %>%
         mygrep(".Bacteria$", .)
-
-    pseq.species %>% meta %>% pull(DIAB) %>% summary
-    pseq.genus.core %>% meta %>% pull(DIAB) %>% as.factor %>% summary
-    
     maaslin$genus <- maaslinwrapper(pseq = pseq.genus.core,
                                     looped = c("MAP", "SYSTM", "DIASM", "PULSEPRESSURE",
                                                "HYPERTENSION"),
@@ -226,6 +223,7 @@ if (!file.exists("rds/maaslin.rds")) {
                                                "DIAB", "BL_USE_RX_C03",
                                                "BL_USE_RX_C07", "BL_USE_RX_C08", "BL_USE_RX_C09"),
                                     taxa = paste0(genus.core.bacteria, collapse = ","))
+
     saveRDS(maaslin, file = "rds/maaslin.rds")
 } else {
     maaslin <- readRDS("rds/maaslin.rds")
