@@ -159,17 +159,20 @@ for (key in names(rds)) {
             mutate(diversities_shannon = scale(diversities_shannon))
 
         if ("alpha" %in% names(missing)) {
+            message("Missing alpha")
             alphadiversity <- list(min =  calculateglm(dset, modelstring = fo.alpha.min),
                                    full = calculateglm(dset, modelstring = fo.alpha.full))
             saveRDS(alphadiversity, file = paste0("rds-comparepseqs/alpha-", key , ".rds"))
         }
 
         if ("bray" %in% names(missing)) {
+            message("Missing Bray")
             bray.dist.matrix <- calculate.beta.matrix(pseq)
             saveRDS(bray.dist.matrix, file = paste0("rds-comparepseqs/bray-", key , ".rds"))
         }
     
-        if ("beta" %in% names(missing)) {        
+        if ("beta" %in% names(missing)) {
+            message("Missing beta")
             betadiversity <- list(min = calculateadonis(dset = dset,
                                                         matrix = bray.dist.matrix,
                                                         covariates = covariates.min,
