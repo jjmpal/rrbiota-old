@@ -61,6 +61,8 @@ library(knitr)
 library(gridExtra)
 library(vegan)
 library(ggpubr)
+library(broom)
+library(tidyr)
 ```
 
 ### RR biome functions
@@ -120,7 +122,7 @@ rds <- list("shogun" = "data/phfinrisk_species_all_drop50k_2018-12-21.RDs",
 
 ```{r subset runs}
 if (exists("subset.run")) {
-    message(paste0("Subset ", subset.run))
+    message(sprintf("Subset %s of %s", subset.run, rds[[subset.run]]))
     rds <- rds[subset.run]
 }
 
@@ -189,13 +191,11 @@ for (key in names(rds)) {
 plotlist <- list()
 
 for (key in names(rds)) {
-    alphadiversity <- readRDS(file = paste0("rds-comparepseqs/alpha-", key , ".rds"))
-
     diversities <- mergediversities(ret[[key]][["alphadiversity"]],
                                     ret[[key]][["betadiversity"]])
-diversities$min
-    alpha.diversity.min <- plot.alpha(diversities$min, colorlimit = 0.6)
-    alpha.diversity.full <- plot.alpha(diversities$full, colorlimit = 0.6)
+
+    alpha.diversity.min <- plot.alpha(diversities$min, alphabreaks = c(-0.15, -0.10, -0.05, 0))
+    alpha.diversity.full <- plot.alpha(diversities$full, alphabreaks = c(-0.15, -0.10, -0.05, -0))
 
     beta.diversity.min <- plot.beta(diversities$min)
     beta.diversity.full <- plot.beta(diversities$full)
@@ -248,5 +248,37 @@ ggsave(file="cache/plotlist.pdf", g, height=6*length(plotlist)/1.5, width=10*2)
 ```
 
 ```{r debug, eval = FALSE}
-ret[["centrifuge"]]$betadiversity$full$model_1
+alphalist <- c()
+for (key in names(rds)) {
+    alphalist <- c(alphalist,
+              ret[[key]]$alphadiversity$min %>% pull(estimate),
+              ret[[key]]$alphadiversity$full %>% pull(estimate))
+}
+
+summary(alphalist)
+```
+
+```{r alpha size, eval = FALSE}
+pseq <- import_filter_data(rds[["gtdb"]])
+
+dset <- meta.merge.alphadiversity(pseq) %>%
+    mutate(diversities_shannon = scale(diversities_shannon))
+
+dset %>%
+    select(MAP, diversities_shannon) %>%
+    gather(key, value) %>%
+    group_by(key) %>%
+    summarise_all(funs(N = n(),
+                       min = min(as.numeric(value), na.rm = TRUE),
+                       max = max(as.numeric(value), na.rm = TRUE),
+                       Mean = mean(as.numeric(value), na.rm = TRUE),
+                       SD = sd(as.numeric(value), na.rm = TRUE),
+                       NAs = sum(is.na(value))))  %>%
+    kable()
+
+lm(sprintf(fo.alpha.full, "SYSTM"), data = dset) %>% summary
+```
+
+```{r size}
+Reduce(function(...) merge(..., all=T), ret)
 ```

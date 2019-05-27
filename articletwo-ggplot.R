@@ -1,12 +1,20 @@
-plot.alpha <- function(diversity,  colorlimit = 0.25) {
-    plot.alpha.diversity <- ggplot(diversity, aes(x=reorder(Name, R2),  y = 1, fill = estimate)) +
+plot.alpha <- function(diversity,
+                       alphabreaks = c(-Inf, -1, -0.1, -0.01, 0)) {
+    diversity <- diversity %>%
+        mutate(estimate_fac =  cut(estimate, breaks = alphabreaks))
+    plot.alpha.diversity <- ggplot(diversity, aes(x=reorder(Name, R2),
+                                                  y = 1,
+                                                  fill = estimate_fac)) +
         geom_bar(stat="identity", color="black") +
         coord_flip() +
-        scale_fill_gradientn(colours = c("blue", "white"),
-                             breaks = c(-colorlimit, 0),
-                             name = 'Regression coefficient \nin linear model \nfor Shannon index',
-                             limits = c(-colorlimit, 0),
-                             na.value = "black") +
+        scale_fill_brewer(palette="Blues",
+                          name = 'Regression coefficient \nin linear model \nfor Shannon index') +
+        #scale_color_discrete_sequential(palette = "Blues", nmax = 6, order = 2:6) +
+#        scale_fill_gradientn(colours = c("blue", "white"),
+#                             breaks = c(-colorlimit, 0),
+#                             name = 'Regression coefficient \nin linear model \nfor Shannon index',
+#                             limits = c(-colorlimit, 0),
+#                             na.value = "black") +
         theme_classic(20) +
         geom_point(aes(Name, y=0.5, shape=Qstar), show.legend=FALSE, color='black', size=20) +
         scale_shape_manual(name="",
