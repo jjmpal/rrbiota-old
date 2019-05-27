@@ -48,12 +48,14 @@ plot.alpha <- function(diversity,  colorlimit = 0.25) {
 
 plot.beta <- function(diversity,
                       fig.permar2.text = "R2 of variable \nin Bray-Curtis distance",
-                      fig.textsize = 15) {
+                      fig.textsize = 15,
+                      ymax = 0.0016) {
     plot.beta.diversity <- ggplot(diversity, aes(x = reorder(Name, R2), y= R2)) +
         geom_bar(stat="identity", color="black") +
         coord_flip() +
         theme_classic(fig.textsize) +
         ylab(fig.permar2.text) +
+        scale_y_continuous(limits = c(0, ymax)) +
         theme(axis.text.y = element_text(color="black"),
               axis.text.x = element_text(color="black"),
               legend.position="right",
@@ -73,11 +75,12 @@ plot.beta <- function(diversity,
               axis.title.x  =  element_blank(),
               axis.title.y = element_blank(),
               legend.position = "none")
+    
     plot.gtable.beta.diversity.stripped <- ggplot_gtable(ggplot_build(plot.beta.diversity))
 
-      return(list(plot =plot.gtable.beta.diversity.stripped$grobs[[6]],
-                  xaxis = plot.gtable.beta.diversity$grobs[[7]],
-                  xlab = plot.xlab.beta.diversity))
+    return(list(plot = plot.gtable.beta.diversity.stripped$grobs[[6]],
+                xaxis = plot.gtable.beta.diversity$grobs[[7]],
+                xlab = plot.xlab.beta.diversity))
 }
 
 myforestplot <- function(data,

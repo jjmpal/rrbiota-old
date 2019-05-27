@@ -755,17 +755,6 @@ Diagnostic plots for linear model
 gvlma.table.plot(lm(MAP ~ lactobacillus.bacteria + BL_AGE + SEX, data = df.genus.salt))$plot %>% plot
 ```
 
-
-
-```{r odds htn lacto}
-odds.hypertension.lactogroup <- glm.hypertension.lactogroup %>%
-    filter(!grepl("Intercept", term)) %>%
-    select(term, estimate, p.value, conf.low, conf.high) %>%
-    add_row(term = "lacto_groups1", estimate = 1.0, conf.low = NA, conf.high = NA) %>%
-    dplyr::filter(grepl("lacto", term))
-odds.hypertension.lactogroup %>% kable
-```
-
 Odds for hypertension by categorical lactobacillus abundance.
 
 ```{r glm htn lacto groups}
@@ -785,6 +774,18 @@ glm.hypertension.lactogroup %>%
     mutate_if(is.numeric, round, 3) %>%
     kable
 ```
+
+Odds for hypertension
+
+```{r odds htn lacto}
+odds.hypertension.lactogroup <- glm.hypertension.lactogroup %>%
+    filter(!grepl("Intercept", term)) %>%
+    select(term, estimate, p.value, conf.low, conf.high) %>%
+    add_row(term = "lacto_groups1", estimate = 1.0, conf.low = NA, conf.high = NA) %>%
+    dplyr::filter(grepl("lacto", term))
+odds.hypertension.lactogroup %>% kable
+```
+
 
 ```{r check odds model assumptions}
 g.odds.autoplot <- autoplot(glm.hypertension.lactogroup,

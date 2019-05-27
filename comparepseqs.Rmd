@@ -60,6 +60,7 @@ library(parallel)
 library(knitr)
 library(gridExtra)
 library(vegan)
+library(ggpubr)
 ```
 
 ### RR biome functions
@@ -86,10 +87,14 @@ source("articletwo-ggplot.R")
 
 # Loading data
 
+Loading descriptions for clinical data
+
+```{r variables, warning = FALSE}
+names.dset <- getdescriptions()
+```
+
+
  phyloseq-objektit: 1) SHOGUN 2) CENTRIFUGE 3) NCBI70 4) GTDB 5) 16S
-
-
-
 
 ```{r constants}
 fo.alpha.min <- "%s ~ BL_AGE + SEX  + diversities_shannon"
@@ -118,6 +123,8 @@ if (exists("subset.run")) {
     message(paste0("Subset ", subset.run))
     rds <- rds[subset.run]
 }
+
+rds <- list("gtdb" = 1 , "centrifuge" = 2)
 ``` 
 
 ```{r models}
@@ -145,7 +152,7 @@ for (key in names(rds)) {
     }
 
     if (length(missing) > 0) {
-        pseq <- import_filter_data(rds[[key]] ,excluded = c("DIAB"))
+        pseq <- import_filter_data(rds[[key]])
         dset <- meta.merge.alphadiversity(pseq) %>%
             mutate(diversities_shannon = scale(diversities_shannon))
 
@@ -186,12 +193,12 @@ for (key in names(rds)) {
 
     diversities <- mergediversities(ret[[key]][["alphadiversity"]],
                                     ret[[key]][["betadiversity"]])
-
+diversities$min
     alpha.diversity.min <- plot.alpha(diversities$min, colorlimit = 0.6)
-    alpha.diversity.max <- plot.alpha(diversities$max, colorlimit = 0.6)
+    alpha.diversity.full <- plot.alpha(diversities$full, colorlimit = 0.6)
 
     beta.diversity.min <- plot.beta(diversities$min)
-    beta.diversity.max <- plot.beta(diversities$max)
+    beta.diversity.full <- plot.beta(diversities$full)
 
     gs4 <- list(alpha.diversity.min$yaxis,
                 alpha.diversity.min$plot,
@@ -200,14 +207,14 @@ for (key in names(rds)) {
                 alpha.diversity.min$xaxis,
                 beta.diversity.min$xaxis,
                 beta.diversity.min$xlab,
-                text_grob("A.", size = 18),
-                alpha.diversity.max$yaxis,
-                alpha.diversity.max$plot,
-                beta.diversity.max$plot,  
-                alpha.diversity.max$xaxis,
-                beta.diversity.max$xaxis,
-                beta.diversity.max$xlab,
-                text_grob("B.", size = 18))
+                text_grob(paste("A.", key), size = 18, just = "left"),
+                alpha.diversity.full$yaxis,
+                alpha.diversity.full$plot,
+                beta.diversity.full$plot,  
+                alpha.diversity.full$xaxis,
+                beta.diversity.full$xaxis,
+                beta.diversity.full$xlab,
+                text_grob(paste("B.", key), size = 18, just = "left"))
     
     g4 <- arrangeGrob(grobs = gs4,
                       layout_matrix = rbind(
@@ -232,44 +239,10 @@ for (key in names(rds)) {
 
 
 ```{r plot alpha diversity, eval = FALSE}
-
-alphadiversity <- readRDS("rds-comparepseqs/alpha-R16S.rds")
-alphadiversity
-
-diversity.min <- mergediversities(alpha.min, beta.min)
-
-
-alpha.plot.min <- mclapply(alpha.min, function(x) { mergediversities(},
-                               mc.cores = length(pseq))
-
-gs4 <- c(list("yaxis" = alpha.plot.min[[1]]$yaxis,
-              "xaxis" = alpha.plot.min[[1]]$xaxis),
-              lapply(alpha.plot.min, function(x) x$plot))
-
-g4.firstline <- c(1, seq(3, length(alpha.plot.min)+2))
-g4.secondline <- c(NA, rep(2, length(alpha.plot.min)))
-
-g4 <- arrangeGrob(grobs = gs4, layout_matrix = rbind(g4.firstline, g4.secondline))
-
-ggsave(file = "cache/pseqdiff-alpha-min.png", plot=g4, height=6, width=9)
-                       
+g <- arrangeGrob(plotlist[[1]], plotlist[[2]], ncol=1)
+ggsave(file="cache/plotlist.pdf", g, height=6*length(plotlist), width=10)
 ```
 
-```{r join alphas, eval = FALSE}
-sfx <- names(dset)
-res <- alpha.min[[1]]
-
-for(i in head(seq_along(alpha.min), -1)) {
-    res <- merge(res,
-                 alpha.full[[i+1]],
-                 all = TRUE,
-                 suffixes = paste0("_", sfx[i:(i+1)]),
-                 by = c("model_name", "term", "response"))
-}
-
-res %>% colnames
-
-res %>%
-    dplyr::select(response, starts_with("estimate_"), starts_with("p.value"))
-
+```{r debug, eval = FALSE}
+ret[["centrifuge"]]$betadiversity$full$model_1
 ```
