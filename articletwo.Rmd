@@ -208,20 +208,28 @@ pseq.genus.core <- core(pseq.genus, detection = 0.001, prevalence = 0.01)
 
 
 ```{r maaslin runs, results = 'hide'} 
-maaslin <- list()
+if (!file.exists("rds/maaslin.rds")) {
+    maaslin <- list()
+    genus.core.bacteria <- pseq.genus.core %>%
+        abundances %>%
+        rownames %>%
+        replace.brackets %>%
+        mygrep(".Bacteria$", .)
 
-genus.core.bacteria <- pseq.genus.core %>%
-    abundances %>%
-    rownames %>%
-    replace.brackets %>%
-    mygrep(".Bacteria$", .)
-
-
-maaslin$genus <- maaslinwrapper(pseq = pseq.genus.core,
-                looped = c("MAP", "SYSTM", "DIASM", "PULSEPRESSURE", "HYPERTENSION"),
-                forced = c("BL_AGE", "SEX", "BMI", "CURR_SMOKE", "Q57X", "DIAB", "BL_USE_RX_C03",
-                           "BL_USE_RX_C07", "BL_USE_RX_C08", "BL_USE_RX_C09"),
-                taxa = paste0(genus.core.bacteria, collapse = ","))
+    pseq.species %>% meta %>% pull(DIAB) %>% summary
+    pseq.genus.core %>% meta %>% pull(DIAB) %>% as.factor %>% summary
+    
+    maaslin$genus <- maaslinwrapper(pseq = pseq.genus.core,
+                                    looped = c("MAP", "SYSTM", "DIASM", "PULSEPRESSURE",
+                                               "HYPERTENSION"),
+                                    forced = c("BL_AGE", "SEX", "BMI", "CURR_SMOKE", "Q57X",
+                                               "DIAB", "BL_USE_RX_C03",
+                                               "BL_USE_RX_C07", "BL_USE_RX_C08", "BL_USE_RX_C09"),
+                                    taxa = paste0(genus.core.bacteria, collapse = ","))
+    saveRDS(maaslin, file = "rds/maaslin.rds")
+} else {
+    maaslin <- readRDS("rds/maaslin.rds")
+}
 ```
 
 
@@ -296,7 +304,7 @@ Results for beta diversity
 adonis.species$max %>%
     data.table::rbindlist(id = "model_name") %>%
     dplyr::filter(term %in% c("MAP", "SYSTM", "DIASM", "PULSEPRESSURE", "HYPERTENSION")) %>%
-    dplyr::select(response, R2, "Pr(>F)") %>%
+#    dplyr::select(response, R2, "Pr(>F)") %>%
     mutate(p.value = pub.p(`Pr(>F)`))
 ```
 
@@ -819,6 +827,17 @@ writeimage(doc, 4, "cache/salt-forest.png", fig4head, fig4foot)
 
 ```{r Write docx to file, include=FALSE}
 print(doc, target = paste0("report/articletwo-", now, ".docx"))
+```
+
+```{r adonis demo}
+data(dune)
+data(dune.env)
+adonis(dune ~ Management, data=dune.env, permutations=99)$aov.tab
+adonis(dune ~ Management, data=dune.env, permutations=99)$coefficients
+```
+
+```{r age sex bmi}
+lm(MAP ~ BL_AGE + SEX + BMI, data = dset.alpha) %>% summary
 ```
 
 ```{r save session}
