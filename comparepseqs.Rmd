@@ -125,8 +125,6 @@ if (exists("subset.run")) {
     message(sprintf("Subset %s of %s", subset.run, rds[[subset.run]]))
     rds <- rds[subset.run]
 }
-
-rds <- list("gtdb" = 1 , "centrifuge" = 2, "ncbi" = 3)
 ``` 
 
 ```{r models}
