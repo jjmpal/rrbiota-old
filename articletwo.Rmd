@@ -302,8 +302,9 @@ Results for beta diversity
 adonis.species$max %>%
     data.table::rbindlist(id = "model_name") %>%
     dplyr::filter(term %in% c("MAP", "SYSTM", "DIASM", "PULSEPRESSURE", "HYPERTENSION")) %>%
-#    dplyr::select(response, R2, "Pr(>F)") %>%
-    mutate(p.value = pub.p(`Pr(>F)`))
+    dplyr::select(response, R2, "Pr(>F)") %>%
+    mutate(p.value = pub.p(`Pr(>F)`)) %>%
+    kable
 ```
 
 ```{r save grob}
@@ -439,6 +440,9 @@ writeimage(doc, 2, "cache/pcoa-species.png", fig2head, fig2foot)
 ```
 
 ## Direct associations between genus level and blood pressure variables (figure 3)
+
+For magnitude, age, sex, and BMI explain `r round(summary(lm(MAP ~ BL_AGE +
+SEX + BMI, data = meta(pseq.genus)))$adj.r.squared * 100, 1)`% of MAP.
 
 ```{r maaslin}
 maas.results.df.signf <- maaslin$genus %>%
@@ -827,17 +831,6 @@ writeimage(doc, 4, "cache/salt-forest.png", fig4head, fig4foot)
 
 ```{r Write docx to file, include=FALSE}
 print(doc, target = paste0("report/articletwo-", now, ".docx"))
-```
-
-```{r adonis demo}
-data(dune)
-data(dune.env)
-adonis(dune ~ Management, data=dune.env, permutations=99)$aov.tab
-adonis(dune ~ Management, data=dune.env, permutations=99)$coefficients
-```
-
-```{r age sex bmi}
-lm(MAP ~ BL_AGE + SEX + BMI, data = dset.alpha) %>% summary
 ```
 
 ```{r save session}
