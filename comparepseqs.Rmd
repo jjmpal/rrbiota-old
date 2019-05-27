@@ -279,6 +279,3 @@ dset %>%
 lm(sprintf(fo.alpha.full, "SYSTM"), data = dset) %>% summary
 ```
 
-```{r size}
-Reduce(function(...) merge(..., all=T), ret)
-```
