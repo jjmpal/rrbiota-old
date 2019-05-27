@@ -124,7 +124,7 @@ if (exists("subset.run")) {
     rds <- rds[subset.run]
 }
 
-rds <- list("gtdb" = 1 , "centrifuge" = 2)
+rds <- list("gtdb" = 1 , "centrifuge" = 2, "ncbi" = 3)
 ``` 
 
 ```{r models}
@@ -207,14 +207,18 @@ diversities$min
                 alpha.diversity.min$xaxis,
                 beta.diversity.min$xaxis,
                 beta.diversity.min$xlab,
-                text_grob(paste("A.", key), size = 18, just = "left"),
+                text_grob(sprintf("A. %s (%s)", key, paste(covariates.min, collapse = ", ")),
+                          size = 16,
+                          just = "left"),
                 alpha.diversity.full$yaxis,
                 alpha.diversity.full$plot,
                 beta.diversity.full$plot,  
                 alpha.diversity.full$xaxis,
                 beta.diversity.full$xaxis,
                 beta.diversity.full$xlab,
-                text_grob(paste("B.", key), size = 18, just = "left"))
+                text_grob(sprintf("B. %s (%s)", key, paste(covariates.full %>%
+                                                           gsub("BL_USE_", "", .), collapse = ", ")),
+                          size = 16, just = "left"))
     
     g4 <- arrangeGrob(grobs = gs4,
                       layout_matrix = rbind(
@@ -239,8 +243,8 @@ diversities$min
 
 
 ```{r plot alpha diversity, eval = FALSE}
-g <- arrangeGrob(plotlist[[1]], plotlist[[2]], ncol=1)
-ggsave(file="cache/plotlist.pdf", g, height=6*length(plotlist), width=10)
+g <- arrangeGrob(grobs = plotlist, ncol=2)
+ggsave(file="cache/plotlist.pdf", g, height=6*length(plotlist)/1.5, width=10*2)
 ```
 
 ```{r debug, eval = FALSE}

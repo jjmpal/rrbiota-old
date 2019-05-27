@@ -779,6 +779,7 @@ Odds for hypertension
 
 ```{r odds htn lacto}
 odds.hypertension.lactogroup <- glm.hypertension.lactogroup %>%
+    broom::tidy(conf.int = TRUE, conf.level = 0.95, exponentiate = TRUE) %>%
     filter(!grepl("Intercept", term)) %>%
     select(term, estimate, p.value, conf.low, conf.high) %>%
     add_row(term = "lacto_groups1", estimate = 1.0, conf.low = NA, conf.high = NA) %>%
