@@ -120,7 +120,7 @@ calculateadonis <- function(dset,
                             matrix,
                             responses = list(model_1 = "MAP", model_2 = "SYSTM", model_3 = "DIASM",
                                           model_4 = "PULSEPRESSURE", model_5 = "HYPERTENSION"),
-                            covariates = c("BL_AGE", "SEX"),
+                            covariates = ".",
                             npermutations = 99,
                             maxcores = 100) {
     mclapply(responses, function(response) {

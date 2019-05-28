@@ -8,7 +8,9 @@ plot.alpha <- function(diversity,
         geom_bar(stat="identity", color="black") +
         coord_flip() +
         scale_fill_brewer(palette="Blues",
-                          name = 'Regression coefficient \nin linear model \nfor Shannon index') +
+                          name = 'Regression coefficient \nin linear model \nfor Shannon index',
+                          drop=FALSE,
+                          direction = -1) +
         #scale_color_discrete_sequential(palette = "Blues", nmax = 6, order = 2:6) +
 #        scale_fill_gradientn(colours = c("blue", "white"),
 #                             breaks = c(-colorlimit, 0),

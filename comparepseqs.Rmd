@@ -109,15 +109,15 @@ covariates.full <- c("BL_AGE", "SEX", "BMI", "CURR_SMOKE",
 ```
 
 ```{r rds subset, eval = FALSE}
-subset.run <- 3
+esubset.run <- 3
 ```
 
 ```{r rds files}
 rds <- list("shogun" = "data/phfinrisk_species_all_drop50k_2018-12-21.RDs",
             "centrifuge" = "data/phfinrisk_centrifuge_species_all_2018-11-30.RDs",
             "gtdb" = "data/phfinrisk_gtdb_species_all_drop50k_2019-01-14.RDs",
-            "ncbi" = "data/phfinrisk_custom70_species_all_2019-01-29.RDs",
-            "R16S" = "data/phfinrisk_16S_otu_raw_2019-02-19.RDs")
+            "ncbi" = "data/phfinrisk_custom70_species_all_2019-01-29.RDs")
+#            "R16S" = "data/phfinrisk_16S_otu_raw_2019-02-19.RDs")
 ```
 
 ```{r subset runs}
@@ -189,63 +189,63 @@ for (key in names(rds)) {
 ```
 
 ```{r plot, eval = FALSE}
-plotlist <- list()
+if (!exists("subset.run")) {
+    plotlist <- list()
 
-for (key in names(rds)) {
-    diversities <- mergediversities(ret[[key]][["alphadiversity"]],
-                                    ret[[key]][["betadiversity"]])
+    for (key in names(rds)) {
+        diversities <- mergediversities(ret[[key]][["alphadiversity"]],
+                                        ret[[key]][["betadiversity"]])
 
-    alpha.diversity.min <- plot.alpha(diversities$min, alphabreaks = c(-0.15, -0.10, -0.05, 0))
-    alpha.diversity.full <- plot.alpha(diversities$full, alphabreaks = c(-0.15, -0.10, -0.05, -0))
+        alpha.diversity.min <- plot.alpha(diversities$min, alphabreaks = c(-0.15, -0.10, -0.05, -0.01, 0))
+        alpha.diversity.full <- plot.alpha(diversities$full, alphabreaks = c(-0.15, -0.10, -0.05, -0.01, -0))
 
-    beta.diversity.min <- plot.beta(diversities$min)
-    beta.diversity.full <- plot.beta(diversities$full)
+        beta.diversity.min <- plot.beta(diversities$min)
+        beta.diversity.full <- plot.beta(diversities$full)
 
-    gs4 <- list(alpha.diversity.min$yaxis,
-                alpha.diversity.min$plot,
-                beta.diversity.min$plot,
-                alpha.diversity.min$legend,
-                alpha.diversity.min$xaxis,
-                beta.diversity.min$xaxis,
-                beta.diversity.min$xlab,
-                text_grob(sprintf("A. %s (%s)", key, paste(covariates.min, collapse = ", ")),
-                          size = 16,
-                          just = "left"),
-                alpha.diversity.full$yaxis,
-                alpha.diversity.full$plot,
-                beta.diversity.full$plot,  
-                alpha.diversity.full$xaxis,
-                beta.diversity.full$xaxis,
-                beta.diversity.full$xlab,
-                text_grob(sprintf("B. %s (%s)", key, paste(covariates.full %>%
-                                                           gsub("BL_USE_", "", .), collapse = ", ")),
-                          size = 16, just = "left"))
-    
-    g4 <- arrangeGrob(grobs = gs4,
-                      layout_matrix = rbind(
-                          c(8,    NA,    NA, NA,   NA, NA, NA),
-                          c(NA, 1,    2,    NA, 3, NA, NA),
-                          c(NA, 1,    2,    NA, 3, NA, 4),
-                          c(NA, NA, 5,    NA,6, NA, NA),
-                          c(NA, NA, NA, NA,7, NA, NA),
-                          c(15,    NA,    NA, NA,   NA, NA, NA),
-                          c(NA, 9,    10,  NA,  11, NA, NA),
-                          c(NA, 9,    10,  NA,  11, NA, NA),
-                          c(NA, NA, 12,   NA, 13, NA, NA),
-                          c(NA, NA, NA, NA,14, NA, NA)),
-                      widths=c(0.7, 4, 0.7, 0.1, 5, 0.7, 3),
-                      heights=rep(c(1, 1, 6, 1, 2), 2))
+        gs4 <- list(alpha.diversity.min$yaxis,
+                    alpha.diversity.min$plot,
+                    beta.diversity.min$plot,
+                    alpha.diversity.min$legend,
+                    alpha.diversity.min$xaxis,
+                    beta.diversity.min$xaxis,
+                    beta.diversity.min$xlab,
+                    text_grob(sprintf("A. %s (%s)", key, paste(covariates.min, collapse = ", ")),
+                              size = 16,
+                              just = "left"),
+                    alpha.diversity.full$yaxis,
+                    alpha.diversity.full$plot,
+                    beta.diversity.full$plot,  
+                    alpha.diversity.full$xaxis,
+                    beta.diversity.full$xaxis,
+                    beta.diversity.full$xlab,
+                    text_grob(sprintf("B. %s (%s)", key, paste(covariates.full %>%
+                                                               gsub("BL_USE_", "", .), collapse = ", ")),
+                              size = 16, just = "left"))
+        
+        g4 <- arrangeGrob(grobs = gs4,
+                          layout_matrix = rbind(
+                              c(8,    NA,    NA, NA,   NA, NA, NA),
+                              c(NA, 1,    2,    NA, 3, NA, NA),
+                              c(NA, 1,    2,    NA, 3, NA, 4),
+                              c(NA, NA, 5,    NA,6, NA, NA),
+                              c(NA, NA, NA, NA,7, NA, NA),
+                              c(15,    NA,    NA, NA,   NA, NA, NA),
+                              c(NA, 9,    10,  NA,  11, NA, NA),
+                              c(NA, 9,    10,  NA,  11, NA, NA),
+                              c(NA, NA, 12,   NA, 13, NA, NA),
+                              c(NA, NA, NA, NA,14, NA, NA)),
+                          widths=c(0.7, 4, 0.7, 0.1, 5, 0.7, 3),
+                          heights=rep(c(1, 1, 6, 1, 2), 2))
 
-    ggsave(file = paste0("cache/alpha-beta-", key , ".png"), plot=g4, height=6, width=9)
-    plotlist[[key]] = g4
+        ggsave(file = paste0("cache/alpha-beta-", key , ".png"), plot=g4, height=6, width=9)
+        plotlist[[key]] = g4
+    }
+
+    g <- arrangeGrob(grobs = plotlist, ncol=2)
+    ggsave(file="cache/plotlist.png", g, height=6*length(plotlist)/1.5, width=10*2)
+} else {
+    message("Skipping graphics")
 }
-```
-
-
-
-```{r plot alpha diversity, eval = FALSE}
-g <- arrangeGrob(grobs = plotlist, ncol=2)
-ggsave(file="cache/plotlist.pdf", g, height=6*length(plotlist)/1.5, width=10*2)
 ```
 
 ```{r debug, eval = FALSE}
@@ -280,3 +280,67 @@ dset %>%
 lm(sprintf(fo.alpha.full, "SYSTM"), data = dset) %>% summary
 ```
 
+```{r debug alpha, eval = FALSE}
+alphadiversity <- readRDS(file = paste0("rds-comparepseqs/alpha-R16S.rds"))
+alphadiversity
+
+```
+
+Full model R2
+
+```{r diff beta debug, eval = FALSE}
+betadf <- data.frame()
+for (key in names(rds)) {
+    moddf.full <- Reduce(function(...) merge(..., all=T), ret[[key]][["betadiversity"]]$full) %>%
+        dplyr::filter(response == term) %>%
+        mutate(model = key, covariates = "full") %>%
+        select(term, model, covariates, R2)
+    moddf.min <- Reduce(function(...) merge(..., all=T), ret[[key]][["betadiversity"]]$min) %>%
+        dplyr::filter(response == term) %>%
+        mutate(model = key, covariates = "min") %>%
+        select(term, model, covariates, R2)
+    betadf <- rbind(betadf, moddf.full, moddf.min)
+}
+
+betadf %>% arrange(term) %>% spread(model, R2) %>% kable
+```
+
+```{r debugging adonis, eval = FALSE}
+pseq <- import_filter_data(rds[["gtdb"]])
+
+dset <- meta.merge.alphadiversity(pseq) %>%
+    mutate(diversities_shannon = scale(diversities_shannon))
+
+bray.dist.matrix <- readRDS(file = paste0("rds-comparepseqs/bray-gtdb.rds"))
+
+dset.sample <- dset %>% sample_n(50)
+
+dset.ids <- dset.sample %>% pull(Sample_ID)
+
+betadiversity <- list(min = calculateadonis(dset = dset.sample,
+                                            matrix = bray.dist.matrix[dset.ids, dset.ids],
+                                            covariates = covariates.min,
+                                            npermutations = 10000),
+                      full = calculateadonis(dset = dset.sample,
+                                      matrix = bray.dist.matrix[dset.ids, dset.ids],
+                                      covariates = covariates.full,
+                                      npermutations = 2))
+
+betadiversity$full
+
+betadf <- data.frame()
+for (key in names(rds)) {
+    moddf.full <- Reduce(function(...) merge(..., all=T), betadiversity$full) %>%
+        dplyr::filter(response == term) %>%
+        mutate(model = key, covariates = "full") %>%
+        select(term, model, covariates, R2)
+    moddf.min <- Reduce(function(...) merge(..., all=T), betadiversity$min) %>%
+        dplyr::filter(response == term) %>%
+        mutate(model = key, covariates = "min") %>%
+        select(term, model, covariates, R2)
+    betadf <- rbind(betadf, moddf.full, moddf.min)
+}
+betadf %>% arrange(term) %>% spread(model, R2) %>% kable
+
+
+```
