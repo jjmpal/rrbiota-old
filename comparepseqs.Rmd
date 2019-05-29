@@ -113,8 +113,8 @@ covariates.full <- c("BL_AGE", "SEX", "BMI", "CURR_SMOKE",
 rds <- list("shogun" = "data/phfinrisk_species_all_drop50k_2018-12-21.RDs",
             "centrifuge" = "data/phfinrisk_centrifuge_species_all_2018-11-30.RDs",
             "gtdb" = "data/phfinrisk_gtdb_species_all_drop50k_2019-01-14.RDs",
-            "ncbi" = "data/phfinrisk_custom70_species_all_2019-01-29.RDs")#,
-#            "R16S" = "data/phfinrisk_16S_otu_raw_2019-02-19.RDs")
+            "ncbi" = "data/phfinrisk_custom70_species_all_2019-01-29.RDs",
+            "R16S" = "data/phfinrisk_16S_otu_raw_2019-02-19.RDs")
 ```
 
 ```{r subset runs}
@@ -138,9 +138,6 @@ for (key in names(rds)) {
                                                 key , ".rds"))
     }
 
-    ret[[key]] = list(                      "alphadistribution" = alphadistribution)
-    }
-
     if (!file.exists(paste0("rds-comparepseqs/alpha-", key , ".rds"))) {
         missing$alpha = TRUE
     } else {
@@ -158,8 +155,12 @@ for (key in names(rds)) {
     } else {
         betadiversity <- readRDS(file = paste0("rds-comparepseqs/beta-", key , ".rds"))
     }
+}
+```
 
-    if (length(missing) > 0) {
+```{r calculate missing models}
+if (length(missing) > 0) {
+    for (key in names(rds)) {
         pseq <- import_filter_data(rds[[key]],
                                    included = c("MEN", "BL_AGE", "SYSTM", "DIASM", "BMI",
                                                 "CURR_SMOKE", "BL_USE_RX_C09",
@@ -173,7 +174,8 @@ for (key in names(rds)) {
             alphadistribution <- dset %>%
                 mutate(!!key := diversities_shannon) %>%
                 select(Sample_ID, key)
-            saveRDS(alphadistribution, file = paste0("rds-comparepseqs/alphadistribution-", key , ".rds"))
+            saveRDS(alphadistribution,
+                    file = paste0("rds-comparepseqs/alphadistribution-", key , ".rds"))
         }    
 
         if ("alpha" %in% names(missing)) {
@@ -201,11 +203,11 @@ for (key in names(rds)) {
                                                          npermutations = 1000))
             saveRDS(betadiversity, file = paste0("rds-comparepseqs/beta-", key , ".rds"))
         }
-    }
 
-    ret[[key]] = list("alphadiversity" = alphadiversity,
-                      "betadiversity" = betadiversity,
-                      "alphadistribution" = alphadistribution)
+        ret[[key]] = list("alphadiversity" = alphadiversity,
+                          "betadiversity" = betadiversity,
+                          "alphadistribution" = alphadistribution)
+    }
 }
 ```
 
