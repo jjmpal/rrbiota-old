@@ -83,9 +83,13 @@ calculateglm <- function(dset,
                       conf.high = estimate + qnorm(1- 0.05/2) * std.error)
 }
 
-import_filter_data <- function(file) {
+import_filter_data <- function(file,
+                               included = c("MEN", "BL_AGE", "SYSTM", "DIASM", "BMI",
+                                            "CURR_SMOKE", "DIAB", "BL_USE_RX_C09",
+                                            "Q57X", "BL_USE_RX_C03",
+                                            "BL_USE_RX_C07", "BL_USE_RX_C08")) {
     pseq.full <- readRDS(file)
-    pseq.meta <- filter.phenotype.data(pseq.full)
+    pseq.meta <- filter.phenotype.data(pseq.full, included = included)
     phyloseq::sample_data(pseq.full) <- phyloseq::sample_data(pseq.meta)
     return(pseq.full)
 }
