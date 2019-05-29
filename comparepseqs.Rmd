@@ -155,12 +155,8 @@ for (key in names(rds)) {
     } else {
         betadiversity <- readRDS(file = paste0("rds-comparepseqs/beta-", key , ".rds"))
     }
-}
-```
 
-```{r calculate missing models}
-if (length(missing) > 0) {
-    for (key in names(rds)) {
+    if (length(missing) > 0) {
         pseq <- import_filter_data(rds[[key]],
                                    included = c("MEN", "BL_AGE", "SYSTM", "DIASM", "BMI",
                                                 "CURR_SMOKE", "BL_USE_RX_C09",
@@ -203,11 +199,11 @@ if (length(missing) > 0) {
                                                          npermutations = 1000))
             saveRDS(betadiversity, file = paste0("rds-comparepseqs/beta-", key , ".rds"))
         }
-
-        ret[[key]] = list("alphadiversity" = alphadiversity,
-                          "betadiversity" = betadiversity,
-                          "alphadistribution" = alphadistribution)
     }
+
+    ret[[key]] = list("alphadiversity" = alphadiversity,
+                      "betadiversity" = betadiversity,
+                      "alphadistribution" = alphadistribution)
 }
 ```
 
