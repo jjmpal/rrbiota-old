@@ -124,7 +124,7 @@ calculateadonis <- function(dset,
                             npermutations = 99,
                             maxcores = 100) {
     mclapply(responses, function(response) {
-        fo <- sprintf("matrix ~ %s + %s", response, paste(covariates, collapse = " + "))
+        fo <- sprintf("matrix ~ %s + %s", paste(covariates, collapse = " + "), response)
         ad <- adonis(formula = as.formula(fo), data = dset, permutations = npermutations)
         ad$aov.tab %>%
             as.data.frame %>%
