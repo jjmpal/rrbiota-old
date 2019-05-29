@@ -63,6 +63,7 @@ library(vegan)
 library(ggpubr)
 library(broom)
 library(tidyr)
+library(GGally)
 ```
 
 ### RR biome functions
@@ -129,6 +130,12 @@ ret <- list()
 for (key in names(rds)) {
     missing = list()
 
+    if (!file.exists(paste0("rds-comparepseqs/alphadistribution-", key , ".rds"))) {
+        missing$alphadistribution = TRUE
+    } else {
+        alphadiversity <- readRDS(file = paste0("rds-comparepseqs/alphadistribution-", key , ".rds"))
+    }
+    
     if (!file.exists(paste0("rds-comparepseqs/alpha-", key , ".rds"))) {
         missing$alpha = TRUE
     } else {
@@ -150,7 +157,15 @@ for (key in names(rds)) {
     if (length(missing) > 0) {
         pseq <- import_filter_data(rds[[key]])
         dset <- meta.merge.alphadiversity(pseq) %>%
-            mutate(diversities_shannon = scale(diversities_shannon))
+            mutate(diversities_shannon = as.numeric(scale(diversities_shannon)))
+
+        if ("alphadistribution" %in% names(missing)) {
+            message("Missing alpha distribution")
+            alphadistribution <- dset %>%
+                mutate(!!key := diversities_shannon) %>%
+                select(Sample_ID, key)
+            saveRDS(alphadistribution, file = paste0("rds-comparepseqs/alphadistribution-", key , ".rds"))
+        }    
 
         if ("alpha" %in% names(missing)) {
             message("Missing alpha")
@@ -180,7 +195,8 @@ for (key in names(rds)) {
     }
 
     ret[[key]] = list("alphadiversity" = alphadiversity,
-                      "betadiversity" = betadiversity)
+                      "betadiversity" = betadiversity,
+                      "alphadistribution" = alphadistribution)
 }
 ```
 
@@ -277,8 +293,24 @@ lm(sprintf(fo.alpha.full, "SYSTM"), data = dset) %>% summary
 ```
 
 ```{r debug alpha, eval = FALSE}
-alphadiversity <- readRDS(file = paste0("rds-comparepseqs/alpha-R16S.rds"))
-alphadiversity
+scatterplot.df <- lapply(ret, function(x) x$alphadistribution) %>%
+    Reduce(function(x, y) merge(x, y, all=TRUE, by="Sample_ID"), .) %>%
+    select(-Sample_ID) %>%
+    na.omit()
+
+ggsave(file = paste0("cache/ggpairs-alphas.png"),
+       plot=ggpairs(scatterplot.df,
+                        lower = list(continuous = wrap("points",
+                                                       alpha = 0.3,
+                                                       size=0.1), 
+                                     combo = wrap("dot",
+                                                  alpha = 0.4,
+                                                  size=0.2))),
+       height=6,
+       width=9,
+       unit = "in",
+       dpi = 300)
+
 
 ```
 
