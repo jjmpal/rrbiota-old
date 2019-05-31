@@ -40,17 +40,6 @@ if (exists("args")) {
 
 # Importing libraries:
 
-```{r install, eval = FALSE, include = FALSE}
-install.packages("BiocManager")
-BiocManager::install("phyloseq")
-
-source("https://bioconductor.org/biocLite.R")
-biocLite("BiocInstaller")
-library(BiocInstaller)
-source("http://www.bioconductor.org/biocLite.R")
-biocLite("microbiome")
-```
-
 ```{r libraries}
 library(dplyr)
 library(tibble)
@@ -124,7 +113,26 @@ if (exists("subset.run")) {
 }
 ``` 
 
-```{r models}
+```{r alpha scatter, include = FALSE, eval = FALSE}
+rds = rds[c(1,2,4)]
+ret <- list()
+
+for (key in names(rds)) {
+    missing = list()
+
+    if (!file.exists(paste0("rds-comparepseqs/alphadistribution-", key , ".rds"))) {
+        missing$alphadistribution = TRUE
+    } else {
+        alphadistribution <- readRDS(file =
+                                         paste0("rds-comparepseqs/alphadistribution-",
+                                                key , ".rds"))
+    }
+    
+    ret[[key]] = list("alphadistribution" = alphadistribution)
+}
+```
+
+```{R models}
 ret <- list()
 
 for (key in names(rds)) {
@@ -192,11 +200,11 @@ for (key in names(rds)) {
             betadiversity <- list(min = calculateadonis(dset = dset,
                                                         matrix = bray.dist.matrix,
                                                         covariates = covariates.min,
-                                                        npermutations = 1000),
+                                                        npermutations = 100),
                                   full = calculateadonis(dset = dset,
                                                          matrix = bray.dist.matrix,
                                                          covariates = covariates.full,
-                                                         npermutations = 1000))
+                                                         npermutations = 100))
             saveRDS(betadiversity, file = paste0("rds-comparepseqs/beta-", key , ".rds"))
         }
     }
@@ -208,6 +216,7 @@ for (key in names(rds)) {
 ```
 
 ```{r plot alpha-beta}
+names(rds)
 if (!exists("subset.run")) {
     plotlist <- list()
 
@@ -257,11 +266,13 @@ if (!exists("subset.run")) {
                           heights=rep(c(1, 1, 6, 1, 2), 2))
 
         ggsave(file = paste0("cache/alpha-beta-", key , ".png"), plot=g4, height=6, width=9)
+        
         plotlist[[key]] = g4
     }
 
     g <- arrangeGrob(grobs = plotlist, ncol=2)
     ggsave(file="cache/plotlist.png", g, height=6*length(plotlist)/1.5, width=10*2)
+
 } else {
     message("Skipping graphics")
 }
@@ -299,24 +310,29 @@ dset %>%
 lm(sprintf(fo.alpha.full, "SYSTM"), data = dset) %>% summary
 ```
 
-```{r debug alpha, eval = FALSE}
+# Alpha scatter
+
+```{r draw alpha distribution scatter plot, eval = FALSE}
 scatterplot.df <- lapply(ret, function(x) x$alphadistribution) %>%
     Reduce(function(x, y) merge(x, y, all=TRUE, by="Sample_ID"), .) %>%
     select(-Sample_ID) %>%
     na.omit()
 
-scatterplot.df %>% head
+galphascatter <- ggpairs(scatterplot.df,
+                         lower = list(continuous = wrap("points",
+                                                        alpha = 0.3,
+                                                        size=0.1), 
+                                      combo = wrap("dot",
+                                                   alpha = 0.4,
+                                                   size=0.2))) +
+    theme(legend.position = "none", 
+          panel.grid.major = element_blank(), 
+          axis.ticks = element_blank(), 
+          panel.border = element_rect(linetype = "dashed", colour = "black", fill = NA))
 
- lapply(ret, function(x) x$alphadistribution %>% head)
 
 ggsave(file = paste0("cache/ggpairs-alphas.png"),
-       plot=ggpairs(scatterplot.df,
-                        lower = list(continuous = wrap("points",
-                                                       alpha = 0.3,
-                                                       size=0.1), 
-                                     combo = wrap("dot",
-                                                  alpha = 0.4,
-                                                  size=0.2))),
+       plot= galphascatter,
        height=6,
        width=9,
        unit = "in",
