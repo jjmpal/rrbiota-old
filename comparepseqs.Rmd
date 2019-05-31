@@ -200,11 +200,11 @@ for (key in names(rds)) {
             betadiversity <- list(min = calculateadonis(dset = dset,
                                                         matrix = bray.dist.matrix,
                                                         covariates = covariates.min,
-                                                        npermutations = 100),
+                                                        npermutations = 1000),
                                   full = calculateadonis(dset = dset,
                                                          matrix = bray.dist.matrix,
                                                          covariates = covariates.full,
-                                                         npermutations = 100))
+                                                         npermutations = 1000))
             saveRDS(betadiversity, file = paste0("rds-comparepseqs/beta-", key , ".rds"))
         }
     }
