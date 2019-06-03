@@ -394,7 +394,9 @@ First three axis explain portion (`r eig.fracs[1:3]`) of
 variation. Testing associations to blood pressure variables on PCoA
 axis 1
 
-```{r top generas, eval = FALSE, include = FALSE}
+Genera with top R2 with PCoA axes
+
+```{r top generas}
 abund.genus <- abundances(pseq.genus, transform = "compositional") %>%
     t %>%
     as.data.frame %>%
@@ -403,20 +405,30 @@ abund.genus <- abundances(pseq.genus, transform = "compositional") %>%
 
 abund.genus.bacteria <- colnames(abund.genus)[-1] %>% mygrep(".bacteria$", .) 
 
-pcoacorabund <- function(names, pcoa) {
-    lapply(c2l(abund.genus.bacteria), function (name) 
-                     lapply(c2l(1,2,3), function(index) {
-                             model <- lm(abund.genus[,name] ~ pcoa[,index])
-                             summary(model)$r.squared
-                         }))
+abund.df <- merge(pcoa.vectors %>%
+                  select("Axis.1", "Axis.2", "Axis.3") %>%
+                  tibble::rownames_to_column("id"),
+                  abund.genus %>% select(id, abund.genus.bacteria),
+                  by = "id") %>%
+    merge(.,  meta(pseq.genus) %>% tibble::rownames_to_column("id"), by = "id")
+
+pcoacorabund <- function(df,
+                         genera.names,
+                         axis.names = c("Axis.1", "Axis.2", "Axis.3")) {
+    lapply(c2l(genera.names), function (taxa) 
+        lapply(c2l(axis.names), function(axis) {
+            fo <- sprintf("%s ~ %s", axis, taxa)
+            model <- lm(as.formula(fo), data = df)
+            summary(model)$r.squared
+        }))
 }
 
-pcoacor.genus <- pcoacorabund(abund.genus.bacteria, pcoa.vectors)
+pcoacor.genus <- pcoacorabund(abund.df, genera.names = abund.genus.bacteria)
 pcoacor.genus.df <- map_df(pcoacor.genus, ~as.data.frame(.x), .id="id")
 
 pcoacor.genus.df %>%
-    arrange(-X3) %>%
-    head(10) %>% kable
+    arrange(-Axis.3) %>%
+    head(20) %>% kable
 ```
 
 
