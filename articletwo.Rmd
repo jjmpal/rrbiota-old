@@ -67,6 +67,7 @@ library(broom)
 library(ggfortify)
 library(RColorBrewer)
 library(gvlma)
+library(purrr)
 ```
 
 Session info
@@ -146,8 +147,8 @@ pseq.species <- import_filter_data("data/phfinrisk_centrifuge_species_all_2018-1
 
 At species level meta has dimensions (`r dim(meta(pseq.species))`) and
 there ntaxa is `r ntaxa(pseq.species)`, and at genus level meta has
-dimensions (`r dim(meta(pseq.genus))`) and there ntaxa is `r
-ntaxa(pseq.genus)`.
+dimensions (`r dim(meta(pseq.genus))`) and there ntaxa is 
+`r ntaxa(pseq.genus)`.
 
 
 
@@ -365,8 +366,6 @@ pcoa.df <- merge(pcoa.vectors %>% select(Axis.1, Axis.2, Axis.3),
                                    levels = c("11", "10", "01", "00")),
            gMAP = cut(oMAP, seq(60, 160, 15)))
 
-pcoa.df %>% pull(HYPERTENSION) %>% summary
-
 pcoa.plot <- ggplot(data=pcoa.df, aes(x=Axis.1, y=Axis.3, color = HYPERTENSION)) +
     geom_point(size=0.1, alpha=0.4) +
     xlab(sprintf("PCoA Axis 1 (%.1f%%)", 100*eig.fracs[1])) +
@@ -394,6 +393,31 @@ ggsave(file = "cache/pcoa-species.png", plot=pcoa.plot, height=4, width=5, units
 First three axis explain portion (`r eig.fracs[1:3]`) of
 variation. Testing associations to blood pressure variables on PCoA
 axis 1
+
+```{r top generas, eval = FALSE, include = FALSE}
+abund.genus <- abundances(pseq.genus, transform = "compositional") %>%
+    t %>%
+    as.data.frame %>%
+    tibble::rownames_to_column("id") %>%
+    setNames(tolower(replace.brackets(names(.))))
+
+abund.genus.bacteria <- colnames(abund.genus)[-1] %>% mygrep(".bacteria$", .) 
+
+pcoacorabund <- function(names, pcoa) {
+    lapply(c2l(abund.genus.bacteria), function (name) 
+                     lapply(c2l(1,2,3), function(index) {
+                             model <- lm(abund.genus[,name] ~ pcoa[,index])
+                             summary(model)$r.squared
+                         }))
+}
+
+pcoacor.genus <- pcoacorabund(abund.genus.bacteria, pcoa.vectors)
+pcoacor.genus.df <- map_df(pcoacor.genus, ~as.data.frame(.x), .id="id")
+
+pcoacor.genus.df %>%
+    arrange(-X3) %>%
+    head(10) %>% kable
+```
 
 
 ```{r pcoa axis analysis axis 1}
@@ -430,6 +454,20 @@ calculateglm(pcoa.df,
     kable
 ```
 
+```{r pcoa 3d}
+theta <- 130
+phi <- 10
+pcoa3d.plot <- ggplot(data=pcoa.df, aes(x=Axis.1, y = Axis.2, z=Axis.3, color = HYPERTENSION)) +
+  axes_3D(theta=theta, phi=phi) +
+  stat_3D(theta=theta, phi=phi, size = 0.01, alpha=0.4) +
+  labs_3D(theta=theta, phi=phi, 
+          hjust=c(1,0,0), vjust=c(1.5,1,-.2),
+          labs=c(sprintf("PCoA Axis 1 (%.1f%%)", 100*eig.fracs[1]),
+                 sprintf("PCoA Axis 2 (%.1f%%)", 100*eig.fracs[2]),
+                 sprintf("PCoA Axis 3 (%.1f%%)", 100*eig.fracs[3]))) #+
+#  theme_void()
+
+ggsave(file = "cache/pcoa-species-3d.png", plot=pcoa3d.plot, height=4, width=7, units = "in", dpi = 300)
 
 ```
 
@@ -512,6 +550,34 @@ maas.results.df.signf %>%
     select(Feature, Value, Coefficient, Qval) %>%
     arrange(Qval) %>%
     kable
+```
+
+Catabacter, Robinsoniella
+
+```{r compare maaslin to sun, eval = FALSE}
+maas.results.df.all <- maaslin$genus %>%
+    merge(names.dset %>% select(Covariate, Category, Name), by.x ="Variable", by.y = "Covariate") %>%
+    dplyr::mutate(Qval = p.adjust(P.value, method="BH"),
+                  Feature = gsub("_Bacteria", "", Feature),
+                  beta = Coefficient)
+
+maas.results.df.all %>% pull(Feature) %>% sort %>% unique %>% mygrep("Robin", .)
+
+genus.taxa <- pseq.genus.core %>% abundances %>% rownames
+
+genus.taxa %>% mygrep("Catabacter", .)
+
+maaslin.test <- maaslinwrapper(pseq = pseq.genus.core,
+                                    looped = c("MAP", "SYSTM", "DIASM", "PULSEPRESSURE",
+                                               "HYPERTENSION"),
+                                    forced = c("BL_AGE", "SEX", "BMI", "CURR_SMOKE", "Q57X",
+                                               "DIAB", "BL_USE_RX_C03",
+                                               "BL_USE_RX_C07", "BL_USE_RX_C08", "BL_USE_RX_C09"),
+                               taxa = paste(c("Faecalicatena.Bacteria",
+                                        "Catabacter.Bacteria",
+                                        "Robinsoniella.Bacteria"), collapse = ", "))
+
+
 ```
 
 ```{r scatter plots}
@@ -828,6 +894,45 @@ fig4head <- "Associations between dietary salt, lactobacillus abundance, and odd
 fig4foot <- "In panel A we see lactobacillus abundances in different dietary salt groups. The mean value is adjusted using age and sex. In panel B we split participants in four groups by lactobacillus abundances and calculate odds ratio for hypertension. Age and sex are included in logistic model. A 95 % CI is drawn in both panels."
 writeimage(doc, 4, "cache/salt-forest.png", fig4head, fig4foot)
 ```
+
+```{r squared clinical, eval = FALSE, include = FALSE}
+mylmrsqr <- function(df, response, loopcovariates) {
+    model.list <- list()
+    for (i in seq(length(loopcovariates))) {
+        fo <- sprintf("%s ~ %s", response, paste(loopcovariates, collapse = " + "))
+        message(sprintf("formula : %s", fo))
+        model <- lm(as.formula(fo), data = df)
+        model$call <- as.formula(fo)
+        model.list[[i]] <- model
+        loopcovariates <- loopcovariates[-length(loopcovariates)]
+    }
+    return(model.list)
+}
+
+af.models <- mylmrsqr(df = meta(pseq.species),
+         response = "MAP",
+         loopcovariates = c("BL_AGE", "SEX", "BMI", "CURR_SMOKE", "Q57X", "DIAB",
+                            "ANYDRUG"))
+
+af <- do.call(anova, af.models)
+
+af %>%
+    as.data.frame %>%
+        mutate(Rsqr =  `Sum of Sq`/sum(`Sum of Sq`, na.rm = T)*100)
+
+
+c(summary(lm(SYSTM ~ BL_AGE + SEX, meta(pseq.species)))$adj.r.squared,
+summary(lm(DIASM ~ BL_AGE + SEX, meta(pseq.species)))$adj.r.squared,
+summary(lm(PULSEPRESSURE ~ BL_AGE + SEX, meta(pseq.species)))$adj.r.squared,
+summary(lm(MAP ~ BL_AGE + SEX, meta(pseq.species)))$adj.r.squared) %>% mean
+
+c(summary(lm(SYSTM ~ BL_AGE + SEX + BMI, meta(pseq.species)))$adj.r.squared,
+summary(lm(DIASM ~ BL_AGE + SEX + BMI, meta(pseq.species)))$adj.r.squared,
+summary(lm(PULSEPRESSURE ~ BL_AGE + SEX + BMI, meta(pseq.species)))$adj.r.squared,
+summary(lm(MAP ~ BL_AGE + SEX + BMI, meta(pseq.species)))$adj.r.squared) %>% sort
+
+```
+
 
 ```{r Write docx to file, include=FALSE}
 print(doc, target = paste0("report/articletwo-", now, ".docx"))
