@@ -103,7 +103,7 @@ rds <- list("shogun" = "data/phfinrisk_species_all_drop50k_2018-12-21.RDs",
             "centrifuge" = "data/phfinrisk_centrifuge_species_all_2018-11-30.RDs",
             "gtdb" = "data/phfinrisk_gtdb_species_all_drop50k_2019-01-14.RDs",
             "ncbi" = "data/phfinrisk_custom70_species_all_2019-01-29.RDs",
-            "R16S" = "data/phfinrisk_16S_otu_raw_2019-02-19.RDs")
+            "R16S" = "data/phfinrisk_16S_otu_genus_2019-02-20.RDs")
 ```
 
 ```{r subset runs}
@@ -165,6 +165,7 @@ for (key in names(rds)) {
     }
 
     if (length(missing) > 0) {
+
         pseq <- import_filter_data(rds[[key]],
                                    included = c("MEN", "BL_AGE", "SYSTM", "DIASM", "BMI",
                                                 "CURR_SMOKE", "BL_USE_RX_C09",
@@ -180,7 +181,7 @@ for (key in names(rds)) {
                 select(Sample_ID, key)
             saveRDS(alphadistribution,
                     file = paste0("rds-comparepseqs/alphadistribution-", key , ".rds"))
-        }    
+        }
 
         if ("alpha" %in% names(missing)) {
             message("Missing alpha")
