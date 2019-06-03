@@ -50,7 +50,6 @@ library(knitr)
 library(tidyr)
 library(vegan)
 library(reshape)
-library(Maaslin)
 library(parallel)
 library(officer)
 library(flextable)
@@ -141,8 +140,8 @@ names.dset <- getdescriptions()
 Loading phyloseq object
 
 ```{r data}
-pseq.genus <- import_filter_data("data/phfinrisk_centrifuge_genus_all_drop50k_2018-11-30.RDs")
-pseq.species <- import_filter_data("data/phfinrisk_centrifuge_species_all_2018-11-30.RDs")
+pseq.genus <- import_filter_data("data/phfinrisk_centrifuge_genus_d50k_2019-06-02.rds")
+pseq.species <- import_filter_data("data/phfinrisk_centrifuge_species_all_drop50k_2018-11-30_2019-06-03.RDs")
 ```
 
 At species level meta has dimensions (`r dim(meta(pseq.species))`) and
