@@ -49,7 +49,7 @@ filter.phenotype.data <- function(pseq,
 }
 
 meta.merge.alphadiversity <- function(pseq, index = "shannon") {
-    alphadiversity  <- microbiome::global(pseq, index = index)
+    alphadiversity  <- microbiome::alpha(pseq, index = index)
     base::merge(meta(pseq), alphadiversity, by=0, all=TRUE) %>%
         dplyr::rename(Sample_ID = Row.names) %>%
             dplyr::mutate(BL_AGE_GROUP = group_age(BL_AGE))
@@ -68,7 +68,7 @@ calculateglm <- function(dset,
                                           model_4 = "PULSEPRESSURE", model_5 = "HYPERTENSION"),
                          min_n_for_continuous = 10,
                          modelstring = "%s ~ BL_AGE + SEX",
-                         filterstr = "diversities_") {
+                         filterstr = ".") {
     glmlist <- lapply(responses, function(response) {
         fo.family <- ifelse(length(unique(pull(dset, response))) > min_n_for_continuous, stats::gaussian, stats::binomial)
         fo <- sprintf(modelstring, response)

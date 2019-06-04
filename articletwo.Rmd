@@ -212,7 +212,7 @@ if (!file.exists("rds/maaslin.rds")) {
              paste0("cache/maaslin-", now),
              transform = 'AST',
              fixed_effects = paste0(var.CL, collapse = ","), 
-             cores = 10)
+             cores = detectCores())
     
     saveRDS(maaslin, file = "rds/maaslin.rds")
 } else {
@@ -237,7 +237,7 @@ writetable(doc, tbl1, number = 1, tbl1head, tbl1foot)
 
 ```{r alphabeta definitions}
 dset.alpha <- meta.merge.alphadiversity(pseq.species) %>%
-    mutate(diversities_shannon = scale(diversities_shannon),
+    mutate(diversity_shannon = scale(diversity_shannon),
            MAP = oMAP,
            PULSEPRESSURE = oPULSEPRESSURE,
            SYSTM = oSYSTM,
@@ -245,20 +245,29 @@ dset.alpha <- meta.merge.alphadiversity(pseq.species) %>%
 
 alphadiversity <- list(
     min = calculateglm(dset.alpha,
-                       modelstring = "%s ~ BL_AGE + SEX  + diversities_shannon"),
+                       modelstring = sprintf("%%s ~ %s + diversity_shannon",
+                                             paste0(var.CL.min, collapse = " + ")),
+                       filterstr = "shannon"),
     max = calculateglm(dset.alpha,
-                       modelstring = "%s ~ BL_AGE + SEX + BMI + CURR_SMOKE + Q57X + DIAB + BL_USE_RX_C03 + BL_USE_RX_C07 + BL_USE_RX_C08 + BL_USE_RX_C09 + diversities_shannon"))
-
-diversities <- mergediversities(alphadiversity, adonis.species)
+                       modelstring = sprintf("%%s ~ %s + diversity_shannon",
+                                             paste0(var.CL, collapse = " + ")),
+                       filterstr = "shannon"))
 ```
 
 Minimum coefficient for alpha diversity is `r rbind(diversities$min,
 diversities$max) %>% pull(estimate) %>% min`.
 
+Difference of R2 between full and minimal models
+
 ```{r difference in beta diversity}
-merge(diversities$min %>% select(response, R2),
-      diversities$max %>% select(response, R2), by = "response") %>%
-    mutate(R2.diff = R2.y - R2.x) %>%
+merge(diversities$min %>%
+      select(response, R2, R2.p) %>%
+      dplyr::rename(R2.min = R2, p.min = R2.p),
+      diversities$max %>%
+      select(response, R2, R2.p) %>%
+      dplyr::rename(R2.full = R2, p.full = R2.p),
+      by = "response") %>%
+    mutate(R2.diff = R2.full - R2.min) %>%
     kable
 ```
 
@@ -286,20 +295,10 @@ alphadiversity$max %>%
     kable
 ```
 
-Results for beta diversity
-
-```{r table beta diversity}
-adonis.species$max %>%
-    data.table::rbindlist(id = "model_name") %>%
-    dplyr::filter(term %in% c("MAP", "SYSTM", "DIASM", "PULSEPRESSURE", "HYPERTENSION")) %>%
-    dplyr::select(response, R2, "Pr(>F)") %>%
-    mutate(p.value = pub.p(`Pr(>F)`)) %>%
-    kable
-```
 
 ```{r save grob}
-alpha.diversity.min <- plot.alpha(diversities$min, colorlimit = 0.6)
-alpha.diversity.max <- plot.alpha(diversities$max, colorlimit = 0.6)
+alpha.diversity.min <- plot.alpha(diversities$min, alphabreaks = seq(-1,0,0.2))
+alpha.diversity.max <- plot.alpha(diversities$max, alphabreaks = seq(-1,0,0.2))
 
 beta.diversity.min <- plot.beta(diversities$min)
 beta.diversity.max <- plot.beta(diversities$max)
@@ -392,7 +391,7 @@ abund.genus <- abundances(pseq.genus, transform = "compositional") %>%
     tibble::rownames_to_column("id") %>%
     setNames(tolower(replace.brackets(names(.))))
 
-abund.genus.bacteria <- colnames(abund.genus)[-1] %>% mygrep(".bacteria$", .) 
+abund.genus.bacteria <- abund.genus %>% select(-contains("virus")) %>% colnames
 
 abund.df <- merge(pcoa.vectors %>%
                   select("Axis.1", "Axis.2", "Axis.3") %>%
@@ -420,56 +419,20 @@ pcoacor.genus.df %>%
     head(20) %>% kable
 ```
 
+Significant associations between BP-variables and first three PCoA axis
 
 ```{r pcoa axis analysis axis 1}
-calculateglm(pcoa.df,
-             modelstring = "%s ~ Axis.1 + BL_AGE + SEX + BMI + CURR_SMOKE + Q57X + DIAB +
-                     BL_USE_RX_C03 + BL_USE_RX_C07 + BL_USE_RX_C08 + BL_USE_RX_C09",
-             filterstr = "Axis") %>% 
+glm.pcoa <- lapply(c2l("Axis.1", "Axis.2", "Axis.3"), function(axis)
+    calculateglm(pcoa.df,
+                 modelstring = sprintf("%%s ~ %s + %s", axis, paste(var.CL, collapse = "+")),
+                 filterstr = "Axis"))
+
+do.call(rbind, glm.pcoa) %>% 
     select(response, term, estimate, std.error, p.value) %>%
     mutate_if(is.numeric, round, 3) %>%
+    filter(p.value < 0.05) %>%
+    arrange(p.value) %>%
     kable
-```
-
-Testing associations to blood pressure variables on PCoA axis 2
-
-```{r pcoa axis analysis axis 2}
-calculateglm(pcoa.df,
-             modelstring = "%s ~ Axis.2 + BL_AGE + SEX + BMI + CURR_SMOKE + Q57X + DIAB +
-                     BL_USE_RX_C03 + BL_USE_RX_C07 + BL_USE_RX_C08 + BL_USE_RX_C09",
-             filterstr = "Axis") %>% 
-    select(response, term, estimate, std.error, p.value) %>%
-    mutate_if(is.numeric, round, 3) %>%
-    kable
-```
-
-Testing associations to blood pressure variables on PCoA axis 3
-
-```{r pcoa axis analysis axis 3}
-calculateglm(pcoa.df,
-             modelstring = "%s ~ Axis.3 + BL_AGE + SEX + BMI + CURR_SMOKE + Q57X + DIAB +
-                     BL_USE_RX_C03 + BL_USE_RX_C07 + BL_USE_RX_C08 + BL_USE_RX_C09",
-             filterstr = "Axis") %>%
-    select(response, term, estimate, std.error, p.value) %>%
-    mutate_if(is.numeric, round, 3) %>%
-    kable
-```
-
-```{r pcoa 3d}
-theta <- 130
-phi <- 10
-pcoa3d.plot <- ggplot(data=pcoa.df, aes(x=Axis.1, y = Axis.2, z=Axis.3, color = HYPERTENSION)) +
-  axes_3D(theta=theta, phi=phi) +
-  stat_3D(theta=theta, phi=phi, size = 0.01, alpha=0.4) +
-  labs_3D(theta=theta, phi=phi, 
-          hjust=c(1,0,0), vjust=c(1.5,1,-.2),
-          labs=c(sprintf("PCoA Axis 1 (%.1f%%)", 100*eig.fracs[1]),
-                 sprintf("PCoA Axis 2 (%.1f%%)", 100*eig.fracs[2]),
-                 sprintf("PCoA Axis 3 (%.1f%%)", 100*eig.fracs[3]))) #+
-#  theme_void()
-
-ggsave(file = "cache/pcoa-species-3d.png", plot=pcoa3d.plot, height=4, width=7, units = "in", dpi = 300)
-
 ```
 
 ```{r Write figure 2, include=FALSE}
