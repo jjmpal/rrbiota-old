@@ -144,7 +144,7 @@ dimensions (`r dim(meta(pseq.genus))`) and there ntaxa is
 
 ## Variables
 
-```{r variables}
+```{r my variables}
 var.BP <- c("MAP", "SYSTM", "DIASM", "PULSEPRESSURE", "HYPERTENSION")
 var.CL.min <- c("BL_AGE", "SEX")
 var.CL <- c("BL_AGE", "SEX", "BMI", "CURR_SMOKE", "Q57X", "DIAB",
