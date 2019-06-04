@@ -35,6 +35,8 @@ if (exists("args")) {
     if ("loadlast" %in% names(args) )
         load(paste0("session/", sort(list.files("session"), decreasing = TRUE)[1]))
 }
+
+#packrat::opts$ignored.packages
 ```
 
 
@@ -67,6 +69,7 @@ library(ggfortify)
 library(RColorBrewer)
 library(gvlma)
 library(purrr)
+library(Maaslin2)
 ```
 
 Session info
@@ -106,16 +109,6 @@ source("articletwo-rrbiome.R")
 
 </details>
 
-### EdgeR plot functions
-
-<details>
-  <summary>Open/Close</summary>
-
-```{r EdgeR functions, code=readLines("aaro/edgeR_plot_functions.R")}
-source("aaro/edgeR_plot_functions.R")
-```
-
-</details>
 
 ### Plot functions
 
@@ -149,9 +142,16 @@ there ntaxa is `r ntaxa(pseq.species)`, and at genus level meta has
 dimensions (`r dim(meta(pseq.genus))`) and there ntaxa is 
 `r ntaxa(pseq.genus)`.
 
+## Variables
 
+```{r variables}
+var.BP <- c("MAP", "SYSTM", "DIASM", "PULSEPRESSURE", "HYPERTENSION")
+var.CL.min <- c("BL_AGE", "SEX")
+var.CL <- c("BL_AGE", "SEX", "BMI", "CURR_SMOKE", "Q57X", "DIAB",
+            "BL_USE_RX_C03","BL_USE_RX_C07", "BL_USE_RX_C08", "BL_USE_RX_C09")
+```
 
-## Models
+## MODELS
 
 ```{r matrix calculation}
 if (!file.exists("rds/bray.dist.m.species.rds")) {
@@ -167,29 +167,16 @@ if (!file.exists("rds/bray.dist.m.species.rds")) {
      adonis.species = list()
      adonis.species$min <- calculateadonis(dset = meta(pseq.species),
                                            matrix = bray.dist.m.species,
-                                           covariates = c("BL_AGE", "SEX"),
-                                           npermutations = 1000)
+                                           covariates = var.CL.min,
+                                           npermutations = 10000)
      adonis.species$max <- calculateadonis(dset = meta(pseq.species),
                                            matrix = bray.dist.m.species,
-                                           covariates = c("BL_AGE", "SEX", "BMI", "CURR_SMOKE", "Q57X", "DIAB",
-                                                          "BL_USE_RX_C03", "BL_USE_RX_C07", "BL_USE_RX_C08", "BL_USE_RX_C09"),
-                                           npermutations = 1000)
+                                           covariates = var.CL,
+                                           npermutations = 10000)
      saveRDS(adonis.species, file = "rds/adonis.species.rds")
     } else {
      adonis.species  <- readRDS("rds/adonis.species.rds")
 }
-```
-
-```{r check adonis, eval = FALSE}
-ad.min <- adonis(bray.dist.m.species ~ DIASM + BL_AGE + SEX,
-             data = meta(pseq.species),
-             permutations = 100)
-
-ad.max <- adonis(bray.dist.m.species ~ DIASM + BL_AGE + SEX + BMI + CURR_SMOKE + Q57X + DIAB +
-                     BL_USE_RX_C03 + BL_USE_RX_C07 + BL_USE_RX_C08 + BL_USE_RX_C09,
-             data = meta(pseq.species),
-             permutations = 1000)
-
 ```
 
 ```{r pcoa calculate}
@@ -210,20 +197,24 @@ pseq.genus.core <- core(pseq.genus, detection = 0.001, prevalence = 0.01)
 ```{r maaslin runs, results = 'hide'} 
 if (!file.exists("rds/maaslin.rds")) {
 
-    maaslin <- list()
-    genus.core.bacteria <- pseq.genus.core %>%
-        abundances %>%
-        rownames %>%
-        replace.brackets %>%
-        mygrep(".Bacteria$", .)
-    maaslin$genus <- maaslinwrapper(pseq = pseq.genus.core,
-                                    looped = c("MAP", "SYSTM", "DIASM", "PULSEPRESSURE",
-                                               "HYPERTENSION"),
-                                    forced = c("BL_AGE", "SEX", "BMI", "CURR_SMOKE", "Q57X",
-                                               "DIAB", "BL_USE_RX_C03",
-                                               "BL_USE_RX_C07", "BL_USE_RX_C08", "BL_USE_RX_C09"),
-                                    taxa = paste0(genus.core.bacteria, collapse = ","))
+    maaslin.pheno <- t(microbiome::meta(phyloseq::sample_data(pseq.genus))) %>%
+        t %>%
+        as.data.frame %>%
+        select(var.BP, var.CL)
 
+    maaslin.abund <- abundances(pseq.genus.core, transform = "compositional") %>%
+        t %>%
+        as.data.frame %>%
+        select(-contains("virus")) %>%
+        select(1:20)
+
+    maaslin <- Maaslin2(maaslin.abund,
+             maaslin.pheno,
+             paste0("cache/maaslin-", now),
+             transform = 'AST',
+             fixed_effects = paste0(var.CL, collapse = ","), 
+             cores = 10)
+    
     saveRDS(maaslin, file = "rds/maaslin.rds")
 } else {
     maaslin <- readRDS("rds/maaslin.rds")
