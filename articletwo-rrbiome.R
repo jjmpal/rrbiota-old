@@ -284,4 +284,99 @@ mykable <- function(x, ...) {
 }
 
 
+my_na_filter_aaro <- function(phf_f, variables) {
+  tmp_samples <- sample_data(phf_f)
+  tmp_samples$names <- rownames(tmp_samples)
+  sample_data(phf_f) <- tmp_samples
+  filtered_data <- filter_at(sample_data(phf_f),
+                                  variables,
+                                  all_vars(!is.na(.)))
+
+  rownames(filtered_data) <- filtered_data$names
+
+  sample_data(phf_f) <- filtered_data
+  phf_f
+}
+
+
+fit_asine_aaro <- function(phf_f,
+                           variables,
+                           intermediate.name="_asin1_",
+                           extra.printouts=FALSE,
+                           save.intermediate=FALSE,
+                           intermediate.list.file="data_private/processed_asine.txt",
+                           return.only.filename=FALSE) {
+
+  phf_f <- my_na_filter_aaro(phf_f, variables)
+  cat("\nafter na filter, fitting asin(sqrt(OTU))")
+
+  variables <- as.vector(remove_unnec_vars(variables, phf_f, last(variables)))
+
+  modelstr <- paste(variables, collapse=" + ")
+  modelstr <- paste0("~ ", modelstr)
+  cat(modelstr)
+  cat("\n")
+
+  ytaxa <- taxa(phf_f)
+  cat(paste("for ", length(ytaxa), " OTUs\n"))
+
+  pheno <- meta(sample_data(phf_f))[,variables]
+  pheno[,"sample.ids"] <- rownames(pheno)
+
+
+  fits <- lapply(1:length(ytaxa), function (gi) {
+                   g <- ytaxa[[gi]]
+                   if (extra.printouts) {
+                     cat(paste(as.character(g), gi, "/", length(ytaxa)))
+                     cat("\n")
+                   }
+
+                   x <- as.data.frame(t(otu_table(phf_f)[as.character(g),]))
+                   tmp <- rownames(x)
+                   genus.clear <- taxa2underscore(g)
+                   colnames(x)[[1]] <- genus.clear
+                   x[,"sample.ids"] <- tmp
+                   x <- merge(x, pheno, by="sample.ids", all.x=TRUE)
+                   modelstr <- paste0("asin(sqrt(", genus.clear, ")) ", modelstr)
+                   lmwrap <- function (modelstr, x) {
+                     lm(as.formula(modelstr), data=x)
+                   }
+                   lmout <- tryCatch(
+                    lmwrap (modelstr, x),
+                    error=function(cond) {
+                      message("lm error, result item will be NA")
+                      message(cond)
+                      return(NA)
+                    }
+                   )
+                   return(lmout)
+                  })
+
+  if (save.intermediate) {
+    fn <- paste0("/csc/fr_metagenome/microbiome_scratch/scratch/data_private/as_intermediate/",
+                         paste(variables, collapse='_'),
+                         intermediate.name, "fit.RDs")
+    saveRDS(fits, file=fn)
+    conn <- file(intermediate.list.file, "at") # append
+    writeLines(paste(last(variables), ",", fn,"\n"),conn)
+    close(conn)
+  }
+  if (return.only.filename) {
+    return(fn)
+  } else {
+    return(fits)
+  }
+}
+
+myinstall.packages <- function(...) {
+    list.of.packages <- c(...)
+    new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
+    if (length(new.packages) == 0) { return(TRUE) }
+    for (package in new.packages) {
+        message(sprintf("Installing: %s", package))
+        myinstall.packages(gtools::getDependencies(package))
+        install.packages(package)
+    }
+}
+
 
