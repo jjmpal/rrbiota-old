@@ -205,8 +205,7 @@ if (!file.exists("rds/maaslin.rds")) {
     maaslin.abund <- abundances(pseq.genus.core, transform = "compositional") %>%
         t %>%
         as.data.frame %>%
-        select(-contains("virus")) %>%
-        select(1:20)
+        select(-contains("virus"))
 
     maaslin <- Maaslin2(maaslin.abund,
              maaslin.pheno,
