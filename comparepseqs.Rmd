@@ -230,8 +230,6 @@ if (exists("subset.run")) {
 plotlist <- list()
 
 for (key in names(rds)) {
-    key <- "shogun"
-
     diversities <- mergediversities(ret[[key]][["alphadiversity"]],
                                     ret[[key]][["betadiversity"]])
 
