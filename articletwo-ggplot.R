@@ -60,8 +60,10 @@ plot.beta <- function(diversity,
                       fig.permar2.text = "R2 of variable \nin Bray-Curtis distance",
                       fig.textsize = 15,
                       ymax = 0.0016) {
-    plot.beta.diversity <- ggplot(diversity, aes(x = reorder(Name, R2), y= R2)) +
-        geom_bar(stat="identity", color="black") +
+    diversity <- diversity %>% mutate(color = as.factor(ifelse(R2.p < 0.05, 1, 0)))
+    plot.beta.diversity <- ggplot(diversity, aes(x = reorder(Name, R2), y= R2, color = color)) +
+        geom_bar(stat="identity") +
+        scale_color_manual(values = c("0" = "red", "1" = "black")) +
         coord_flip() +
         theme_classic(fig.textsize) +
         ylab(fig.permar2.text) +

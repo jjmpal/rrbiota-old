@@ -208,7 +208,8 @@ mergediversities <- function(alphadiversity, betadiversity,
         beta.rbind <- betadiversity[[x]] %>%
             data.table::rbindlist(id = "model_name") %>%
             dplyr::filter(term %in% responses) %>%
-            dplyr::select(response, R2)
+            dplyr::rename(R2.p = `Pr(>F)`) %>%
+            dplyr::select(response, R2, R2.p)
         merge( alpha.select , beta.rbind, by = "response") %>%
             merge(names.dset %>% select(Covariate, Category, Name), by.x ="response", by.y = "Covariate") %>%
             mutate(Qstar = ifelse(p.value < 0.05, '*', ' '))
