@@ -135,7 +135,7 @@ fit_asine <- function(phf_f,
             }
         )
         return(lmout)
-    }, mc.cores = parallel::detectCores(), mc.preschedule = FALSE)
+    }, mc.cores = min(8, parallel::detectCores()), mc.preschedule = FALSE)
     return(fits)
 }
 
