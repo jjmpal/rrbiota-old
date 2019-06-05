@@ -11,6 +11,8 @@ knitr::opts_chunk$set(include = TRUE, xecho = TRUE, message = FALSE, results='as
 knitr::opts_chunk$set(cache.path = 'cache/', output.dir="cache/",
                       file.path = 'cache/', fig.path = 'cache/')
 
+options(max.print=1000)
+
 dir.create("rds/", showWarnings = FALSE)
 dir.create("session/", showWarnings = FALSE)
 ```
@@ -196,6 +198,34 @@ pseq.genus.core <- core(pseq.genus, detection = 0.001, prevalence = 0.01)
 ```{r fit asine}
 source("fit_asine.R")
 source("taxa_names_functions.R")
+
+options(max.print=1000)
+
+pseq.genus.core <- core(pseq.genus, detection = 0.001, prevalence = 0.01)
+pseq.genus.core.comp <- microbiome::transform(pseq.genus.core, "compositional")
+
+res <- lapply(c2l(var.BP), function(BP)
+    fit_asine(pseq.genus.core.comp, variables = c(BP, var.CL)))
+
+asine.df <- data.frame()
+
+res.trim <- lapply(c2l(var.BP), function(BP)
+    lapply(c2l(names(res[[BP]])), function(name) res[[BP]][[name]] %>%
+                                                 tidy %>%
+                                                 dplyr::filter(grepl(BP, term)) %>%
+                                                 mutate(taxa = name)))
+
+map_df(res.trim, ~do.call(rbind, .x)) %>%
+    dplyr::mutate(Qval = p.adjust(p.value, method="BH")) %>%
+    arrange(Qval)
+
+maaslin <- do.call(rbind, lapply(c2l(var.BP), function(BP) res[[BP]]))
+saveRDS(maaslin, file = "rds/maaslin.rds")
+```
+
+
+```{r quit}
+quit()
 ```
 
 ```{r maaslin}
