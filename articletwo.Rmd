@@ -193,39 +193,69 @@ if (!file.exists("rds/pcoa.ordinate.rds")) {
 pseq.genus.core <- core(pseq.genus, detection = 0.001, prevalence = 0.01)
 ```
 
+```{r fit asine}
+source("fit_asine.R")
+source("taxa_names_functions.R")
+```
+
+```{r maaslin}
+maaslin <- read.table("maaslin1/maaslin/maaslin.txt", header=TRUE, sep='\t')
+
+maaslin %>% filter(Q.value < 0.05)
+```
 
 ```{r maaslin runs, results = 'hide'} 
-input_data <- system.file(
-    'extdata','example1_features.txt', package="Maaslin2")
-input_metadata <-system.file(
-    'extdata','example1_metadata.txt', package="Maaslin2")
-
-fit_data <- Maaslin2(
-    input_data, input_metadata,'maaslin2_example_output')
-
 if (!file.exists("rds/maaslin.rds")) {
 
     maaslin.pheno <- t(microbiome::meta(phyloseq::sample_data(pseq.genus))) %>%
         t %>%
         as.data.frame %>%
-        select(var.BP, var.CL) %>%
-        tibble::rownames_to_column("#")
+        tibble::rownames_to_column("ids") %>%
+        tibble::column_to_rownames("ids") %>%
+        select(var.BP, var.CL)
 
     maaslin.abund <- abundances(pseq.genus.core, transform = "compositional") %>%
         t %>%
-        as.data.frame %>%
-        select(-contains("virus")) %>%
-        select(g_Yersinia, g_Zavarzinella, g_Zhongshania, g_Zobellia, g_Zunongwangia) %>% #DEBUG
-        tibble::rownames_to_column("#") %>%
-        sample_n(50)
+        as.data.frame
 
+    maaslin <- Maaslin2(maaslin.abund %>% select(g_Sutterella, g_Adlercreutzia, g_Anaerotruncus),
+                        maaslin.pheno,
+                        "maaslin2_example_output",
+                        transform = "AST",
+                        normalization = "NONE",
+                        fixed_effects = paste0(var.CL, collapse = ","),
+                        random_effects = paste0(var.BP, collapse = ","))
+
+    random_formula = as.formula("expr ~ (1 | MAP) + (1 | SYSTM) + (1 | DIASM) + (1 | PULSEPRESSURE) + (1 | HYPERTENSION)")
+    formula = as.formula("expr ~  BL_AGE + SEX + BMI + CURR_SMOKE + Q57X + DIAB + BL_USE_RX_C03 + BL_USE_RX_C07 + BL_USE_RX_C08 + BL_USE_RX_C09")
+
+    formula2 <-
+                    paste(
+                        '. ~', 
+                        paste(all.vars(formula)[-1], collapse = ' + '), 
+                        '.', 
+                        sep = ' + ')
+
+    formula2
+
+    update(random_formula, formula2)
+
+    maaslin.pheno %>% head(n=1)
+    
+    stats::glm(BL_AGE ~ SEX + (1|MAP), family = stats::gaussian, data = meta(pseq.genus.core))
+    
+    maaslin$results %>% head(n=1)
+    
+    maaslin.abund[1:10,1:10]
+    maaslin.pheno[1:10,1:10]
+    
     maaslin <- Maaslin2(maaslin.abund,
              maaslin.pheno,
              paste0("cache/maaslin-", now),
              transform = 'AST',
-		normalization = "NONE",
-		random_effects = paste0(var.BP, collapse = ","),
-             fixed_effects = paste0(var.CL, collapse = ","), 
+             normalization = "NONE",
+             random_effects = paste0(var.BP, collapse = ","),
+             fixed_effects = paste0(var.CL[1:3], collapse = ","), 
              cores = detectCores())
     
     saveRDS(maaslin, file = "rds/maaslin.rds")
