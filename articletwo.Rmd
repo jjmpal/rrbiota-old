@@ -228,12 +228,6 @@ saveRDS(maaslin, file = "rds/maaslin.rds")
 quit()
 ```
 
-```{r maaslin}
-maaslin <- read.table("maaslin1/maaslin/maaslin.txt", header=TRUE, sep='\t')
-
-maaslin %>% filter(Q.value < 0.05)
-```
-
 ```{r maaslin runs, results = 'hide'} 
 if (!file.exists("rds/maaslin.rds")) {
 
