@@ -195,17 +195,29 @@ pseq.genus.core <- core(pseq.genus, detection = 0.001, prevalence = 0.01)
 
 
 ```{r maaslin runs, results = 'hide'} 
+input_data <- system.file(
+    'extdata','example1_features.txt', package="Maaslin2")
+input_metadata <-system.file(
+    'extdata','example1_metadata.txt', package="Maaslin2")
+
+fit_data <- Maaslin2(
+    input_data, input_metadata,'maaslin2_example_output')
+
 if (!file.exists("rds/maaslin.rds")) {
 
     maaslin.pheno <- t(microbiome::meta(phyloseq::sample_data(pseq.genus))) %>%
         t %>%
         as.data.frame %>%
-        select(var.BP, var.CL)
+        select(var.BP, var.CL) %>%
+        tibble::rownames_to_column("#")
 
     maaslin.abund <- abundances(pseq.genus.core, transform = "compositional") %>%
         t %>%
         as.data.frame %>%
-        select(-contains("virus"))
+        select(-contains("virus")) %>%
+        select(g_Yersinia, g_Zavarzinella, g_Zhongshania, g_Zobellia, g_Zunongwangia) %>% #DEBUG
+        tibble::rownames_to_column("#") %>%
+        sample_n(50)
 
     maaslin <- Maaslin2(maaslin.abund,
              maaslin.pheno,
