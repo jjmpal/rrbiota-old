@@ -195,19 +195,35 @@ if (!file.exists("rds/pcoa.ordinate.rds")) {
 source("fit_asine.R")
 source("taxa_names_functions.R")
 
+xor(c(TRUE, TRUE, FALSE), TRUE)
+
 if (!file.exists("rds/maaslin.rds")) {
     pseq.genus.core <- core(pseq.genus, detection = 0.001, prevalence = 0.01)
     pseq.genus.core.comp <- microbiome::transform(pseq.genus.core, "compositional")
 
+    pseq.genus.core.viruses <- taxa(pseq.genus.core.comp) %>% mygrep(word = "virus$", complement = TRUE)
+    pseq.genus.core.comp.pruned <- prune_taxa(pseq.genus.core.viruses, pseq.genus.core.comp)
+    
     res <- lapply(c2l(var.BP), function(BP)
-        fit_asine(pseq.genus.core.comp, variables = c(BP, var.CL)))
+        fit_asine(pseq.genus.core.comp.pruned, variables = c(BP, var.CL)))
 
-    res.trim <- lapply(c2l(var.BP), function(BP)
-        lapply(c2l(names(res[[BP]])), function(name) res[[BP]][[name]] %>%
-                                                     tidy %>%
-                                                     dplyr::filter(grepl(BP, term)) %>%
-                                                     mutate(taxa = name)))
+    res.trim <- map_df(res, ~map_df(.x, ~tidy(.x), .id = "taxa"), .id = "model")
 
+    adonis <- res.trim %>%
+        filter(term %in% var.BP) %>%
+        group_by(model) %>%
+        dplyr::mutate(q.value = p.adjust(p.value, method="BH")) %>%
+        ungroup %>%
+        arrange(q.value)
+
+    res$MAP %>% names
+    
+adonis %>% pull(taxa) %>% sort
+
+    adonis %>% dplyr::filter(taxa == "g_Sutterella")
+    
+map_df(res.trim$HYPERTENSION, ~
+    
     maaslin <- map_df(res.trim, ~do.call(rbind, .x)) %>%
         dplyr::mutate(Qval = p.adjust(p.value, method="BH")) %>%
         arrange(Qval)
