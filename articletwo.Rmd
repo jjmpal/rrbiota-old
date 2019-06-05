@@ -207,6 +207,8 @@ if (!file.exists("rds/maaslin.rds")) {
     res <- lapply(c2l(var.BP), function(BP)
         fit_asine(pseq.genus.core.comp.pruned, variables = c(BP, var.CL)))
 
+    saveRDS(res, file = "rds/res.rds")
+    
     res.trim <- map_df(res, ~map_df(.x, ~tidy(.x), .id = "taxa"), .id = "model")
 
     adonis <- res.trim %>%
