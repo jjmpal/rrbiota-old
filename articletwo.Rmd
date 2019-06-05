@@ -209,28 +209,28 @@ if (!file.exists("rds/maaslin.rds")) {
 
     saveRDS(res, file = "rds/res.rds")
     
-    res.trim <- map_df(res, ~map_df(.x, ~tidy(.x), .id = "taxa"), .id = "model")
+##     res.trim <- map_df(res, ~map_df(.x, ~tidy(.x), .id = "taxa"), .id = "model")
 
-    adonis <- res.trim %>%
-        filter(term %in% var.BP) %>%
-        group_by(model) %>%
-        dplyr::mutate(q.value = p.adjust(p.value, method="BH")) %>%
-        ungroup %>%
-        arrange(q.value)
+##     adonis <- res.trim %>%
+##         filter(term %in% var.BP) %>%
+##         group_by(model) %>%
+##         dplyr::mutate(q.value = p.adjust(p.value, method="BH")) %>%
+##         ungroup %>%
+##         arrange(q.value)
 
-    res$MAP %>% names
+##     res$MAP %>% names
     
-adonis %>% pull(taxa) %>% sort
+## adonis %>% pull(taxa) %>% sort
 
-    adonis %>% dplyr::filter(taxa == "g_Sutterella")
+##     adonis %>% dplyr::filter(taxa == "g_Sutterella")
     
-map_df(res.trim$HYPERTENSION, ~
+## map_df(res.trim$HYPERTENSION, ~
     
-    maaslin <- map_df(res.trim, ~do.call(rbind, .x)) %>%
-        dplyr::mutate(Qval = p.adjust(p.value, method="BH")) %>%
-        arrange(Qval)
+##     maaslin <- map_df(res.trim, ~do.call(rbind, .x)) %>%
+##         dplyr::mutate(Qval = p.adjust(p.value, method="BH")) %>%
+##         arrange(Qval)
 
-    saveRDS(maaslin, file = "rds/maaslin.rds")
+##     saveRDS(maaslin, file = "rds/maaslin.rds")
 } else {
     maaslin <- readRDS("rds/maaslin.rds")
 }
