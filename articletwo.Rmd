@@ -191,36 +191,31 @@ if (!file.exists("rds/pcoa.ordinate.rds")) {
 }
 ```
 
-```{r core taxa}
-pseq.genus.core <- core(pseq.genus, detection = 0.001, prevalence = 0.01)
-```
-
 ```{r fit asine}
 source("fit_asine.R")
 source("taxa_names_functions.R")
 
-options(max.print=1000)
+if (!file.exists("rds/maaslin.rds")) {
+    pseq.genus.core <- core(pseq.genus, detection = 0.001, prevalence = 0.01)
+    pseq.genus.core.comp <- microbiome::transform(pseq.genus.core, "compositional")
 
-pseq.genus.core <- core(pseq.genus, detection = 0.001, prevalence = 0.01)
-pseq.genus.core.comp <- microbiome::transform(pseq.genus.core, "compositional")
+    res <- lapply(c2l(var.BP), function(BP)
+        fit_asine(pseq.genus.core.comp, variables = c(BP, var.CL)))
 
-res <- lapply(c2l(var.BP), function(BP)
-    fit_asine(pseq.genus.core.comp, variables = c(BP, var.CL)))
+    res.trim <- lapply(c2l(var.BP), function(BP)
+        lapply(c2l(names(res[[BP]])), function(name) res[[BP]][[name]] %>%
+                                                     tidy %>%
+                                                     dplyr::filter(grepl(BP, term)) %>%
+                                                     mutate(taxa = name)))
 
-asine.df <- data.frame()
+    maaslin <- map_df(res.trim, ~do.call(rbind, .x)) %>%
+        dplyr::mutate(Qval = p.adjust(p.value, method="BH")) %>%
+        arrange(Qval)
 
-res.trim <- lapply(c2l(var.BP), function(BP)
-    lapply(c2l(names(res[[BP]])), function(name) res[[BP]][[name]] %>%
-                                                 tidy %>%
-                                                 dplyr::filter(grepl(BP, term)) %>%
-                                                 mutate(taxa = name)))
-
-map_df(res.trim, ~do.call(rbind, .x)) %>%
-    dplyr::mutate(Qval = p.adjust(p.value, method="BH")) %>%
-    arrange(Qval)
-
-maaslin <- do.call(rbind, lapply(c2l(var.BP), function(BP) res[[BP]]))
-saveRDS(maaslin, file = "rds/maaslin.rds")
+    saveRDS(maaslin, file = "rds/maaslin.rds")
+} else {
+    maaslin <- readRDS("rds/maaslin.rds")
+}
 ```
 
 
@@ -582,34 +577,6 @@ maas.results.df.signf %>%
     select(Feature, Value, Coefficient, Qval) %>%
     arrange(Qval) %>%
     kable
-```
-
-Catabacter, Robinsoniella
-
-```{r compare maaslin to sun, eval = FALSE}
-maas.results.df.all <- maaslin$genus %>%
-    merge(names.dset %>% select(Covariate, Category, Name), by.x ="Variable", by.y = "Covariate") %>%
-    dplyr::mutate(Qval = p.adjust(P.value, method="BH"),
-                  Feature = gsub("_Bacteria", "", Feature),
-                  beta = Coefficient)
-
-maas.results.df.all %>% pull(Feature) %>% sort %>% unique %>% mygrep("Robin", .)
-
-genus.taxa <- pseq.genus.core %>% abundances %>% rownames
-
-genus.taxa %>% mygrep("Catabacter", .)
-
-maaslin.test <- maaslinwrapper(pseq = pseq.genus.core,
-                                    looped = c("MAP", "SYSTM", "DIASM", "PULSEPRESSURE",
-                                               "HYPERTENSION"),
-                                    forced = c("BL_AGE", "SEX", "BMI", "CURR_SMOKE", "Q57X",
-                                               "DIAB", "BL_USE_RX_C03",
-                                               "BL_USE_RX_C07", "BL_USE_RX_C08", "BL_USE_RX_C09"),
-                               taxa = paste(c("Faecalicatena.Bacteria",
-                                        "Catabacter.Bacteria",
-                                        "Robinsoniella.Bacteria"), collapse = ", "))
-
-
 ```
 
 ```{r scatter plots}
