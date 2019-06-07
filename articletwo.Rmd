@@ -379,7 +379,7 @@ First three axis explain portion (`r eig.fracs[1:3]`) of
 variation. Testing associations to blood pressure variables on PCoA
 axis 1
 
-```{r top generas, eval = FALSE, include = FLASE}
+```{r top generas, eval = FALSE, include = FALSE}
 abund.genus <- abundances(pseq.genus, transform = "compositional") %>%
     t %>%
     as.data.frame %>%
