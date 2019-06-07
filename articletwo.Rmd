@@ -164,7 +164,7 @@ if (!file.exists("rds/bray.dist.m.species.rds")) {
 }
 ```
 
- ```{r adonis calculation, eval = FALSE}
+ ```{r adonis calculation}
  if (!file.exists("rds/adonis.species.rds")) {
      adonis.species = list()
      adonis.species$min <- calculateadonis(dset = meta(pseq.species),
