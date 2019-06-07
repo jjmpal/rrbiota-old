@@ -11,7 +11,7 @@ knitr::opts_chunk$set(include = TRUE, xecho = TRUE, message = FALSE, results='as
 knitr::opts_chunk$set(cache.path = 'cache/', output.dir="cache/",
                       file.path = 'cache/', fig.path = 'cache/')
 
-options(max.print=1000)
+options(max.print=100)
 
 dir.create("rds/", showWarnings = FALSE)
 dir.create("session/", showWarnings = FALSE)
@@ -206,7 +206,6 @@ if (!file.exists("rds/maaslin.rds")) {
 } else {
     maaslin <- readRDS(file = "rds/maaslin.rds")
 }
-
 ```
 
 
@@ -241,24 +240,12 @@ alphadiversity <- list(
                        modelstring = sprintf("%%s ~ %s + diversity_shannon",
                                              paste0(var.CL, collapse = " + ")),
                        filterstr = "shannon"))
+
+diversities <- mergediversities(alphadiversity, adonis.species)
 ```
 
 Minimum coefficient for alpha diversity is `r rbind(diversities$min,
 diversities$max) %>% pull(estimate) %>% min`.
-
-Difference of R2 between full and minimal models
-
-```{r difference in beta diversity}
-merge(diversities$min %>%
-      select(response, R2, R2.p) %>%
-      dplyr::rename(R2.min = R2, p.min = R2.p),
-      diversities$max %>%
-      select(response, R2, R2.p) %>%
-      dplyr::rename(R2.full = R2, p.full = R2.p),
-      by = "response") %>%
-    mutate(R2.diff = R2.full - R2.min) %>%
-    kable
-```
 
 Results in minimum model of alpha diversity
 
@@ -281,6 +268,20 @@ alphadiversity$max %>%
                               pub.p(p.value), conf.low, conf.high)) %>%
     mutate_if(is.numeric, round, 3) %>%
     arrange(p.value) %>%
+    kable
+```
+
+Difference of R2 between full and minimal models
+
+```{r difference in beta diversity}
+merge(diversities$min %>%
+      select(response, R2, R2.p) %>%
+      dplyr::rename(R2.min = R2, p.min = R2.p),
+      diversities$max %>%
+      select(response, R2, R2.p) %>%
+      dplyr::rename(R2.full = R2, p.full = R2.p),
+      by = "response") %>%
+    mutate(R2.diff = R2.full - R2.min) %>%
     kable
 ```
 
@@ -341,12 +342,22 @@ pcoa.df <- merge(pcoa.vectors %>% select(Axis.1, Axis.2, Axis.3),
                  meta(pseq.species), by=0, all = TRUE) %>%
     mutate(STATETREATMENT = factor(paste0(HYPERTENSION, ANYDRUG),
                                    levels = c("11", "10", "01", "00")),
-           gMAP = cut(oMAP, seq(60, 160, 15)))
+           gMAP = cut(oMAP, seq(60, 160, 15))) %>%
+    gather(key, Axis, Axis.2, Axis.3)
 
-pcoa.plot <- ggplot(data=pcoa.df, aes(x=Axis.1, y=Axis.3, color = HYPERTENSION)) +
+
+
+axis_labeller <- function(variable, value){
+    axis.labels <- list("Axis.2" = sprintf("A. PCoA Axis 2 (%.1f%%)", 100*eig.fracs[2]),
+                        "Axis.3" = sprintf("B. PCoA Axis 3 (%.1f%%)", 100*eig.fracs[3]))
+    return(axis.labels[value])
+}
+
+pcoa.plot <- ggplot(data=pcoa.df, aes(x=Axis.1, y=Axis, color = HYPERTENSION)) +
+    facet_wrap(~key, labeller = axis_labeller) +
     geom_point(size=0.1, alpha=0.4) +
     xlab(sprintf("PCoA Axis 1 (%.1f%%)", 100*eig.fracs[1])) +
-    ylab(sprintf("PCoA Axis 3 (%.1f%%)", 100*eig.fracs[3])) +
+    ylab(sprintf("Subsequent PCoA Axes", 100*eig.fracs[3])) +
     scale_colour_manual(name = "State and treatment",
                         labels = c("Normotensive", "Hypertensive"),
                         breaks=c(0, 1),
@@ -357,23 +368,18 @@ pcoa.plot <- ggplot(data=pcoa.df, aes(x=Axis.1, y=Axis.3, color = HYPERTENSION))
     theme_classic() +
     guides(colour = guide_legend(override.aes = list(size=4))) +
     theme(text = element_text(size=14),
-          legend.title = element_blank(),
-          legend.text=element_text(size=10),
-          legend.justification=c(1,0),
-          legend.position=c(1,0),
-          legend.margin=margin(t = 1, unit='mm'),
-          legend.background = element_rect(fill=alpha('gray', 0.1)))
+          legend.position = "none",
+          strip.background = element_blank(),
+          strip.placement = "outside")
 
-ggsave(file = "cache/pcoa-species.png", plot=pcoa.plot, height=4, width=5, units = "in", dpi = 300)
+ggsave(file = "cache/pcoa-species.png", plot=pcoa.plot, height=4, width=6, units = "in", dpi = 300)
 ```
 
 First three axis explain portion (`r eig.fracs[1:3]`) of
 variation. Testing associations to blood pressure variables on PCoA
 axis 1
 
-Genera with top R2 with PCoA axes
-
-```{r top generas}
+```{r top generas, eval = FALSE, include = FLASE}
 abund.genus <- abundances(pseq.genus, transform = "compositional") %>%
     t %>%
     as.data.frame %>%
@@ -436,15 +442,13 @@ For magnitude, age, sex, and BMI explain `r round(summary(lm(MAP ~ BL_AGE +
 SEX + BMI, data = meta(pseq.genus)))$adj.r.squared * 100, 1)`% of MAP.
 
 ```{r maaslin}
-maas.results.df.signf <- maaslin$genus %>%
+maas.results.df.signf <- maaslin %>%
     merge(names.dset %>% select(Covariate, Category, Name), by.x ="Variable", by.y = "Covariate") %>%
     dplyr::mutate(Qval = p.adjust(P.value, method="BH"),
                   Feature = gsub("_Bacteria", "", Feature),
                   beta = Coefficient) %>%
     dplyr::filter(Qval < 0.05) %>%
     arrange(Feature)
-
-maas.results.df.signf %>% pull(Feature) %>% sort %>% unique %>% paste(., collapse=", ")
 
 my.plot.order <- function(x) {
     y <- seq(length(x))
@@ -480,19 +484,21 @@ mycolors <- c("beta < 0, p < 0.05" = "#B2182B",
               "beta > 0, p < 0.05" = "#2166AC",
               "NA" = "gray50")
 
-maaslinplot <- ggplot(maas.tables.df, aes(x = Feature,
-                                          y = reorder(Name, my.plot.order(Name)),
-                                          fill = p.groups)) +
-    geom_tile(color = "white", aes(fill = "NA")) +
-    geom_tile(color = "white") +
-    scale_fill_manual(values = mycolors, name = "P-value", na.translate = F) +
-    scale_x_discrete() +
+
+maas.tables.df %>% pull(beta)%>% summary
+
+maaslinplot <- ggplot(maas.tables.df, aes(x = Feature, y = reorder(Name, my.plot.order(Name)), fill = beta)) +
+    geom_tile(aes(fill = 1)) +
+    geom_tile(colour="white", size=0.25) +
+    scale_fill_distiller(palette = "RdBu", name = "Effect size",
+                         limits=c(-0.003, 0.003), breaks = c(-0.003, 0, 0.003), na.value="grey30") +
     coord_fixed() +
     xlab("") +
     ylab("") +
     theme_classic(10) +  
     theme(axis.text.x = element_text(angle = 90, hjust = 1.0, vjust=0.5, size=10),
           axis.text.y = element_text(size=10))
+
 ggsave(file = "cache/maaslin.png", plot = maaslinplot, height = 3, width = 6, dpi = 300)
 ```
 
@@ -506,7 +512,7 @@ maas.results.df.signf %>%
 ```
 
 ```{r scatter plots}
-scatter.signf.bacteria <- paste0(maas.results.df.signf %>% pull(Feature) %>% unique %>% tolower, ".bacteria")
+scatter.signf.bacteria <- maas.results.df.signf %>% pull(Feature) %>% unique
 
 scatter.meta <- meta(pseq.genus) %>%
     tibble::rownames_to_column("id") %>%
@@ -519,7 +525,6 @@ scatter.abund <- abundances(pseq.genus, transform = "clr") %>%
     t %>%
     as.data.frame %>%
     tibble::rownames_to_column("id") %>%
-    setNames(tolower(replace.brackets(names(.)))) %>%
     select(id, scatter.signf.bacteria) %>%
     mutate_at(.vars = vars(scatter.signf.bacteria), .funs = funs(myscale(.)))
 
@@ -560,11 +565,12 @@ scatter.plot <- function(df,
 
     if (plots == FALSE) return(prediction)
 
-    feature <- firstup(gsub(".bacteria", "", replace.brackets(abund)))
+    feature <- replace.brackets(abund)
+
     qval.maaslin <- maas.results %>%
         dplyr::filter(Feature == feature, Value == rr) %>%
         nrow
-    
+
     if (qval.maaslin == 0) { return (ggplot() + ggplot2::theme_minimal()) }
     pval <- pub.p(summary(model)$coef[2,4])
     rsqr <- signif(summary(model)$adj.r.squared, 2)
@@ -589,9 +595,9 @@ scatterplots <- lapply(data.frame(t(scatter.combinations)),
 ```
 
 
-```{r scatter plot at genus level for BP, fig.width=12, fig.height=20}
+```{r scatter plot at genus level for BP, fig.width=12, fig.height=10}
 scatterplot <- do.call("grid.arrange", c(scatterplots, ncol=4))
-ggsave(file = "cache/scatter.png", plot = scatterplot, height = 20, width = 10, dpi = 300)
+ggsave(file = "cache/scatter.png", plot = scatterplot, height = 10, width = 10, dpi = 300)
 ```
 
 
@@ -782,32 +788,21 @@ odds.hypertension.lactogroup <- glm.hypertension.lactogroup %>%
 odds.hypertension.lactogroup %>% kable
 ```
 
-
-```{r check odds model assumptions}
-g.odds.autoplot <- autoplot(glm.hypertension.lactogroup,
-                            which = 1:4,
-                            nrow = 1,
-                            ncol = 2,
-                            label.size = 3,
-                            size = 0.1) +
-    theme_minimal()
-ggsave(file = "cache/odds-autoplot.png", plot=g.odds.autoplot, height=10, width=6, dpi = 300)
-```
-
 ## Twin-forest plot
 
 ```{r forest plot lacto}
+odds.hypertension.lactogroup
 gsalt <- grid.arrange(
     myforestplot(adjmean.lacto.saltgroup,
                  xlab = "Dietary salt",
                  ylab = "Lactobacillus abundance",
                  subtitle = "A.",
-                 my_y_scale = scale_y_continuous(limits = c(2.5,3), breaks = seq(2.5, 3.0, 0.1))),
+                 my_y_scale = scale_y_continuous(limits = c(4.1,4.7), breaks = seq(4, 5, 0.1))),
     myforestplot(odds.hypertension.lactogroup,
                  xlab = "Lactobacillus abundance",
                  ylab = "Odds of hypertension",
                  subtitle = "B.",
-                 my_y_scale = scale_y_log10(limits = c(0.5, 2), breaks = seq(0.5, 2.0, 0.5)),
+                 my_y_scale = scale_y_log10(limits = c(0.4, 1.5), breaks = seq(0.5, 2.0, 0.5)),
                  interceptone = TRUE),
     ncol=2)
 
