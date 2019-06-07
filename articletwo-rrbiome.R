@@ -159,7 +159,7 @@ prepare.maaslin <- function (pseq,
                       paste(c("Read_PCL_Rows: ", paste(includedvars, collapse=",")), collapse = ""),
                       "",
                       "Matrix: Adundance",
-                      paste("Read_PCL_Rows:", readpclrows))
+                      paste(c("Read_PCL_Rows: ", paste(readpclrows, collapse=",")), collapse = ""))
     writeLines(pcl.contents, con=data)
     close(data)
 }
@@ -230,7 +230,7 @@ getdescriptions <- function() {
                                   "Sex is female, True for female, False for male")))
 }
 
-maaslinwrapper <- function(pseq, looped, forced, taxa, tempstr = "%s/temp/maaslin-%s")  {
+maaslinwrapper <- function(pseq, looped, forced, taxa, tempstr = "%s/maaslinruns/maaslin-%s")  {
     tempdir <- sprintf(tempstr, Sys.getenv("HOME"), format(Sys.time(), '%s'))
     dir.create(tempdir)
     cwd <- getwd()
@@ -240,16 +240,24 @@ maaslinwrapper <- function(pseq, looped, forced, taxa, tempstr = "%s/temp/maasli
                     conffile = "maaslin.config",
                     includedvars = c(looped, forced),
                     readpclrows = taxa)
-    Maaslin("maaslin.tsv",
-            "maaslin",
-            strInputConfig = "maaslin.config",
-            strModelSelection="none",
-            dSignificanceLevel = 1.0,
-            fAllvAll = TRUE,
-            strForcedPredictors = forced)
-    ret <- read.table("maaslin/maaslin.txt", header=TRUE, sep='\t')
+
+    fileConn<-file("run.R")
+    writeLines(c('.libPaths(c(.libPaths(), "~/maaslinruns/R-3.4"))',
+                 'library("Maaslin")',
+                 'Maaslin("maaslin.tsv",',
+                 '\t"maaslin",',
+                 '\tstrInputConfig = "maaslin.config",',
+                 '\tstrModelSelection="none",',
+                 '\tdSignificanceLevel = 1.0,',
+                 '\tfAllvAll = TRUE,',
+                 sprintf("\tstrForcedPredictors = \"%s\")", paste0(forced, collapse=","))), fileConn)
+    close(fileConn)
+
+    system("/apps/statistics2/R-3.4.3/bin/Rscript run.R > output.log 2> error.log")
+
+    ret <- read.table("maaslin/maaslin.txt", header=TRUE, sep='\t') %>% as.data.frame
     setwd(cwd)
-    ret
+    return(ret)
 }
 
 mygrep <- function(..., word, ignorecase = TRUE, complement = FALSE) {
