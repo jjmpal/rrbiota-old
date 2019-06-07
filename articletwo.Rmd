@@ -338,14 +338,12 @@ writeimage(doc, 1, "cache/alpha-beta.png", fig1head, fig1foot)
 ```{r pcoa plot}
 pcoa.vectors <- pcoa.ordinate$vectors %>% as.data.frame
 eig.fracs <- pcoa.ordinate$values$Relative_eig
+
 pcoa.df <- merge(pcoa.vectors %>% select(Axis.1, Axis.2, Axis.3),
                  meta(pseq.species), by=0, all = TRUE) %>%
     mutate(STATETREATMENT = factor(paste0(HYPERTENSION, ANYDRUG),
                                    levels = c("11", "10", "01", "00")),
-           gMAP = cut(oMAP, seq(60, 160, 15))) %>%
-    gather(key, Axis, Axis.2, Axis.3)
-
-
+           gMAP = cut(oMAP, seq(60, 160, 15)))
 
 axis_labeller <- function(variable, value){
     axis.labels <- list("Axis.2" = sprintf("A. PCoA Axis 2 (%.1f%%)", 100*eig.fracs[2]),
@@ -353,7 +351,8 @@ axis_labeller <- function(variable, value){
     return(axis.labels[value])
 }
 
-pcoa.plot <- ggplot(data=pcoa.df, aes(x=Axis.1, y=Axis, color = HYPERTENSION)) +
+pcoa.plot <- ggplot(data=pcoa.df %>% gather(key, Axis, Axis.2, Axis.3),
+                    aes(x=Axis.1, y=Axis, color = HYPERTENSION)) +
     facet_wrap(~key, labeller = axis_labeller) +
     geom_point(size=0.1, alpha=0.4) +
     xlab(sprintf("PCoA Axis 1 (%.1f%%)", 100*eig.fracs[1])) +
