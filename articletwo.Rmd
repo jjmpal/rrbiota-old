@@ -194,8 +194,8 @@ if (!file.exists("rds/pcoa.ordinate.rds")) {
 ```{r maaslin runs, results = 'hide'} 
 if (!file.exists("rds/maaslin.rds")) {
     pseq.genus.core <- core(pseq.genus, detection = 0.001, prevalence = 0.01)
-    pseq.genus.core.viruses <- taxa(pseq.genus.core.comp) %>% mygrep(word = "virus$", complement = TRUE)
-    pseq.genus.core.pruned <- prune_taxa(pseq.genus.core.viruses, pseq.genus.core.comp)
+    pseq.genus.core.viruses.names <- taxa(pseq.genus.core) %>% mygrep(word = "virus$", complement = TRUE)
+    pseq.genus.core.pruned <- prune_taxa(pseq.genus.core.viruses.names, pseq.genus.core.comp)
 
     maaslin <- maaslinwrapper(pseq = pseq.genus.core.pruned,
                                     looped = var.BP,
