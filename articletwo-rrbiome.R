@@ -16,11 +16,12 @@ filter.phenotype.data <- function(pseq,
                                   included = c("MEN", "BL_AGE", "SYSTM", "DIASM", "BMI",
                                                "CURR_SMOKE", "DIAB", "BL_USE_RX_C09", "Q57X",
                                                "BL_USE_RX_C03",
-                                               "BL_USE_RX_C07", "BL_USE_RX_C08")) {
+                                               "BL_USE_RX_C07", "BL_USE_RX_C08", "NA."),
+                                  allowna = c("NA.")) {
     meta(pseq) %>%
         tibble::rownames_to_column(var = "rowname") %>%
         dplyr::select(rowname, included) %>%
-        stats::na.omit() %>%
+        tidyr::drop_na(myin(included, allowna, complement = TRUE)) %>%
         dplyr::mutate(ANYDRUG = factor(ifelse(BL_USE_RX_C03  == 1 | BL_USE_RX_C07 == 1 |
                                        BL_USE_RX_C08 == 1  | BL_USE_RX_C09 == 1, 1, 0)),
                       ANYEXERCICE = factor(ifelse(Q57X == 1, 0, 1)),
@@ -87,7 +88,7 @@ import_filter_data <- function(file,
                                included = c("MEN", "BL_AGE", "SYSTM", "DIASM", "BMI",
                                             "CURR_SMOKE", "DIAB", "BL_USE_RX_C09",
                                             "Q57X", "BL_USE_RX_C03",
-                                            "BL_USE_RX_C07", "BL_USE_RX_C08")) {
+                                            "BL_USE_RX_C07", "BL_USE_RX_C08", "NA.")) {
     pseq.full <- readRDS(file)
     pseq.meta <- filter.phenotype.data(pseq.full, included = included)
     phyloseq::sample_data(pseq.full) <- phyloseq::sample_data(pseq.meta)
@@ -264,6 +265,11 @@ mygrep <- function(..., word, ignorecase = TRUE, complement = FALSE) {
     c(...)[xor(grepl(word, c(...), ignore.case = ignorecase), (complement == TRUE))]
 }
 
+
+myin <- function(x,y, complement = FALSE) {
+    x[xor(x %in% y, complement)]
+}
+
 cc <- function(...) {
     c2l(c(...))
 }
@@ -290,22 +296,6 @@ mykable <- function(x, ...) {
   capture.output(x <- print(x))
   knitr::kable(x, ...)
 }
-
-
-my_na_filter_aaro <- function(phf_f, variables) {
-  tmp_samples <- sample_data(phf_f)
-  tmp_samples$names <- rownames(tmp_samples)
-  sample_data(phf_f) <- tmp_samples
-  filtered_data <- filter_at(sample_data(phf_f),
-                                  variables,
-                                  all_vars(!is.na(.)))
-
-  rownames(filtered_data) <- filtered_data$names
-
-  sample_data(phf_f) <- filtered_data
-  phf_f
-}
-
 
 myinstall.packages <- function(...) {
     list.of.packages <- c(...)

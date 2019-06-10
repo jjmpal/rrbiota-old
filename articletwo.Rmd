@@ -614,20 +614,23 @@ the odds for hypertension. We load genus data with dU-NA and combine
 it in a data frame with CLR transformed lactobacillus abundances.
 
 ```{r lacto data frame}
-pseq.genus.salt <- import_salt_pseq("data/phfinrisk_genus_all_drop50k_2018-11-16.RDs")
+pseq.genus.salt <- pseq.genus %>%
+    prune_samples(rownames(subset(meta(.), !is.na(NA.))), .) %>%
+    prune_taxa(c("g_Lactobacillus", "g_Lactococcus"), .)
 
-abund.genus.salt <- subset_taxa(pseq.genus.salt, Genus == "Lactobacillus") %>%
+abund.genus.salt <- pseq.genus.salt %>%
     abundances(., transform = "clr") %>%
     t %>%
     as.data.frame %>%
     tibble::rownames_to_column("id") %>%
-    setNames(tolower(replace.brackets(names(.))))
+    select(-g_Lactococcus)
 
 df.genus.salt <- meta(pseq.genus.salt) %>%
     tibble::rownames_to_column("id") %>%
     full_join(., abund.genus.salt, by = "id") %>%
-    dplyr::mutate(salt_groups = relevel(factor(dplyr::ntile(dUNA, 3)), ref='1'),
-                  lacto_groups = relevel(factor(dplyr::ntile(lactobacillus.bacteria, 3)), ref='1'))
+    dplyr::mutate(dUNA = myscale(NA.),
+                  salt_groups = relevel(factor(dplyr::ntile(dUNA, 3)), ref='1'),
+                  lacto_groups = relevel(factor(dplyr::ntile(g_Lactobacillus, 3)), ref='1'))
 ```
 
 Characteristics in salt analysis. Analyses are limited by the number
@@ -651,7 +654,7 @@ pseq.genus.salt %>%
 Associations between continuous dU-NA and lactobacillus abundances.
 
 ```{r abund salt lm continuous}
-lm.lacto.duna <- lm(lactobacillus.bacteria ~ dUNA + BL_AGE + SEX, data = df.genus.salt)
+lm.lacto.duna <- lm(g_Lactobacillus ~ dUNA + BL_AGE + SEX, data = df.genus.salt)
 lm.lacto.duna %>% tidy %>% mutate_if(is.numeric, round, 3) %>% kable
 ```
 
@@ -672,7 +675,7 @@ gvlma.table.plot(lm.lacto.duna)$plot %>% plot
 Associations between categorical dU-NA split in three equal size groups and lactobacillus abundances
 
 ```{r abund salt lm group}
-lm.lacto.saltgroup <- lm(lactobacillus.bacteria ~ salt_groups + BL_AGE + SEX, data = df.genus.salt)
+lm.lacto.saltgroup <- lm(g_Lactobacillus ~ salt_groups + BL_AGE + SEX, data = df.genus.salt)
 lm.lacto.saltgroup %>% tidy %>% mutate_if(is.numeric, round, 3) %>% kable
 ```
 
@@ -689,17 +692,17 @@ gvlma.table.plot(lm.lacto.saltgroup)$plot %>% plot
 ```
 
 Bartlett's test for equality of variance gives p = `r
-bartlett.test(lactobacillus.bacteria ~ salt_groups, data =
+bartlett.test(g_Lactobacillus ~ salt_groups, data =
 df.genus.salt)$p.value`. 
 
 One-way test assuming normal distributions gives for equal mean p = `r
-oneway.test(lactobacillus.bacteria ~ salt_groups, data =
+oneway.test(g_Lactobacillus ~ salt_groups, data =
 df.genus.salt, var.equal = TRUE)$p.value`.
 
 Analysing also differences between salt groups using ANOVA.
 
 ```{r salt anova}
-aov.lacto.saltgroup <- aov(lactobacillus.bacteria ~ salt_groups + BL_AGE + SEX, data = df.genus.salt)
+aov.lacto.saltgroup <- aov(g_Lactobacillus ~ salt_groups + BL_AGE + SEX, data = df.genus.salt)
 aov.lacto.saltgroup %>% xtable %>% kable
 ```
 
@@ -736,7 +739,7 @@ Studying associations between blood pressure variables and lactobacillus abundan
 
 ```{r lactobacillus RR}
 calculateglm(df.genus.salt,
-             modelstring = "%s ~ lactobacillus.bacteria + BL_AGE + SEX",
+             modelstring = "%s ~ g_Lactobacillus + BL_AGE + SEX",
              filterstr = "lactobacillus") %>% 
     select(response, term, estimate, std.error, p.value) %>%
     mutate_if(is.numeric, round, 3) %>%
@@ -746,13 +749,13 @@ calculateglm(df.genus.salt,
 Checking assumptions for linear regression for MAP
 
 ```{r table map lactobacillus}
-gvlma.table.plot(lm(MAP ~ lactobacillus.bacteria + BL_AGE + SEX, data = df.genus.salt))$table %>% kable
+gvlma.table.plot(lm(MAP ~ g_Lactobacillus + BL_AGE + SEX, data = df.genus.salt))$table %>% kable
 ```
 
 Diagnostic plots for linear model
 
 ```{r plot map lactobacillus, fig.width=12, fig.height=14}
-gvlma.table.plot(lm(MAP ~ lactobacillus.bacteria + BL_AGE + SEX, data = df.genus.salt))$plot %>% plot
+gvlma.table.plot(lm(MAP ~ g_Lactobacillus + BL_AGE + SEX, data = df.genus.salt))$plot %>% plot
 ```
 
 Odds for hypertension by categorical lactobacillus abundance.
