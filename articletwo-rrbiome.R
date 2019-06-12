@@ -71,17 +71,16 @@ calculateglm <- function(dset,
                          modelstring = "%s ~ BL_AGE + SEX",
                          filterstr = ".") {
     glmlist <- lapply(responses, function(response) {
-        fo.family <- ifelse(length(unique(pull(dset, response))) > min_n_for_continuous, stats::gaussian, stats::binomial)
+        is.logistic <- length(unique(pull(dset, response))) < min_n_for_continuous
+        fo.family <- ifelse(is.logistic, stats::binomial, stats::gaussian)
         fo <- sprintf(modelstring, response)
         stats::glm(formula = as.formula(fo), family = fo.family, data = dset) %>%
-            broom::tidy() %>%
+            broom::tidy(conf.int = TRUE, conf.level = 0.95, exponentiate = is.logistic) %>%
                 dplyr::filter(grepl(filterstr, term)) %>%
                 dplyr::mutate(response = response, fo = fo)
     })
     data.table::rbindlist(glmlist, id = "model_name") %>%
-        as.data.frame %>%
-        dplyr::mutate(conf.low = estimate - qnorm(1- 0.05/2) * std.error,
-                      conf.high = estimate + qnorm(1- 0.05/2) * std.error)
+        as.data.frame
 }
 
 import_filter_data <- function(file,
@@ -203,7 +202,8 @@ vectortolist <- function(c) {
 }
 
 mergediversities <- function(alphadiversity, betadiversity,
-                             responses = c("MAP", "SYSTM", "DIASM", "PULSEPRESSURE", "HYPERTENSION")) {
+                             responses = c("MAP", "SYSTM", "DIASM", "PULSEPRESSURE", "HYPERTENSION"),
+                             names.dset) {
     lapply(vectortolist(names(alphadiversity)), function(x) {
         alpha.select <- alphadiversity[[x]] %>% select(estimate, p.value, response)
         beta.rbind <- betadiversity[[x]] %>%
@@ -309,3 +309,6 @@ myinstall.packages <- function(...) {
 }
 
 
+mydropna <- function(...) {
+    c(...)[!is.na(c(...))]
+}

@@ -73,8 +73,8 @@ library(ggfortify)
 library(RColorBrewer)
 library(gvlma)
 library(purrr)
-library(Maaslin2)
 library(pwr)
+library(gtable)
 ```
 
 Session info
@@ -208,7 +208,7 @@ if (!file.exists("rds/maaslin.rds")) {
 
     maaslin <- maaslinwrapper(pseq = pseq.genus.core.pruned,
                                     looped = var.BP,
-                                    forced = var.CL,
+                                    forced = var.CL.min,
                               taxa = taxa(pseq.genus.core.pruned))
 
     saveRDS(maaslin, file = "rds/maaslin.rds")
@@ -250,7 +250,7 @@ alphadiversity <- list(
                                              paste0(var.CL, collapse = " + ")),
                        filterstr = "shannon"))
 
-diversities <- mergediversities(alphadiversity, adonis.species)
+diversities <- mergediversities(alphadiversity, adonis.species, names.dset = names.dset)
 ```
 
 Minimum coefficient for alpha diversity is `r rbind(diversities$min,
@@ -348,39 +348,57 @@ writeimage(doc, 1, "cache/alpha-beta.png", fig1head, fig1foot)
 pcoa.vectors <- pcoa.ordinate$vectors %>% as.data.frame
 eig.fracs <- pcoa.ordinate$values$Relative_eig
 
-pcoa.df <- merge(pcoa.vectors %>% select(Axis.1, Axis.2, Axis.3),
+pcoa.df <- merge(pcoa.vectors %>%
+                 select(Axis.1, Axis.2, Axis.3),
                  meta(pseq.species), by=0, all = TRUE) %>%
     mutate(STATETREATMENT = factor(paste0(HYPERTENSION, ANYDRUG),
                                    levels = c("11", "10", "01", "00")),
-           gMAP = cut(oMAP, seq(60, 160, 15)))
+           gMAP = cut(oMAP, seq(60, 160, 15))) %>%
+    mutate_at(vars(starts_with("Axis.")), .funs = funs(myscale(.)))
 
 axis_labeller <- function(variable, value){
-    axis.labels <- list("Axis.2" = sprintf("A. PCoA Axis 2 (%.1f%%)", 100*eig.fracs[2]),
-                        "Axis.3" = sprintf("B. PCoA Axis 3 (%.1f%%)", 100*eig.fracs[3]))
+    axis.labels <- list("Axis.2" = sprintf("PCoA Axis 2 (%.1f%%)", 100*eig.fracs[2]),
+                        "Axis.3" = sprintf("PCoA Axis 3 (%.1f%%)", 100*eig.fracs[3]))
     return(axis.labels[value])
 }
 
+plot_labeller <-  function(value) {
+        plot.labels <- list("Axis.2" = sprintf("A."),
+                            "Axis.3" = sprintf("B."))
+        return(plot.labels[value])
+}
+
+pcoa.df %>% pull(Axis.1) %>% summary
+
 pcoa.plot <- ggplot(data=pcoa.df %>% gather(key, Axis, Axis.2, Axis.3),
                     aes(x=Axis.1, y=Axis, color = HYPERTENSION)) +
-    facet_wrap(~key, labeller = axis_labeller) +
+    facet_wrap(~key, scales = "free_y", strip.position = "left", labeller = axis_labeller) +
     geom_point(size=0.1, alpha=0.4) +
     xlab(sprintf("PCoA Axis 1 (%.1f%%)", 100*eig.fracs[1])) +
-    ylab(sprintf("Subsequent PCoA Axes", 100*eig.fracs[3])) +
+    ylab(NULL) +
     scale_colour_manual(name = "State and treatment",
                         labels = c("Normotensive", "Hypertensive"),
                         breaks=c(0, 1),
                         values = c("blue", "red")) +   
-    coord_fixed() +
-    scale_x_continuous(breaks=seq(-1, 1, .25)) +
-    scale_y_continuous(breaks=seq(-1, 1, .25)) +
+    scale_x_continuous(breaks=seq(-5, 5, 1)) +
+    scale_y_continuous(breaks=seq(-5, 5, 1)) +
     theme_classic() +
     guides(colour = guide_legend(override.aes = list(size=4))) +
-    theme(text = element_text(size=14),
+    coord_cartesian(clip = 'off') +
+    geom_text(aes(x = -Inf, y = Inf, label = plot_labeller(key)),
+              size = 5,
+              hjust = 2,
+              vjust = -1,
+              inherit.aes = FALSE) +
+    theme(text = element_text(size=12),
           legend.position = "none",
           strip.background = element_blank(),
-          strip.placement = "outside")
+          strip.placement = "outside",
+          aspect.ratio = 1,
+          strip.text = element_text(size = 14),
+          axis.title.x = element_text(size = 14))
 
-ggsave(file = "cache/pcoa-species.png", plot=pcoa.plot, height=4, width=6, units = "in", dpi = 300)
+ggsave(file = "cache/pcoa-species.png", plot=pcoa.plot, height=3.4, width=6, units = "in", dpi = 300)
 ```
 
 First three axis explain portion (`r eig.fracs[1:3]`) of
@@ -428,14 +446,17 @@ Significant associations between BP-variables and first three PCoA axis
 glm.pcoa <- lapply(c2l("Axis.1", "Axis.2", "Axis.3"), function(axis)
     calculateglm(pcoa.df,
                  modelstring = sprintf("%%s ~ %s + %s", axis, paste(var.CL, collapse = "+")),
+                 responses = list(model_1 = "oMAP", model_2 = "oSYSTM", model_3 = "oDIASM",
+                                          model_4 = "oPULSEPRESSURE", model_5 = "HYPERTENSION"),
                  filterstr = "Axis"))
 
 do.call(rbind, glm.pcoa) %>% 
-    select(response, term, estimate, std.error, p.value) %>%
+    select(response, term, estimate, std.error, p.value, conf.low, conf.high) %>%
     mutate_if(is.numeric, round, 3) %>%
     filter(p.value < 0.05) %>%
     arrange(p.value) %>%
     kable
+
 ```
 
 ```{r Write figure 2, include=FALSE}
@@ -449,15 +470,17 @@ writeimage(doc, 2, "cache/pcoa-species.png", fig2head, fig2foot)
 For magnitude, age, sex, and BMI explain `r round(summary(lm(MAP ~ BL_AGE +
 SEX + BMI, data = meta(pseq.genus)))$adj.r.squared * 100, 1)`% of MAP.
 
-```{r maaslin}
+```{r maaslin clean results}
 maas.results.df.signf <- maaslin %>%
     merge(names.dset %>% select(Covariate, Category, Name), by.x ="Variable", by.y = "Covariate") %>%
     dplyr::mutate(Qval = p.adjust(P.value, method="BH"),
-                  Feature = gsub("_Bacteria", "", Feature),
+                  Feature = gsub("[gs]_", "", Feature),
                   beta = Coefficient) %>%
     dplyr::filter(Qval < 0.05) %>%
     arrange(Feature)
+```
 
+```{r maaslin plot}
 my.plot.order <- function(x) {
     y <- seq(length(x))
     y[x == "Systolic BP"] = 4
@@ -470,6 +493,7 @@ my.plot.order <- function(x) {
 
 maas.all.pairs <- expand.grid(Feature = maas.results.df.signf %>% pull(Feature),
                          Name = maas.results.df.signf %>% pull(Name))
+
 maas.tables.df <- merge(maas.results.df.signf,
                         maas.all.pairs,
                         all.y=TRUE,
@@ -505,7 +529,7 @@ maaslinplot <- ggplot(maas.tables.df, aes(x = Feature, y = reorder(Name, my.plot
     theme(axis.text.x = element_text(angle = 90, hjust = 1.0, vjust=0.5, size=10),
           axis.text.y = element_text(size=10))
 
-ggsave(file = "cache/maaslin.png", plot = maaslinplot, height = 3, width = 6, dpi = 300)
+ggsave(file = "cache/maaslin.png", plot = maaslinplot, height = 30, width = 40, unit = "in", dpi = 300)
 ```
 
 Max value of abs beta is `r maas.results.df.signf %>% pull(Coefficient) %>% abs %>% max`.
@@ -515,6 +539,32 @@ maas.results.df.signf %>%
     select(Feature, Value, Coefficient, Qval) %>%
     arrange(Qval) %>%
     kable
+```
+
+```{r multi model}
+abund.genus.systm <- pseq.genus %>%
+    abundances(., transform = "compositional") %>%
+    t %>%
+    as.data.frame %>%
+    tibble::rownames_to_column("id")
+
+df.genus.systm <- meta(pseq.genus.systm) %>%
+    tibble::rownames_to_column("id") %>%
+    full_join(., abund.genus.systm, by = "id") %>%
+    mutate(Anaerotruncus = scale(asin(sqrt(g_Anaerotruncus))),
+           Sutterella = scale(asin(sqrt(g_Sutterella))))
+
+fo.genus.systm <- sprintf("oSYSTM ~ Anaerotruncus + Sutterella + Anaerotruncus:Sutterella + %s",
+                          paste0(var.CL, collapse = " + "))
+
+lm(as.formula(fo.genus.systm), data = df.genus.systm) %>% summary
+
+df.genus.systm %>%
+    mutate(diff = -0.75418 * Anaerotruncus + 0.89265 * Sutterella) %>%
+    pull(diff) %>%
+    summary
+
+
 ```
 
 ```{r scatter plots}
@@ -808,6 +858,10 @@ pwr.f2.test(u = 3, v=836, f2 = NULL, sig.level=0.05, power=0.95)
 
 ## Twin-forest plot
 
+```{r forest lims, eval = FALSE, include = FALSE}
+adjmean.lacto.saltgroup
+```
+
 ```{r forest plot lacto}
 odds.hypertension.lactogroup
 gsalt <- grid.arrange(
@@ -815,7 +869,7 @@ gsalt <- grid.arrange(
                  xlab = "Dietary salt",
                  ylab = "Lactobacillus abundance",
                  subtitle = "A.",
-                 my_y_scale = scale_y_continuous(limits = c(4.1,4.7), breaks = seq(4, 5, 0.1))),
+                 my_y_scale = scale_y_continuous(limits = c(1.15,1.42), breaks = seq(0, 5, 0.1))),
     myforestplot(odds.hypertension.lactogroup,
                  xlab = "Lactobacillus abundance",
                  ylab = "Odds of hypertension",

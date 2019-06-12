@@ -63,7 +63,7 @@ plot.beta <- function(diversity,
     diversity <- diversity %>% mutate(color = as.factor(ifelse(R2.p < 0.05, 1, 0)))
     plot.beta.diversity <- ggplot(diversity, aes(x = reorder(Name, R2), y= R2, color = color)) +
         geom_bar(stat="identity") +
-        scale_color_manual(values = c("0" = "red", "1" = "black")) +
+        scale_color_manual(values = c("0" = "black", "1" = "red")) +
         coord_flip() +
         theme_classic(fig.textsize) +
         ylab(fig.permar2.text) +
