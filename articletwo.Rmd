@@ -696,7 +696,7 @@ pseq.genus.salt %>%
                        Mean = mean(as.numeric(value), na.rm = TRUE),
                        sd = sd(as.numeric(value), na.rm = TRUE),
                        NAs = sum(is.na(value))))  %>%
-    mutate_if(is.numeric, round, 2) %>%
+    mutate_if(is.numeric, round, 3) %>%
     kable()
 ```
 
