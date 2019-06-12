@@ -36,6 +36,8 @@ if (exists("args")) {
               ofile = '~/phd/research/articletwo/TAGS', verbose = TRUE, append = FALSE)
     if ("loadlast" %in% names(args) )
         load(paste0("session/", sort(list.files("session"), decreasing = TRUE)[1]))
+    if ("subset" %in% names(args))
+        subset.run <- as.numeric(args$subset)
 }
 
 #packrat::opts$ignored.packages
@@ -72,6 +74,7 @@ library(RColorBrewer)
 library(gvlma)
 library(purrr)
 library(Maaslin2)
+library(pwr)
 ```
 
 Session info
@@ -170,15 +173,21 @@ if (!file.exists("rds/bray.dist.m.species.rds")) {
      adonis.species$min <- calculateadonis(dset = meta(pseq.species),
                                            matrix = bray.dist.m.species,
                                            covariates = var.CL.min,
-                                           npermutations = 10000)
+                                           npermutations = 9999)
      adonis.species$max <- calculateadonis(dset = meta(pseq.species),
                                            matrix = bray.dist.m.species,
                                            covariates = var.CL,
-                                           npermutations = 10000)
+                                           npermutations = 9999)
      saveRDS(adonis.species, file = "rds/adonis.species.rds")
  } else {
      adonis.species  <- readRDS("rds/adonis.species.rds")
  }
+```
+
+```{r quit subruns, include = FALSE}
+if (exists("subset.run")) {
+    quit()
+}
 ```
 
 ```{r pcoa calculate}
@@ -484,8 +493,6 @@ mycolors <- c("beta < 0, p < 0.05" = "#B2182B",
               "NA" = "gray50")
 
 
-maas.tables.df %>% pull(beta)%>% summary
-
 maaslinplot <- ggplot(maas.tables.df, aes(x = Feature, y = reorder(Name, my.plot.order(Name)), fill = beta)) +
     geom_tile(aes(fill = 1)) +
     geom_tile(colour="white", size=0.25) +
@@ -740,7 +747,7 @@ Studying associations between blood pressure variables and lactobacillus abundan
 ```{r lactobacillus RR}
 calculateglm(df.genus.salt,
              modelstring = "%s ~ g_Lactobacillus + BL_AGE + SEX",
-             filterstr = "lactobacillus") %>% 
+             filterstr = "Lactobacillus") %>% 
     select(response, term, estimate, std.error, p.value) %>%
     mutate_if(is.numeric, round, 3) %>%
     kable
@@ -788,6 +795,15 @@ odds.hypertension.lactogroup <- glm.hypertension.lactogroup %>%
     add_row(term = "lacto_groups1", estimate = 1.0, conf.low = NA, conf.high = NA) %>%
     dplyr::filter(grepl("lacto", term))
 odds.hypertension.lactogroup %>% kable
+```
+
+Power analysis of odds of hypertension
+
+```{r power hypertention}
+power.htn <- pwr.f2.test(u = 3, v=NULL, f2 = 0.02, sig.level=0.05, power=0.8)
+round(power.htn$v + power.htn$u + 1)
+
+pwr.f2.test(u = 3, v=836, f2 = NULL, sig.level=0.05, power=0.95)
 ```
 
 ## Twin-forest plot
