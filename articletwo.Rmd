@@ -565,7 +565,7 @@ df.genus.systm %>%
     summary
 ```
 
-```{r scatter plots}
+```{r scatter plots, eval = FALSE, include = FALSE}
 scatter.signf.bacteria <- maas.results.df.signf %>% pull(Feature) %>% unique
 
 scatter.meta <- meta(pseq.genus) %>%
