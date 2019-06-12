@@ -159,7 +159,7 @@ ret3rd <- mclapply(var.CL.comb3rd, function(x)
 
 ```
 
-```{r read combinations, eval = TRUE}
+```{r read combinations 3rd, eval = TRUE}
 ret3rd <- lapply(var.CL.comb3rd, function(x) {
     file <- sprintf("/homes/jpalmu/maaslinruns/maaslinruns/1560338417_%s/maaslin/maaslin.txt",
                     paste0(x, collapse = "_"))
@@ -167,7 +167,7 @@ ret3rd <- lapply(var.CL.comb3rd, function(x) {
     })
 ```
 
-```{r combine results}
+```{r combine results 3rd}
 ret3rd.comb <- map_df(ret3rd, ~as.data.frame(.x), .id="id")
 
 ret3rd.comb %>%
