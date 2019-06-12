@@ -541,7 +541,7 @@ maas.results.df.signf %>%
     kable
 ```
 
-```{r multi model}
+```{r multi model, eval = FALSE, include = FALSE}
 abund.genus.systm <- pseq.genus %>%
     abundances(., transform = "compositional") %>%
     t %>%
@@ -563,8 +563,6 @@ df.genus.systm %>%
     mutate(diff = -0.75418 * Anaerotruncus + 0.89265 * Sutterella) %>%
     pull(diff) %>%
     summary
-
-
 ```
 
 ```{r scatter plots}
