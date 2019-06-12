@@ -646,14 +646,10 @@ scatter.plot <- function(df,
 scatterplots <- lapply(data.frame(t(scatter.combinations)),
                        function(x)
                            scatter.plot(scatter.full, maas.results.df.signf, x$rr, x$abund))
-```
 
-
-```{r scatter plot at genus level for BP, fig.width=12, fig.height=10}
 scatterplot <- do.call("grid.arrange", c(scatterplots, ncol=4))
 ggsave(file = "cache/scatter.png", plot = scatterplot, height = 10, width = 10, dpi = 300)
 ```
-
 
 ```{r Write figure 3, include=FALSE}
 fig3head <- "Associations between genus level abundances and blood pressure variables."
