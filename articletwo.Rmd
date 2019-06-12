@@ -548,7 +548,7 @@ abund.genus.systm <- pseq.genus %>%
     as.data.frame %>%
     tibble::rownames_to_column("id")
 
-df.genus.systm <- meta(pseq.genus.systm) %>%
+df.genus.systm <- meta(pseq.genus) %>%
     tibble::rownames_to_column("id") %>%
     full_join(., abund.genus.systm, by = "id") %>%
     mutate(Anaerotruncus = scale(asin(sqrt(g_Anaerotruncus))),
