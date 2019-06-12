@@ -208,7 +208,7 @@ if (!file.exists("rds/maaslin.rds")) {
 
     maaslin <- maaslinwrapper(pseq = pseq.genus.core.pruned,
                                     looped = var.BP,
-                                    forced = var.CL.min,
+                                    forced = var.CL,
                               taxa = taxa(pseq.genus.core.pruned))
 
     saveRDS(maaslin, file = "rds/maaslin.rds")
