@@ -719,15 +719,15 @@ pseq.genus %>%
     group_by(duna.present) %>%
     summarize(lacto_detected = sum(lacto.prevalent), n = n(), ratio = lacto_detected/n) %>%
     kable
-``` 
+  ``` 
 
 
 Characteristics in salt analysis. Analyses are limited by the number
 of participants with collected dU-NA.
 
 ```{r salt characteristics}
-pseq.genus.salt %>%
-    meta %>%
+df.genus.salt %>%
+    select(-Sample) %>% 
     gather(key,value) %>%
     group_by(key) %>%
     summarise_all(funs(N = n(),
