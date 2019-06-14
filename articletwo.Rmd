@@ -717,7 +717,8 @@ pseq.genus %>%
     dplyr::mutate(lacto.prevalent = ifelse(g_Lactobacillus > 0.001, TRUE, FALSE),
                   duna.present = ifelse(is.na(NA.), 0, 1)) %>%
     group_by(duna.present) %>%
-    summarize(lacto_detected = sum(lacto.prevalent), n = n(), ratio = lacto_detected/n)
+    summarize(lacto_detected = sum(lacto.prevalent), n = n(), ratio = lacto_detected/n) %>%
+    kable
 ``` 
 
 
