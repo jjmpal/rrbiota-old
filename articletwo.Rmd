@@ -75,6 +75,7 @@ library(gvlma)
 library(purrr)
 library(pwr)
 library(gtable)
+library(car)
 ```
 
 Session info
@@ -201,12 +202,12 @@ if (!file.exists("rds/pcoa.ordinate.rds")) {
 ```
 
 ```{r maaslin runs, results = 'hide'} 
+ pseq.genus.core <- core(pseq.genus, detection = 0.001, prevalence = 0.01)
+ pseq.genus.core.viruses.names <- taxa(pseq.genus.core) %>% mygrep(word = "virus$", complement = TRUE)
+ pseq.genus.core.pruned <- prune_taxa(pseq.genus.core.viruses.names, pseq.genus.core)
+ 
 if (!file.exists("rds/maaslin.rds")) {
-    pseq.genus.core <- core(pseq.genus, detection = 0.001, prevalence = 0.01)
-    pseq.genus.core.viruses.names <- taxa(pseq.genus.core) %>% mygrep(word = "virus$", complement = TRUE)
-    pseq.genus.core.pruned <- prune_taxa(pseq.genus.core.viruses.names, pseq.genus.core)
-
-    maaslin <- maaslinwrapper(pseq = pseq.genus.core.pruned,
+     maaslin <- maaslinwrapper(pseq = pseq.genus.core.pruned,
                                     looped = var.BP,
                                     forced = var.CL,
                               taxa = taxa(pseq.genus.core.pruned))
@@ -368,8 +369,6 @@ plot_labeller <-  function(value) {
         return(plot.labels[value])
 }
 
-pcoa.df %>% pull(Axis.1) %>% summary
-
 pcoa.plot <- ggplot(data=pcoa.df %>% gather(key, Axis, Axis.2, Axis.3),
                     aes(x=Axis.1, y=Axis, color = HYPERTENSION)) +
     facet_wrap(~key, scales = "free_y", strip.position = "left", labeller = axis_labeller) +
@@ -411,6 +410,7 @@ abund.genus <- abundances(pseq.genus, transform = "compositional") %>%
     as.data.frame %>%
     tibble::rownames_to_column("id") %>%
     setNames(tolower(replace.brackets(names(.))))
+
 
 abund.genus.bacteria <- abund.genus %>% select(-contains("virus")) %>% colnames
 
@@ -651,6 +651,36 @@ scatterplot <- do.call("grid.arrange", c(scatterplots, ncol=4))
 ggsave(file = "cache/scatter.png", plot = scatterplot, height = 10, width = 10, dpi = 300)
 ```
 
+```{r maaslin means}
+pseq.genus.core.pruned.table <- pseq.genus.core.pruned %>%
+    prune_taxa(c("g_Adlercreutzia", "g_Anaerotruncus", "g_Sutterella"), .) %>%
+    transform(transform = "compositional") %>%
+    psmelt %>%
+    mutate(map_groups = relevel(factor(dplyr::ntile(MAP, 3)), ref='1'),
+           systm_groups = relevel(factor(dplyr::ntile(SYSTM, 3)), ref='1'),
+           Abundance = myscale(Abundance))
+
+table_bp_abund <- function(pseq, group) {
+    pseq %>%
+        group_by(.dots = c(group, "OTU")) %>%
+        summarize(mean = mean(Abundance), sd = sd(Abundance)) %>%
+        mutate(beta_sd = sprintf("%.2f ± %.2f", mean, sd)) %>%
+        select(OTU, beta_sd) %>%
+        spread(OTU, beta_sd) %>%
+        ungroup %>%
+        dplyr::rename("grp" = group) %>%
+        mutate("grp" = paste0(group, "_", grp))
+}
+
+rbind(table_bp_abund(pseq.genus.core.pruned.table, "map_groups"),
+             table_bp_abund(pseq.genus.core.pruned.table, "systm_groups")) %>%
+    tibble::column_to_rownames("grp") %>%
+    t %>%
+    as.data.frame %>%
+    kable
+
+```
+
 ```{r Write figure 3, include=FALSE}
 fig3head <- "Associations between genus level abundances and blood pressure variables."
 fig3foot <- "Only bacteria with significant associations are shown. Blood pressure variables are normalized and abundances are arcsin-square root transformed. Dark gray color represents insignificant associations."
@@ -665,24 +695,31 @@ the odds for hypertension. We load genus data with dU-NA and combine
 it in a data frame with CLR transformed lactobacillus abundances.
 
 ```{r lacto data frame}
-pseq.genus.salt <- pseq.genus %>%
-    prune_samples(rownames(subset(meta(.), !is.na(NA.))), .) %>%
-    prune_taxa(c("g_Lactobacillus", "g_Lactococcus"), .)
-
-abund.genus.salt <- pseq.genus.salt %>%
-    abundances(., transform = "clr") %>%
-    t %>%
-    as.data.frame %>%
-    tibble::rownames_to_column("id") %>%
-    select(-g_Lactococcus)
-
-df.genus.salt <- meta(pseq.genus.salt) %>%
-    tibble::rownames_to_column("id") %>%
-    full_join(., abund.genus.salt, by = "id") %>%
+df.genus.salt <- pseq.genus %>%
+    microbiome::transform(transform = "clr") %>%
+    prune_taxa(c("g_Lactobacillus"), .) %>%
+    psmelt %>%
+    dplyr::filter(!is.na(NA.)) %>%
+    spread(OTU, Abundance) %>%
     dplyr::mutate(dUNA = myscale(NA.),
                   salt_groups = relevel(factor(dplyr::ntile(dUNA, 3)), ref='1'),
                   lacto_groups = relevel(factor(dplyr::ntile(g_Lactobacillus, 3)), ref='1'))
 ```
+
+Lactobacillus prevalence
+
+```{r lactobacillus prevalence}
+pseq.genus %>%
+    microbiome::transform(transform = "compositional") %>%
+    prune_taxa(c("g_Lactobacillus"), .) %>%
+    psmelt %>%
+    spread(OTU, Abundance) %>%
+    dplyr::mutate(lacto.prevalent = ifelse(g_Lactobacillus > 0.001, TRUE, FALSE),
+                  duna.present = ifelse(is.na(NA.), 0, 1)) %>%
+    group_by(duna.present) %>%
+    summarize(lacto_detected = sum(lacto.prevalent), n = n(), ratio = lacto_detected/n)
+``` 
+
 
 Characteristics in salt analysis. Analyses are limited by the number
 of participants with collected dU-NA.
@@ -742,19 +779,17 @@ Diagnostic plots for linear model
 gvlma.table.plot(lm.lacto.saltgroup)$plot %>% plot
 ```
 
-Bartlett's test for equality of variance gives p = `r
-bartlett.test(g_Lactobacillus ~ salt_groups, data =
-df.genus.salt)$p.value`. 
-
-One-way test assuming normal distributions gives for equal mean p = `r
-oneway.test(g_Lactobacillus ~ salt_groups, data =
-df.genus.salt, var.equal = TRUE)$p.value`.
-
 Analysing also differences between salt groups using ANOVA.
 
 ```{r salt anova}
 aov.lacto.saltgroup <- aov(g_Lactobacillus ~ salt_groups + BL_AGE + SEX, data = df.genus.salt)
 aov.lacto.saltgroup %>% xtable %>% kable
+```
+
+Levene's test for equality of variance
+
+```{r salt levene}
+car::leveneTest(g_Lactobacillus ~ salt_groups, data = df.genus.salt) %>% kable
 ```
 
 Tukey's range for pairwise test between salt groups
