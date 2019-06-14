@@ -819,6 +819,11 @@ adjmean.lacto.saltgroup <- predict(lm.lacto.saltgroup,
     tibble::rownames_to_column("term")
 ```
 
+Adjusted means
+
+```{r forest lims}
+adjmean.lacto.saltgroup %>% kable
+```
 
 ## Is there associations between lactobacillus abudance and hypertension?
 
@@ -888,18 +893,13 @@ pwr.f2.test(u = 3, v=836, f2 = NULL, sig.level=0.05, power=0.95)
 
 ## Twin-forest plot
 
-```{r forest lims, eval = FALSE, include = FALSE}
-adjmean.lacto.saltgroup
-```
-
 ```{r forest plot lacto}
-odds.hypertension.lactogroup
 gsalt <- grid.arrange(
     myforestplot(adjmean.lacto.saltgroup,
                  xlab = "Dietary salt",
                  ylab = "Lactobacillus abundance",
                  subtitle = "A.",
-                 my_y_scale = scale_y_continuous(limits = c(1.15,1.42), breaks = seq(0, 5, 0.1))),
+                 my_y_scale = scale_y_continuous(limits = c(5.38, 5.67), breaks = seq(0, 10, 0.1))),
     myforestplot(odds.hypertension.lactogroup,
                  xlab = "Lactobacillus abundance",
                  ylab = "Odds of hypertension",
