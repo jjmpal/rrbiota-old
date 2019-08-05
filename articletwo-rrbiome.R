@@ -14,7 +14,7 @@ myscale <- function(x){
 
 filter.phenotype.data <- function(pseq,
                                   included = c("MEN", "BL_AGE", "SYSTM", "DIASM", "BMI",
-                                               "CURR_SMOKE", "DIAB", "BL_USE_RX_C09", "Q57X",
+                                               "CURR_SMOKE", "PREVAL_DIAB", "BL_USE_RX_C09", "Q57X",
                                                "BL_USE_RX_C03",
                                                "BL_USE_RX_C07", "BL_USE_RX_C08", "NA."),
                                   allowna = c("NA.")) {
@@ -43,7 +43,6 @@ filter.phenotype.data <- function(pseq,
                       BL_USE_RX_C07 = as.factor(BL_USE_RX_C07),
                       BL_USE_RX_C08 = as.factor(BL_USE_RX_C08),
                       BL_USE_RX_C09 = as.factor(BL_USE_RX_C09)) %>%
-        mutate_at(vars(one_of("DIAB")), as.factor) %>%
         dplyr::select(-MEN) %>%
         tibble::remove_rownames() %>%
         tibble::column_to_rownames(var = "rowname")
@@ -85,7 +84,7 @@ calculateglm <- function(dset,
 
 import_filter_data <- function(file,
                                included = c("MEN", "BL_AGE", "SYSTM", "DIASM", "BMI",
-                                            "CURR_SMOKE", "DIAB", "BL_USE_RX_C09",
+                                            "CURR_SMOKE", "PREVAL_DIAB", "BL_USE_RX_C09",
                                             "Q57X", "BL_USE_RX_C03",
                                             "BL_USE_RX_C07", "BL_USE_RX_C08", "NA.")) {
     pseq.full <- readRDS(file)

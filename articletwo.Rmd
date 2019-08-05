@@ -76,6 +76,7 @@ library(purrr)
 library(pwr)
 library(gtable)
 library(car)
+library(M3C)
 ```
 
 Session info
@@ -153,7 +154,7 @@ dimensions (`r dim(meta(pseq.genus))`) and there ntaxa is
 ```{r my variables}
 var.BP <- c("MAP", "SYSTM", "DIASM", "PULSEPRESSURE", "HYPERTENSION")
 var.CL.min <- c("BL_AGE", "SEX")
-var.CL <- c("BL_AGE", "SEX", "BMI", "CURR_SMOKE", "Q57X", "DIAB",
+var.CL <- c("BL_AGE", "SEX", "BMI", "CURR_SMOKE", "Q57X", "PREVAL_DIAB",
             "BL_USE_RX_C03","BL_USE_RX_C07", "BL_USE_RX_C08", "BL_USE_RX_C09")
 ```
 
@@ -201,21 +202,64 @@ if (!file.exists("rds/pcoa.ordinate.rds")) {
 }
 ```
 
+```{r t-sne, eval = FALSE}
+sne.df <- pseq.genus %>%
+    microbiome::transform(transform = "clr") %>%
+    psmelt %>%
+    spread(OTU, Abundance)
+
+sne_names <- colnames(sne.df) %>% mygrep(word = "g_")
+
+
+sne.t <- sne.df %>% select(Sample, HYPERTENSION, sne_names[1:20]) %>%
+    mutate(HYPERTENSION = as.numeric(HYPERTENSION)) %>%
+    gather(variable, value, -Sample) %>% 
+    spread(Sample, value) %>%
+    column_to_rownames("variable")
+
+png("sample.png", 800, 800)
+tsne(sne.t[-1,], labels = as.factor(sne.t[1,]),
+     dotsize = 1)
+dev.off()
+
+### CONTINUOUS
+
+
+source("tsne.R")
+
+sne.t <- sne.df %>% select(Sample, oMAP, sne_names) %>%
+    gather(variable, value, -Sample) %>% 
+    spread(Sample, value) %>%
+    column_to_rownames("variable")
+
+tsne.g <- tsne(sne.t[rownames(sne.t) != "oMAP",],
+               labels = as.numeric(sne.t[rownames(sne.t) == "oMAP",]),
+               dotsize = 1,
+               controlscale = TRUE,
+               scale = 2,
+               low = "white")
+
+tsne.plot <- tsne.g +
+    scale_fill_gradientn(limits = c(-3,3),
+                         colours=c("navyblue", "darkmagenta", "darkorange1"),
+                         breaks=c(0,200), labels=format(c(0,200)))
+
+ggsave(file = "cache/tsne.png", plot=tsne.plot, height=6, width=9)
+
+
 ```{r maaslin runs, results = 'hide'} 
  pseq.genus.core <- core(pseq.genus, detection = 0.001, prevalence = 0.01)
- pseq.genus.core.viruses.names <- taxa(pseq.genus.core) %>% mygrep(word = "virus$", complement = TRUE)
- pseq.genus.core.pruned <- prune_taxa(pseq.genus.core.viruses.names, pseq.genus.core)
- 
+
 if (!file.exists("rds/maaslin.rds")) {
-     maaslin <- maaslinwrapper(pseq = pseq.genus.core.pruned,
+     maaslin <- maaslinwrapper(pseq = pseq.genus.core,
                                     looped = var.BP,
                                     forced = var.CL,
-                              taxa = taxa(pseq.genus.core.pruned))
+                              taxa = taxa(pseq.genus.core))
 
     saveRDS(maaslin, file = "rds/maaslin.rds")
 } else {
     maaslin <- readRDS(file = "rds/maaslin.rds")
-}
+ }
 ```
 
 
@@ -252,6 +296,15 @@ alphadiversity <- list(
                        filterstr = "shannon"))
 
 diversities <- mergediversities(alphadiversity, adonis.species, names.dset = names.dset)
+```
+
+Hypertension prevalence
+
+```{r test htn prevalence}
+dset.alpha %>%
+    dplyr::filter(BL_AGE < 60 + 12, BL_AGE > 60 - 12) %>%
+    summarize(htn = sum(ifelse(HYPERTENSION == 1, 1, 0)), n = n(), proportion = htn/n) %>%
+    kable
 ```
 
 Minimum coefficient for alpha diversity is `r rbind(diversities$min,
@@ -349,8 +402,7 @@ writeimage(doc, 1, "cache/alpha-beta.png", fig1head, fig1foot)
 pcoa.vectors <- pcoa.ordinate$vectors %>% as.data.frame
 eig.fracs <- pcoa.ordinate$values$Relative_eig
 
-pcoa.df <- merge(pcoa.vectors %>%
-                 select(Axis.1, Axis.2, Axis.3),
+pcoa.df <- merge(pcoa.vectors,
                  meta(pseq.species), by=0, all = TRUE) %>%
     mutate(STATETREATMENT = factor(paste0(HYPERTENSION, ANYDRUG),
                                    levels = c("11", "10", "01", "00")),
@@ -400,6 +452,32 @@ pcoa.plot <- ggplot(data=pcoa.df %>% gather(key, Axis, Axis.2, Axis.3),
 ggsave(file = "cache/pcoa-species.png", plot=pcoa.plot, height=3.4, width=6, units = "in", dpi = 300)
 ```
 
+```{r pcoa top axes}
+axis_top_labeller <- function(variable, value){
+    index <- as.integer(gsub("Axis.", "", value))
+    return(sprintf("Axis %i (%.1f%%)", index, 100*eig.fracs[index]))
+}
+
+
+pcoa.plot.top <- ggplot(data=pcoa.df %>% gather(key, Axis, paste0("Axis.", seq(2,43))) %>%
+                       mutate(key = factor(key, levels=paste0("Axis.", seq(2,43)))),
+                    aes(x=Axis.1, y=Axis, color = HYPERTENSION)) +
+    facet_wrap(~key, scales = "free_y", labeller = axis_top_labeller) +
+    geom_point(size=0.1, alpha=0.2) +
+    xlab("PCoA 1") +
+    ylab(NULL) +
+    scale_colour_manual(name = "State and treatment",
+                        labels = c("Normotensive", "Hypertensive"),
+                        breaks=c(0, 1),
+                        values = c("blue", "red")) + 
+    theme_classic() +
+    theme(legend.position = "none")
+
+ggsave(file = "cache/pcoa-species-top-axes.png", plot=pcoa.plot.top,
+       height=10, width=10, units = "in", dpi = 300)
+```
+
+
 First three axis explain portion (`r eig.fracs[1:3]`) of
 variation. Testing associations to blood pressure variables on PCoA
 axis 1
@@ -440,10 +518,10 @@ pcoacor.genus.df %>%
     head(20) %>% kable
 ```
 
-Significant associations between BP-variables and first three PCoA axis
+Significant associations between BP-variables and top PCoA axes
 
-```{r pcoa axis analysis axis 1}
-glm.pcoa <- lapply(c2l("Axis.1", "Axis.2", "Axis.3"), function(axis)
+```{r pcoa analysis main axis}
+glm.pcoa <- lapply(c2l(paste0("Axis.", seq(1,5))), function(axis)
     calculateglm(pcoa.df,
                  modelstring = sprintf("%%s ~ %s + %s", axis, paste(var.CL, collapse = "+")),
                  responses = list(model_1 = "oMAP", model_2 = "oSYSTM", model_3 = "oDIASM",
@@ -453,7 +531,6 @@ glm.pcoa <- lapply(c2l("Axis.1", "Axis.2", "Axis.3"), function(axis)
 do.call(rbind, glm.pcoa) %>% 
     select(response, term, estimate, std.error, p.value, conf.low, conf.high) %>%
     mutate_if(is.numeric, round, 3) %>%
-    filter(p.value < 0.05) %>%
     arrange(p.value) %>%
     kable
 
@@ -461,7 +538,7 @@ do.call(rbind, glm.pcoa) %>%
 
 ```{r Write figure 2, include=FALSE}
 fig2head <- "Principal coordinate analysis for bacterial abundances."
-fig2foot <- sprintf("Principal coordinate analysis for bacterial abundances at species level. Bray-Curtis distances are calculated for abundances after compositional transformation. First two axes explain %.1f%% of the variation.", round(100*sum(eig.fracs[c(1,3)]),1))
+fig2foot <- sprintf("Principal coordinate analysis for bacterial abundances at species level. Bray-Curtis distances are calculated for abundances after compositional transformation. First two axes explain %.1f%% of the variation.", round(100*sum(eig.fracs[1:3]),1))
 writeimage(doc, 2, "cache/pcoa-species.png", fig2head, fig2foot)
 ```
 
@@ -478,6 +555,16 @@ maas.results.df.signf <- maaslin %>%
                   beta = Coefficient) %>%
     dplyr::filter(Qval < 0.05) %>%
     arrange(Feature)
+```
+
+```{r maaslin insignif, include = FALSE, eval = FALSE}
+ maaslin %>%
+    dplyr::mutate(Qval = p.adjust(P.value, method="BH"),
+                  Feature = gsub("[gs]_", "", Feature),
+                  beta = Coefficient) %>%
+     arrange(Feature) %>%
+     select(Variable, Feature, Qval) %>%
+     spread(Variable, Qval)
 ```
 
 ```{r maaslin plot}
@@ -592,7 +679,7 @@ scatter.plot <- function(df,
                          maas.results,
                          rr,
                          abund,
-                         covariates = c("BL_AGE", "SEX", "BMI", "CURR_SMOKE", "Q57X", "DIAB",
+                         covariates = c("BL_AGE", "SEX", "BMI", "CURR_SMOKE", "Q57X", "PREVAL_DIAB",
                                         "BL_USE_RX_C03", "BL_USE_RX_C07", "BL_USE_RX_C08",
                                         "BL_USE_RX_C09"),
                          prediction = TRUE,
@@ -608,7 +695,7 @@ scatter.plot <- function(df,
                BMI = df %>% pull(BMI) %>% mean,
                CURR_SMOKE = as.factor(0),
                Q57X = as.factor(1),
-               DIAB = as.factor(0),
+               PREVAL_DIAB = as.factor(0),
                BL_USE_RX_C03 = as.factor(0),
                BL_USE_RX_C07 = as.factor(0),
                BL_USE_RX_C08 = as.factor(0),
@@ -732,6 +819,7 @@ df.genus.salt %>%
     group_by(key) %>%
     summarise_all(funs(N = n(),
                        Mean = mean(as.numeric(value), na.rm = TRUE),
+                       ones = sum(value == 1, na.rm = TRUE),
                        sd = sd(as.numeric(value), na.rm = TRUE),
                        NAs = sum(is.na(value))))  %>%
     mutate_if(is.numeric, round, 3) %>%
@@ -806,12 +894,12 @@ Calculate adjusted means for lactobacillus assuming male sex and mean age.
 
 ```{r lacto adjusted means}
 df.genus.salt.unadjusted <- with(df.genus.salt, data.frame(salt_groups = as.factor(seq(3)),
-                                                           SEX = as.factor(0),
+                                                           SEX = as.factor(1),
                                                            BL_AGE = mean(BL_AGE)))
                                
 adjmean.lacto.saltgroup <- predict(lm.lacto.saltgroup,
                                df.genus.salt.unadjusted,
-                               interval = "confidence") %>%
+                               interval = "prediction") %>%
     as.data.frame %>%
     dplyr::rename(estimate = fit,
                   conf.low = lwr,
@@ -899,7 +987,7 @@ gsalt <- grid.arrange(
                  xlab = "Dietary salt",
                  ylab = "Lactobacillus abundance",
                  subtitle = "A.",
-                 my_y_scale = scale_y_continuous(limits = c(5.38, 5.67), breaks = seq(0, 10, 0.1))),
+                 my_y_scale = scale_y_continuous(limits = c(3.0, 8.0), breaks = seq(0, 10, 1))),
     myforestplot(odds.hypertension.lactogroup,
                  xlab = "Lactobacillus abundance",
                  ylab = "Odds of hypertension",
@@ -908,7 +996,7 @@ gsalt <- grid.arrange(
                  interceptone = TRUE),
     ncol=2)
 
-ggsave(file = "cache/salt-forest.png", plot=gsalt, height=4, width=6, dpi = 300)
+ggsave(file = "cache/salt-forest.png", plot=gsalt, height=3, width=5, dpi = 300)
 ```
 
 ```{r Write figure 4, include=FALSE}
@@ -933,7 +1021,7 @@ mylmrsqr <- function(df, response, loopcovariates) {
 
 af.models <- mylmrsqr(df = meta(pseq.species),
          response = "MAP",
-         loopcovariates = c("BL_AGE", "SEX", "BMI", "CURR_SMOKE", "Q57X", "DIAB",
+         loopcovariates = c("BL_AGE", "SEX", "BMI", "CURR_SMOKE", "Q57X", "PREVAL_DIAB",
                             "ANYDRUG"))
 
 af <- do.call(anova, af.models)

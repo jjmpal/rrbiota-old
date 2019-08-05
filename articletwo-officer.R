@@ -34,7 +34,7 @@ tableone <- function(dset) {
                            "oMAP" = "Mean arterial pressure, mmHg (SD)",
                            "HYPERTENSION" = "Hypertension, N (%)",
                            "CURR_SMOKE" = "Current smoker, N (%)",
-                           "DIAB" = "Diabetes mellitus, N (%)",
+                           "PREVAL_DIAB" = "Diabetes mellitus, N (%)",
                            "Q57X" = "Exercise, N (%)",
                            "ANYDRUG" = "Antihypertensive medication, N (%)",
                            "BL_USE_RX_C03" = "  Diuretics, N (%)",
@@ -44,7 +44,7 @@ tableone <- function(dset) {
     extras <- list("1"  =  "  Light",
                            "2"  =  "  Moderate",
                            "3"  =  "  Heavy")
-    tableone.factors <- c("SEX", "HYPERTENSION",  "ANYDRUG", "CURR_SMOKE", "DIAB",
+    tableone.factors <- c("SEX", "HYPERTENSION",  "ANYDRUG", "CURR_SMOKE", "PREVAL_DIAB",
                           "BL_USE_RX_C03", "BL_USE_RX_C07", "BL_USE_RX_C08", "BL_USE_RX_C09")
     data <- characteristics(dset, tableone.names, tableone.factors, extras)
 
