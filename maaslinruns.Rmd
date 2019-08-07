@@ -116,7 +116,7 @@ ret <- mclapply(var.CL.comb, function(x)
                    looped = var.BP,
                    forced = x,
                    taxa = taxa(pseq.genus.core),
-                   tempstr = sprintf("%%s/combinations/maaslinruns/%%s_%s", paste0(x, collapse = "_"))),
+                   tempstr = sprintf("%%s/maaslinruns/combinations/%%s_%s", paste0(x, collapse = "_"))),
     mc.cores = length(var.CL.comb))
 ```
 
