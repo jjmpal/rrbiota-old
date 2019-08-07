@@ -739,7 +739,7 @@ ggsave(file = "cache/scatter.png", plot = scatterplot, height = 10, width = 10, 
 ```
 
 ```{r maaslin means}
-pseq.genus.core.pruned.table <- pseq.genus.core.pruned %>%
+pseq.genus.core.table <- pseq.genus.core %>%
     prune_taxa(c("g_Adlercreutzia", "g_Anaerotruncus", "g_Sutterella"), .) %>%
     transform(transform = "compositional") %>%
     psmelt %>%
@@ -759,8 +759,8 @@ table_bp_abund <- function(pseq, group) {
         mutate("grp" = paste0(group, "_", grp))
 }
 
-rbind(table_bp_abund(pseq.genus.core.pruned.table, "map_groups"),
-             table_bp_abund(pseq.genus.core.pruned.table, "systm_groups")) %>%
+rbind(table_bp_abund(pseq.genus.core.table, "map_groups"),
+             table_bp_abund(pseq.genus.core.table, "systm_groups")) %>%
     tibble::column_to_rownames("grp") %>%
     t %>%
     as.data.frame %>%

@@ -69,7 +69,7 @@ modelfunction <- function(x,
                           modelstr = "rda.abund ~ %s + Condition(%s)",
                           permutations = 1000) {
     covariates <- c("BL_AGE", "SEX", "BMI", "CURR_SMOKE", "Q57X",
-                   "DIAB", "BL_USE_RX_C03", "BL_USE_RX_C07",
+                   "PREVAL_DIAB", "BL_USE_RX_C03", "BL_USE_RX_C07",
                    "BL_USE_RX_C08", "BL_USE_RX_C09")
     fo <- sprintf(modelstr, x, paste0(covariates, collapse = "+"))
     model <- rda(as.formula(fo), data = df.meta)
@@ -145,7 +145,7 @@ RDA model
 
 ```{r rda}
 ex.rda <- rda(rda.abundances.species ~ SYSTM + Condition(BL_AGE + SEX + BMI + CURR_SMOKE + Q57X
-                                                        + DIAB + BL_USE_RX_C03 + BL_USE_RX_C07 +
+                                                        + PREVAL_DIAB + BL_USE_RX_C03 + BL_USE_RX_C07 +
                                                         + BL_USE_RX_C08 + BL_USE_RX_C09),
               data = meta(pseq.species))
 ```
