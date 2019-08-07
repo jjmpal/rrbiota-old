@@ -140,17 +140,10 @@ prepare.maaslin <- function (pseq,
                              tsvfile = "merged_phfinrisk_genus.tsv",
                              conffile = "maaslin_config.config",
                              includedvars = c("BL_AGE", "BMI", "SEX"),
-                             readpclrows = "Archaea.Archaea-",
-                             core = FALSE,
-                             core.detection = 0.001,
-                             core.prevalence = 0.01) {
-    pseq.comp <- microbiome::transform(pseq, "compositional")
-    if (core) {
-         pseq.comp  <- microbiome::core(pseq.comp, detection = core.detection, prevalence = core.prevalence)
-    }
-    pheno <- t(microbiome::meta(phyloseq::sample_data(pseq.comp)))
+                             readpclrows = "") {
+    pheno <- t(microbiome::meta(phyloseq::sample_data(pseq)))
     sample.ids <- colnames(pheno)
-    abud.rel <- abundances(pseq.comp)
+    abud.rel <- abundances(pseq)
     rownames(abud.rel) <- sapply(rownames(abud.rel), replace.brackets)
     write.table(t(rbind(sample.ids, pheno, abud.rel)), file = tsvfile, sep='\t', quote=FALSE, row.names=FALSE, col.names=TRUE)
     data <- file(conffile , open='wt')
