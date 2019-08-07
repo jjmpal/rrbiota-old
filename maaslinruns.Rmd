@@ -110,7 +110,7 @@ var.CL.comb <- lapply(var.CL.list, function(x) unique(c(var.CL.min, var.CL.add[1
 var.CL.comb3rd <- lapply(var.CL.list, function(x) unique(c(var.CL.min, var.CL.add[x])))
 ```
 
-```{r maaslin runs, results = 'hide', eval  = TRUE} 
+```{r maaslin runs, results = 'hide', eval  = FALSE} 
 ret <- mclapply(var.CL.comb, function(x)
     maaslinwrapper(pseq = pseq.genus.core,
                    looped = var.BP,
@@ -120,7 +120,7 @@ ret <- mclapply(var.CL.comb, function(x)
     mc.cores = length(var.CL.comb))
 ```
 
-```{r adding third, eval = TRUE}
+```{r adding third, results = 'hide', eval = FALSE}
 ret3rd <- mclapply(var.CL.comb3rd, function(x)
     maaslinwrapper(pseq = pseq.genus.core,
                    looped = var.BP,
@@ -133,7 +133,7 @@ ret3rd <- mclapply(var.CL.comb3rd, function(x)
 
 ```{r read combinations}
 ret <- lapply(var.CL.comb, function(x) {
-    file <- sprintf("/homes/jpalmu/maaslinruns/maaslinruns/combinations/single_%s/maaslin/maaslin.txt",
+    file <- sprintf("/homes/jpalmu/maaslinruns/combinations/single_%s/maaslin/maaslin.txt",
                     paste0(x, collapse = "_"))
     read.table(file, header=TRUE, sep='\t') %>% as.data.frame
     })
