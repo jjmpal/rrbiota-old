@@ -89,15 +89,6 @@ source("articletwo-rrbiome.R")
 
 ```{r data}
 pseq.genus <- import_filter_data("data/phfinrisk_centrifuge_genus_d50k_2019-06-02.rds")
-```
-
-At species level meta has dimensions (`r dim(meta(pseq.species))`) and
-there ntaxa is `r ntaxa(pseq.species)`, and at genus level meta has
-dimensions (`r dim(meta(pseq.genus))`) and there ntaxa is 
-`r ntaxa(pseq.genus)`.
-
-
-```{r defining genus core}
 pseq.genus.core <- microbiome::transform(pseq.genus, "compositional") %>%
     core(detection = 0.0001, prevalence = 0.01)
 ```
