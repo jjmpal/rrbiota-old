@@ -119,14 +119,18 @@ var.CL.comb <- lapply(var.CL.list, function(x) unique(c(var.CL.min, var.CL.add[1
 var.CL.comb3rd <- lapply(var.CL.list, function(x) unique(c(var.CL.min, var.CL.add[x])))
 ```
 
-```{r maaslin runs, results = 'hide', eval  = FALSE} 
+```{r maaslin runs, results = 'hide', eval  = TRUE} 
 ret <- mclapply(var.CL.comb, function(x)
     maaslinwrapper(pseq = pseq.genus.core,
                    looped = var.BP,
                    forced = x,
                    taxa = taxa(pseq.genus.core),
-                   tempstr = sprintf("%%s/maaslinruns/maaslinruns/%%s_%s", paste0(x, collapse = "_"))),
+                   tempstr = sprintf("%%s/combinations/maaslinruns/%%s_%s", paste0(x, collapse = "_"))),
     mc.cores = length(var.CL.comb))
+```
+
+```{r quit}
+quit()
 ```
 
 ```{r read combinations, eval = TRUE}
