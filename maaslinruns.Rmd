@@ -116,17 +116,24 @@ ret <- mclapply(var.CL.comb, function(x)
                    looped = var.BP,
                    forced = x,
                    taxa = taxa(pseq.genus.core),
-                   tempstr = sprintf("%%s/maaslinruns/combinations/%%s_%s", paste0(x, collapse = "_"))),
+                   tempstr = sprintf("%%s/maaslinruns/combinations/single_%s", paste0(x, collapse = "_"))),
     mc.cores = length(var.CL.comb))
 ```
 
-```{r quit}
-quit()
+```{r adding third, eval = TRUE}
+ret3rd <- mclapply(var.CL.comb3rd, function(x)
+    maaslinwrapper(pseq = pseq.genus.core,
+                   looped = var.BP,
+                   forced = x,
+                   taxa = taxa(pseq.genus.core),
+                   tempstr = sprintf("%%s/maaslinruns/combinations/all3rd_%s", paste0(x, collapse = "_"))),
+    mc.cores = length(var.CL.comb3rd))
+
 ```
 
-```{r read combinations, eval = TRUE}
+```{r read combinations}
 ret <- lapply(var.CL.comb, function(x) {
-    file <- sprintf("/homes/jpalmu/maaslinruns/maaslinruns/1560334017_%s/maaslin/maaslin.txt",
+    file <- sprintf("/homes/jpalmu/maaslinruns/maaslinruns/combinations/single_%s/maaslin/maaslin.txt",
                     paste0(x, collapse = "_"))
     read.table(file, header=TRUE, sep='\t') %>% as.data.frame
     })
@@ -143,20 +150,10 @@ ret.comb %>%
     kable
 ```
 
-```{r adding third, eval = FALSE}
-ret3rd <- mclapply(var.CL.comb3rd, function(x)
-    maaslinwrapper(pseq = pseq.genus.core,
-                   looped = var.BP,
-                   forced = x,
-                   taxa = taxa(pseq.genus.core),
-                   tempstr = sprintf("%%s/maaslinruns/maaslinruns/%%s_%s", paste0(x, collapse = "_"))),
-    mc.cores = length(var.CL.comb3rd))
 
-```
-
-```{r read combinations 3rd, eval = TRUE}
+```{r read combinations 3rd}
 ret3rd <- lapply(var.CL.comb3rd, function(x) {
-    file <- sprintf("/homes/jpalmu/maaslinruns/maaslinruns/1560338417_%s/maaslin/maaslin.txt",
+    file <- sprintf("/homes/jpalmu/maaslinruns/combinations/all3rd_%s/maaslin/maaslin.txt",
                     paste0(x, collapse = "_"))
     read.table(file, header=TRUE, sep='\t') %>% as.data.frame
     })
