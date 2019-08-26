@@ -66,20 +66,12 @@ var.CL.opt <- c("BL_AGE", "SEX", "BMI", "CURR_SMOKE", "Q57X", "PREVAL_DIAB", "BP
 # Sensitivity analysis
 
 ```{r sensitivity analysis bp treat}
-pseq.species.askbp <- subset_samples(pseq.species,
-                                       PREVAL_DIAB == 0 &
-                                       PREVAL_CHD == 0 &
-                                       PREVAL_CR_ANYCANC == 0) 
-
-bray.dist.m.species.askbp <- bray.dist.m.species[pseq.species.askbp %>% meta %>% rownames,
-                                                   pseq.species.askbp %>% meta %>% rownames]
-
-alphadiversity.askbp <- calculate.alphadiversity(pseq.species.askbp,
+alphadiversity.askbp <- calculate.alphadiversity(pseq.species,
                                                    list("max" = var.CL.opt,
                                                         "min" = var.CL.min))
 
-betadiversity.askbp <- calculate.betadiversity(pseq = pseq.species.askbp,
-                                                matrix = bray.dist.m.species.askbp,
+betadiversity.askbp <- calculate.betadiversity(pseq = pseq.species,
+                                                matrix = bray.dist.m.species,
                                                 vars = list("max" = var.CL.opt,
                                                             "min" = var.CL.min))
 
