@@ -108,7 +108,7 @@ myforestplot <- function(data,
         geom_errorbar(width=0.1)+ 
         ggplot2::theme_minimal()  +
         theme(plot.title=element_text(size=16),
-              axis.title=element_text(size=12),
+              axis.title=element_text(size=10),
               strip.background = element_blank()) +
         theme(panel.border = element_blank(),
               panel.grid.major = element_blank(),
@@ -116,7 +116,7 @@ myforestplot <- function(data,
               axis.ticks.x = element_line(),
               axis.ticks.y = element_line(),
               axis.line = element_line(colour = "black")) +
-        scale_x_discrete(labels=c("T1", "T2", "T3")) +
+        scale_x_discrete(labels=seq(3)) +
         my_y_scale + 
         xlab(xlab) +
         ylab(ylab) +
@@ -132,4 +132,44 @@ gvlma.table.plot <- function(model) {
     ret <- list("table" = gvlma.modek.summary,
                  "plot" = gvlma.model)
     return(ret)
+}
+
+plot.diversities <- function(diversities) {
+    alpha.diversity.min <- plot.alpha(diversities$min, alphabreaks = seq(-1,0,0.2))
+    alpha.diversity.max <- plot.alpha(diversities$max, alphabreaks = seq(-1,0,0.2))
+
+    beta.diversity.min <- plot.beta(diversities$min)
+    beta.diversity.max <- plot.beta(diversities$max)
+    
+    gs4 <- list(alpha.diversity.min$yaxis,
+                alpha.diversity.min$plot,
+                beta.diversity.min$plot,
+                alpha.diversity.min$legend,
+                alpha.diversity.min$xaxis,
+                beta.diversity.min$xaxis,
+                beta.diversity.min$xlab,
+                text_grob("Age- and sex-adjusted model", size = 18),
+                alpha.diversity.max$yaxis,
+                alpha.diversity.max$plot,
+                beta.diversity.max$plot,  
+                alpha.diversity.max$xaxis,
+                beta.diversity.max$xaxis,
+                beta.diversity.max$xlab,
+                text_grob("Multivariable-adjusted model", size = 18))
+ 
+    g4 <- arrangeGrob(grobs = gs4,
+                      layout_matrix = rbind(
+                          c(8,    8,    8, NA,   NA, NA, NA),
+                          c(NA, 1,    2,    NA, 3, NA, NA),
+                          c(NA, 1,    2,    NA, 3, NA, 4),
+                          c(NA, NA, 5,    NA,6, NA, NA),
+                          c(NA, NA, NA, NA,7, NA, NA),
+                          c(15,    15,    15, NA,   NA, NA, NA),
+                          c(NA, 9,    10,  NA,  11, NA, NA),
+                          c(NA, 9,    10,  NA,  11, NA, NA),
+                          c(NA, NA, 12,   NA, 13, NA, NA),
+                          c(NA, NA, NA, NA,14, NA, NA)),
+                      widths=c(0.7, 4, 0.7, 0.1, 5, 0.7, 3),
+                      heights=rep(c(1.5, 1, 6, 1, 2), 2))
+    return(g4)
 }

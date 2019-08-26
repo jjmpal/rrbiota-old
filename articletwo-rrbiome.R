@@ -13,11 +13,26 @@ myscale <- function(x){
 }
 
 filter.phenotype.data <- function(pseq,
-                                  included = c("MEN", "BL_AGE", "SYSTM", "DIASM", "BMI",
-                                               "CURR_SMOKE", "PREVAL_DIAB", "BL_USE_RX_C09", "Q57X",
+                                  included = c("MEN",
+                                               "BL_AGE",
+                                               "SYSTM",
+                                               "DIASM",
+                                               "BMI",
+                                               "CURR_SMOKE",
+                                               "PREVAL_DIAB",
+                                               "Q57X",
+                                               "BL_USE_RX_C09",
                                                "BL_USE_RX_C03",
-                                               "BL_USE_RX_C07", "BL_USE_RX_C08", "NA."),
-                                  allowna = c("NA.")) {
+                                               "BL_USE_RX_C07",
+                                               "BL_USE_RX_C08",
+                                               "NA.",
+                                               "BP_TREAT",
+                                               "PREVAL_CHD",
+                                               "PREVAL_CR_ANYCANC"),
+                                  allowna = c("NA.",
+                                              "BP_TREAT",
+                                              "PREVAL_CHD",
+                                              "PREVAL_CR_ANYCANC")) {
     meta(pseq) %>%
         tibble::rownames_to_column(var = "rowname") %>%
         dplyr::select(rowname, included) %>%
@@ -82,13 +97,9 @@ calculateglm <- function(dset,
         as.data.frame
 }
 
-import_filter_data <- function(file,
-                               included = c("MEN", "BL_AGE", "SYSTM", "DIASM", "BMI",
-                                            "CURR_SMOKE", "PREVAL_DIAB", "BL_USE_RX_C09",
-                                            "Q57X", "BL_USE_RX_C03",
-                                            "BL_USE_RX_C07", "BL_USE_RX_C08", "NA.")) {
+import_filter_data <- function(file) {
     pseq.full <- readRDS(file)
-    pseq.meta <- filter.phenotype.data(pseq.full, included = included)
+    pseq.meta <- filter.phenotype.data(pseq.full)
     phyloseq::sample_data(pseq.full) <- phyloseq::sample_data(pseq.meta)
     return(pseq.full)
 }
@@ -210,9 +221,8 @@ mergediversities <- function(alphadiversity, betadiversity,
 }
 
 getdescriptions <- function() {
-    phfinrisk_metadatadesc <- readRDS("mydata/phfinrisk_metadatadesc.rds")
-    names.dset <- filter(phfinrisk_metadatadesc,
-                         Ignored.Covariate.in.Cross.Sectional.Analysis.Aaro20181115==0)
+    names.dset <- readRDS("mydata/phfinrisk_metadatadesc.rds") %>%
+        dplyr::filter(Ignored.Covariate.in.Cross.Sectional.Analysis.Aaro20181115==0)
     bind_rows(names.dset,
               data.frame(Covariate = c("MAP", "PULSEPRESSURE", "HYPERTENSION", "SEX"),
                          Category = rep("Physical", 4),
@@ -303,4 +313,28 @@ myinstall.packages <- function(...) {
 
 mydropna <- function(...) {
     c(...)[!is.na(c(...))]
+}
+
+
+calculate.alphadiversity <- function(pseq, vars, modelstr = "%%s ~ %s + diversity_shannon") {
+    dset <- meta.merge.alphadiversity(pseq) %>%
+        mutate(diversity_shannon = scale(diversity_shannon),
+               MAP = oMAP,
+               PULSEPRESSURE = oPULSEPRESSURE,
+               SYSTM = oSYSTM,
+               DIASM = oDIASM)
+
+    lapply(vars, function(var)
+        min = calculateglm(dset,
+                           modelstring = sprintf(modelstr, paste0(var, collapse = " + ")),
+                           filterstr = "shannon"))
+
+}
+
+calculate.betadiversity <- function(pseq, matrix, vars, npermutations = 9999) {
+    lapply(vars, function(var)
+        calculateadonis(dset = meta(pseq),
+                                      matrix = matrix,
+                                      covariates = var,
+                                      npermutations = npermutations))
 }

@@ -77,6 +77,7 @@ library(pwr)
 library(gtable)
 library(car)
 library(M3C)
+library(emmeans)
 ```
 
 Session info
@@ -137,7 +138,7 @@ Loading descriptions for clinical data
 names.dset <- getdescriptions()
 ```
 
-Loading phyloseq object
+eLoading phyloseq object
 
 ```{r data}
 pseq.genus <- import_filter_data("data/phfinrisk_centrifuge_genus_d50k_2019-06-02.rds")
@@ -179,15 +180,11 @@ if (!file.exists("rds/bray.dist.m.species.rds")) {
 
  ```{r adonis calculation}
  if (!file.exists("rds/adonis.species.rds")) {
-     adonis.species = list()
-     adonis.species$min <- calculateadonis(dset = meta(pseq.species),
-                                           matrix = bray.dist.m.species,
-                                           covariates = var.CL.min,
-                                           npermutations = 9999)
-     adonis.species$max <- calculateadonis(dset = meta(pseq.species),
-                                           matrix = bray.dist.m.species,
-                                           covariates = var.CL,
-                                           npermutations = 9999)
+     adonis.species <- calculate.betadiversity(pseq = pseq.species,
+                                               matrix = bray.dist.m.species,
+                                               vars = list("max" = var.CL,
+                                                            "min" = var.CL.min))
+
      saveRDS(adonis.species, file = "rds/adonis.species.rds")
  } else {
      adonis.species  <- readRDS("rds/adonis.species.rds")
@@ -284,22 +281,9 @@ writetable(doc, tbl1, number = 1, tbl1head, tbl1foot)
 ## Alpha & Beta plot (Figure 1.)
 
 ```{r alphabeta definitions}
-dset.alpha <- meta.merge.alphadiversity(pseq.species) %>%
-    mutate(diversity_shannon = scale(diversity_shannon),
-           MAP = oMAP,
-           PULSEPRESSURE = oPULSEPRESSURE,
-           SYSTM = oSYSTM,
-           DIASM = oDIASM)
-
-alphadiversity <- list(
-    min = calculateglm(dset.alpha,
-                       modelstring = sprintf("%%s ~ %s + diversity_shannon",
-                                             paste0(var.CL.min, collapse = " + ")),
-                       filterstr = "shannon"),
-    max = calculateglm(dset.alpha,
-                       modelstring = sprintf("%%s ~ %s + diversity_shannon",
-                                             paste0(var.CL, collapse = " + ")),
-                       filterstr = "shannon"))
+alphadiversity <- calculate.alphadiversity(pseq.species,
+                                           list("max" = var.CL,
+                                                "min" = var.CL.min))
 
 diversities <- mergediversities(alphadiversity, adonis.species, names.dset = names.dset)
 ```
@@ -356,43 +340,7 @@ merge(diversities$min %>%
 
 
 ```{r save grob}
-alpha.diversity.min <- plot.alpha(diversities$min, alphabreaks = seq(-1,0,0.2))
-alpha.diversity.max <- plot.alpha(diversities$max, alphabreaks = seq(-1,0,0.2))
-
-beta.diversity.min <- plot.beta(diversities$min)
-beta.diversity.max <- plot.beta(diversities$max)
-
-gs4 <- list(alpha.diversity.min$yaxis,
-            alpha.diversity.min$plot,
-            beta.diversity.min$plot,
-            alpha.diversity.min$legend,
-            alpha.diversity.min$xaxis,
-            beta.diversity.min$xaxis,
-            beta.diversity.min$xlab,
-            text_grob("A.", size = 18),
-            alpha.diversity.max$yaxis,
-            alpha.diversity.max$plot,
-            beta.diversity.max$plot,  
-            alpha.diversity.max$xaxis,
-            beta.diversity.max$xaxis,
-            beta.diversity.max$xlab,
-            text_grob("B.", size = 18))
- 
-g4 <- arrangeGrob(grobs = gs4,
-                   layout_matrix = rbind(
-                      c(8,    NA,    NA, NA,   NA, NA, NA),
-                      c(NA, 1,    2,    NA, 3, NA, NA),
-                      c(NA, 1,    2,    NA, 3, NA, 4),
-                      c(NA, NA, 5,    NA,6, NA, NA),
-                      c(NA, NA, NA, NA,7, NA, NA),
-                      c(15,    NA,    NA, NA,   NA, NA, NA),
-                      c(NA, 9,    10,  NA,  11, NA, NA),
-                      c(NA, 9,    10,  NA,  11, NA, NA),
-                      c(NA, NA, 12,   NA, 13, NA, NA),
-                      c(NA, NA, NA, NA,14, NA, NA)),
-                  widths=c(0.7, 4, 0.7, 0.1, 5, 0.7, 3),
-                  heights=rep(c(1, 1, 6, 1, 2), 2))
-
+g4 <- plot.diversities(diversities)
 ggsave(file = "cache/alpha-beta.png", plot=g4, height=6, width=9)
 ```
 
@@ -421,12 +369,6 @@ axis_labeller <- function(variable, value){
     return(axis.labels[value])
 }
 
-plot_labeller <-  function(value) {
-        plot.labels <- list("Axis.2" = sprintf("A."),
-                            "Axis.3" = sprintf("B."))
-        return(plot.labels[value])
-}
-
 pcoa.plot <- ggplot(data=pcoa.df %>% gather(key, Axis, Axis.2, Axis.3),
                     aes(x=Axis.1, y=Axis, color = HYPERTENSION)) +
     facet_wrap(~key, scales = "free_y", strip.position = "left", labeller = axis_labeller) +
@@ -442,13 +384,12 @@ pcoa.plot <- ggplot(data=pcoa.df %>% gather(key, Axis, Axis.2, Axis.3),
     theme_classic() +
     guides(colour = guide_legend(override.aes = list(size=4))) +
     coord_cartesian(clip = 'off') +
-    geom_text(aes(x = -Inf, y = Inf, label = plot_labeller(key)),
-              size = 5,
-              hjust = 2,
-              vjust = -1,
-              inherit.aes = FALSE) +
     theme(text = element_text(size=12),
-          legend.position = "none",
+          legend.position = c(0.35, 0.95),
+          legend.title = element_blank(),
+          legend.text = element_text(size = 10),
+          legend.key.size = unit(5, "mm"),
+          legend.background = element_blank(),
           strip.background = element_blank(),
           strip.placement = "outside",
           aspect.ratio = 1,
@@ -457,6 +398,8 @@ pcoa.plot <- ggplot(data=pcoa.df %>% gather(key, Axis, Axis.2, Axis.3),
 
 ggsave(file = "cache/pcoa-species.png", plot=pcoa.plot, height=3.4, width=6, units = "in", dpi = 300)
 ```
+
+
 
 ```{r pcoa top axes}
 axis_top_labeller <- function(variable, value){
@@ -488,46 +431,56 @@ First three axis explain portion (`r eig.fracs[1:3]`) of
 variation. Testing associations to blood pressure variables on PCoA
 axis 1
 
-```{r top generas, eval = FALSE, include = FALSE}
-abund.genus <- abundances(pseq.genus, transform = "compositional") %>%
-    t %>%
+```{r top pcoa genera}
+df.genus.abund <- abundances(pseq.genus, transform = "compositional") %>%
     as.data.frame %>%
-    tibble::rownames_to_column("id") %>%
-    setNames(tolower(replace.brackets(names(.))))
+    tibble::rownames_to_column() %>%
+    dplyr::mutate(rowname = make.names(rowname)) %>%
+    gather(id, value, -rowname) %>% 
+    spread(rowname, value)
 
-
-abund.genus.bacteria <- abund.genus %>% select(-contains("virus")) %>% colnames
-
-abund.df <- merge(pcoa.vectors %>%
-                  select("Axis.1", "Axis.2", "Axis.3") %>%
-                  tibble::rownames_to_column("id"),
-                  abund.genus %>% select(id, abund.genus.bacteria),
-                  by = "id") %>%
-    merge(.,  meta(pseq.genus) %>% tibble::rownames_to_column("id"), by = "id")
+df.genus.pcoa <- merge(pcoa.vectors %>% tibble::rownames_to_column("id"),
+                         df.genus.abund,
+                         by = "id")
 
 pcoacorabund <- function(df,
-                         genera.names,
+                         taxas,
                          axis.names = c("Axis.1", "Axis.2", "Axis.3")) {
-    lapply(c2l(genera.names), function (taxa) 
+    mclapply(c2l(taxas), function (taxa) 
         lapply(c2l(axis.names), function(axis) {
             fo <- sprintf("%s ~ %s", axis, taxa)
             model <- lm(as.formula(fo), data = df)
             summary(model)$r.squared
-        }))
+        }), mc.cores = 20)
 }
 
-pcoacor.genus <- pcoacorabund(abund.df, genera.names = abund.genus.bacteria)
-pcoacor.genus.df <- map_df(pcoacor.genus, ~as.data.frame(.x), .id="id")
+pcoa.correlations <- pcoacorabund(df.genus.pcoa, taxas = colnames(df.genus.abund)[-1])
 
-pcoacor.genus.df %>%
-    arrange(-Axis.3) %>%
-    head(20) %>% kable
+pcoa.correlations.df <- map_df(pcoa.correlations, ~as.data.frame(.x), .id="id")
+
+pcoa.correlations.df %>% head
+
+
+pcoa.top.names <- lapply(c2l("Axis.1", "Axis.2", "Axis.3"), function(x) {
+    top.names <- pcoa.correlations.df %>% arrange(desc(!!sym(x))) %>% head(10) %>% pull(id)
+    pcoa.correlations.df %>%
+        dplyr::filter(id %in% top.names) %>%
+        select(id, x) %>%
+        tibble::rownames_to_column(var = "number") %>%
+        dplyr::mutate(!! sprintf("taxa_%s", x) := gsub("g_", "", id)) %>%
+        select(one_of(sprintf("taxa_%s", x), x, "number"))
+    })
+
+pcoa.top.table <- pcoa.top.names %>%
+    reduce(left_join, by = "number") %>%
+    select(-number) %>%
+    mutate_if(is.numeric, round, 3)
 ```
 
 Significant associations between BP-variables and top PCoA axes
 
 ```{r pcoa analysis main axis}
-glm.pcoa <- lapply(c2l(paste0("Axis.", seq(1,5))), function(axis)
+glm.pcoa <- lapply(c2l(paste0("Axis.", seq(1,3))), function(axis)
     calculateglm(pcoa.df,
                  modelstring = sprintf("%%s ~ %s + %s", axis, paste(var.CL, collapse = "+")),
                  responses = list(model_1 = "oMAP", model_2 = "oSYSTM", model_3 = "oDIASM",
@@ -536,8 +489,9 @@ glm.pcoa <- lapply(c2l(paste0("Axis.", seq(1,5))), function(axis)
 
 do.call(rbind, glm.pcoa) %>% 
     select(response, term, estimate, std.error, p.value, conf.low, conf.high) %>%
+    dplyr::mutate(Qval = p.adjust(p.value, method="BH")) %>%
     mutate_if(is.numeric, round, 3) %>%
-    arrange(p.value) %>%
+    arrange(Qval) %>%
     kable
 
 ```
@@ -899,18 +853,9 @@ hsd.lacto.saltgroup$salt_groups %>% kable
 Calculate adjusted means for lactobacillus assuming male sex and mean age.
 
 ```{r lacto adjusted means}
-df.genus.salt.unadjusted <- with(df.genus.salt, data.frame(salt_groups = as.factor(seq(3)),
-                                                           SEX = as.factor(1),
-                                                           BL_AGE = mean(BL_AGE)))
-                               
-adjmean.lacto.saltgroup <- predict(lm.lacto.saltgroup,
-                               df.genus.salt.unadjusted,
-                               interval = "prediction") %>%
+adjmean.lacto.saltgroup <- emmeans::emmeans(lm.lacto.saltgroup, specs = c("salt_groups")) %>%
     as.data.frame %>%
-    dplyr::rename(estimate = fit,
-                  conf.low = lwr,
-                  conf.high = upr) %>%
-    tibble::rownames_to_column("term")
+    dplyr::rename(term = salt_groups, estimate = emmean, conf.low = lower.CL, conf.high = upper.CL)
 ```
 
 Adjusted means
@@ -990,19 +935,19 @@ pwr.f2.test(u = 3, v=836, f2 = NULL, sig.level=0.05, power=0.95)
 ```{r forest plot lacto}
 gsalt <- grid.arrange(
     myforestplot(adjmean.lacto.saltgroup,
-                 xlab = "Dietary salt",
+                 xlab = "Tertile of 24-hour urinary sodium",
                  ylab = "Lactobacillus abundance",
                  subtitle = "A.",
-                 my_y_scale = scale_y_continuous(limits = c(3.0, 8.0), breaks = seq(0, 10, 1))),
+                 my_y_scale = scale_y_continuous(limits = c(5.4, 5.65), breaks = seq(0, 10, 0.1))),
     myforestplot(odds.hypertension.lactogroup,
-                 xlab = "Lactobacillus abundance",
+                 xlab = "Tertile of Lactobacillus abundance",
                  ylab = "Odds of hypertension",
                  subtitle = "B.",
                  my_y_scale = scale_y_log10(limits = c(0.4, 1.5), breaks = seq(0.5, 2.0, 0.5)),
                  interceptone = TRUE),
     ncol=2)
 
-ggsave(file = "cache/salt-forest.png", plot=gsalt, height=3, width=5, dpi = 300)
+ggsave(file = "cache/salt-forest.png", plot=gsalt, height=3, width=5.5, dpi = 300)
 ```
 
 ```{r Write figure 4, include=FALSE}
@@ -1010,6 +955,38 @@ fig4head <- "Associations between dietary salt, lactobacillus abundance, and odd
 fig4foot <- "In panel A we see lactobacillus abundances in different dietary salt groups. The mean value is adjusted using age and sex. In panel B we split participants in four groups by lactobacillus abundances and calculate odds ratio for hypertension. Age and sex are included in logistic model. A 95 % CI is drawn in both panels."
 writeimage(doc, 4, "cache/salt-forest.png", fig4head, fig4foot)
 ```
+
+Testing salt model using maaslin
+
+```{r salt model maaslin}
+taxa(pseq.genus.core) %>% mygrep(word = "lacto")
+
+pseq.genus.salt <- prune_taxa(c("g_Lactobacillus"), pseq.genus.core)
+
+pseq.genus.salt.meta <- meta(pseq.genus.salt) %>%
+    tibble::rownames_to_column(var = "rowname") %>%
+    dplyr::filter(!is.na(NA.)) %>%
+    dplyr::mutate(dUNA = myscale(NA.),
+                  salt_groups = relevel(factor(dplyr::ntile(dUNA, 3)), ref='1')) %>%
+    tibble::remove_rownames() %>%
+    tibble::column_to_rownames(var = "rowname") %>%
+    select(var.BP, var.CL.min, starts_with("salt_groups"))
+
+phyloseq::sample_data(pseq.genus.salt) <- phyloseq::sample_data(pseq.genus.salt.meta)
+
+maaslin.salt <- maaslinwrapper(pseq = pseq.genus.salt,
+                               looped = var.BP,
+                               forced = c(var.CL.min, "salt_groups"),
+                               taxa = "g_Lactobacillus")
+
+maaslin.salt %>%
+    merge(names.dset %>% select(Covariate, Category, Name), by.x ="Variable", by.y = "Covariate") %>%
+    dplyr::mutate(Qval = p.adjust(P.value, method="BH"),
+                  Feature = gsub("[gs]_", "", Feature),
+                  beta = Coefficient) %>%
+    arrange(Feature)
+```
+
 
 ```{r squared clinical, eval = FALSE, include = FALSE}
 mylmrsqr <- function(df, response, loopcovariates) {
@@ -1047,6 +1024,44 @@ summary(lm(DIASM ~ BL_AGE + SEX + BMI, meta(pseq.species)))$adj.r.squared,
 summary(lm(PULSEPRESSURE ~ BL_AGE + SEX + BMI, meta(pseq.species)))$adj.r.squared,
 summary(lm(MAP ~ BL_AGE + SEX + BMI, meta(pseq.species)))$adj.r.squared) %>% sort
 
+```
+
+
+```{r write supplement}
+core.names <- pseq.genus.core %>%
+    taxa %>%
+    gsub("g_", "", .) %>%
+    as.data.frame %>%
+    setNames("name") %>%
+    arrange(name) %>%
+    mutate(name = as.character(name)) %>%
+    mutate(class = case_when(row_number()-1 < n()/4 ~ 1,
+                             row_number()-1 < 2*n()/4 ~ 2,
+                             row_number()-1 < 3*n()/4 ~ 3,
+                             TRUE ~ 4))
+
+core.names %>% pull(class) %>% as.factor %>% summary
+
+core.names.fourcols <- cbind(
+    core.names %>% filter(class == 1) %>% pull(name),
+    core.names %>% filter(class == 2) %>% pull(name),
+    core.names %>% filter(class == 3) %>% pull(name),
+    core.names %>% filter(class == 4) %>% pull(name)) %>%
+    as.data.frame
+
+core.names.fourcols %>% unlist %>% length
+
+core.names.flextable <- flextable(core.names.fourcols) %>%
+    flextable::fontsize(size = 10, part = "header") %>%
+    flextable::fontsize(size = 10, part = "body") %>%
+    flextable::width(j=1:4, width = 1.8) %>%
+    flextable::align(align = "left", part = "header") %>%
+    flextable::align(align = "left")
+
+doc.s <- read_docx(path = "style/articlestyle.docx") %>%
+  body_remove()
+writetable(doc.s, core.names.flextable, number = "S1", "Core genera", "") %>%
+print(doc.s, target = paste0("report/articletwo-supplement.docx"))
 ```
 
 

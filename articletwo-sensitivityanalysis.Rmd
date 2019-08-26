@@ -1,0 +1,120 @@
+---
+title: "Hypertension and microbiome"
+author: "Joonatan Palmu"
+date: "`r format(Sys.time(), '%d.%m.%Y')`"
+output: html_document
+---
+	
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(include = TRUE, xecho = TRUE, message = FALSE, results='asis',
+                      cache=FALSE, warning=FALSE)
+knitr::opts_chunk$set(cache.path = 'cache/', output.dir="cache/",
+                      file.path = 'cache/', fig.path = 'cache/')
+
+options(max.print=100)
+```
+
+# Importing libraries:
+
+```{r libraries, cache = FALSE}
+library(dplyr)
+library(tibble)
+library(phyloseq)
+library(nortest)
+library(microbiome)
+library(knitr)
+library(tidyr)
+library(vegan)
+library(reshape)
+library(parallel)
+library(officer)
+library(flextable)
+library(xtable)
+library(rvg)
+library(tableone)
+library(scales)
+library(ggplot2)
+library(gridExtra)
+library(png)
+library(pander)
+library(ggpubr)
+library(broom)
+library(ggfortify)
+library(RColorBrewer)
+library(gvlma)
+library(purrr)
+library(pwr)
+library(gtable)
+library(car)
+library(M3C)
+library(emmeans)
+```
+
+# Import previous session
+
+```{r Import previous session}
+load(paste0("session/", sort(list.files("session"), decreasing = TRUE)[1]))
+```
+
+## Variables
+
+```{r my variables}
+var.CL.opt <- c("BL_AGE", "SEX", "BMI", "CURR_SMOKE", "Q57X", "PREVAL_DIAB", "BP_TREAT")
+```
+
+
+# Sensitivity analysis
+
+```{r sensitivity analysis bp treat}
+pseq.species.askbp <- subset_samples(pseq.species,
+                                       PREVAL_DIAB == 0 &
+                                       PREVAL_CHD == 0 &
+                                       PREVAL_CR_ANYCANC == 0) 
+
+bray.dist.m.species.askbp <- bray.dist.m.species[pseq.species.askbp %>% meta %>% rownames,
+                                                   pseq.species.askbp %>% meta %>% rownames]
+
+alphadiversity.askbp <- calculate.alphadiversity(pseq.species.askbp,
+                                                   list("max" = var.CL.opt,
+                                                        "min" = var.CL.min))
+
+betadiversity.askbp <- calculate.betadiversity(pseq = pseq.species.askbp,
+                                                matrix = bray.dist.m.species.askbp,
+                                                vars = list("max" = var.CL.opt,
+                                                            "min" = var.CL.min))
+
+diversities.helthy <- mergediversities(alphadiversity.askbp,
+                                       betadiversity.askbp,
+                                       names.dset = names.dset)
+
+plot.diversities(diversities.askbp)
+```
+
+
+Subjects with diabetes, cancer, kidney disease, and coronary disease are dropped. 
+
+```{r sensitivity analysis only healthy}
+pseq.species.healthy <- subset_samples(pseq.species,
+                                       PREVAL_DIAB == 0 &
+                                       PREVAL_CHD == 0 &
+                                       PREVAL_CR_ANYCANC == 0) 
+
+bray.dist.m.species.healthy <- bray.dist.m.species[pseq.species.healthy %>% meta %>% rownames,
+                                                   pseq.species.healthy %>% meta %>% rownames]
+
+alphadiversity.healthy <- calculate.alphadiversity(pseq.species.healthy,
+                                                   list("max" = var.CL[var.CL != "PREVAL_DIAB"],
+                                                        "min" = var.CL.min))
+
+betadiversity.healthy <- calculate.betadiversity(pseq = pseq.species.healthy,
+                                                matrix = bray.dist.m.species.healthy,
+                                                vars = list("max" = var.CL[var.CL != "PREVAL_DIAB"],
+                                                            "min" = var.CL.min))
+
+diversities.helthy <- mergediversities(alphadiversity.healthy,
+                                       betadiversity.healthy,
+                                       names.dset = names.dset)
+
+plot.diversities(diversities.healthy)
+```
+
