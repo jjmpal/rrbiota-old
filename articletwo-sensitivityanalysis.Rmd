@@ -73,7 +73,8 @@ alphadiversity.askbp <- calculate.alphadiversity(pseq.species,
 betadiversity.askbp <- calculate.betadiversity(pseq = pseq.species,
                                                 matrix = bray.dist.m.species,
                                                 vars = list("max" = var.CL.opt,
-                                                            "min" = var.CL.min))
+                                                            "min" = var.CL.min),
+                                               npermutations = 999)
 
 diversities.helthy <- mergediversities(alphadiversity.askbp,
                                        betadiversity.askbp,
@@ -101,7 +102,8 @@ alphadiversity.healthy <- calculate.alphadiversity(pseq.species.healthy,
 betadiversity.healthy <- calculate.betadiversity(pseq = pseq.species.healthy,
                                                 matrix = bray.dist.m.species.healthy,
                                                 vars = list("max" = var.CL[var.CL != "PREVAL_DIAB"],
-                                                            "min" = var.CL.min))
+                                                            "min" = var.CL.min),
+                                                npermutations = 999)
 
 diversities.helthy <- mergediversities(alphadiversity.healthy,
                                        betadiversity.healthy,
@@ -109,4 +111,59 @@ diversities.helthy <- mergediversities(alphadiversity.healthy,
 
 plot.diversities(diversities.healthy)
 ```
+
+## BMI
+
+Normal weigth
+
+```{r sensitivity analysis normal weight}
+pseq.species.normalweight <- subset_samples(pseq.species, BMI > 18.5 & BMI <= 25) 
+
+bray.dist.m.species.normalweight <-
+    bray.dist.m.species[pseq.species.normalweight %>% meta %>% rownames,
+                        pseq.species.normalweight %>% meta %>% rownames]
+
+alphadiversity.normalweight <- calculate.alphadiversity(pseq.species.normalweight,
+                                                   list("max" = var.CL[var.CL != "BMI"],
+                                                        "min" = var.CL.min))
+
+betadiversity.normalweight <- calculate.betadiversity(pseq = pseq.species.normalweight,
+                                                matrix = bray.dist.m.species.normalweight,
+                                                vars = list("max" = var.CL[var.CL != "BMI"],
+                                                            "min" = var.CL.min),
+                                                npermutations = 999)
+
+diversities.helthy <- mergediversities(alphadiversity.normalweight,
+                                       betadiversity.normalweight,
+                                       names.dset = names.dset)
+
+plot.diversities(diversities.normalweight)
+```
+
+Obese
+
+```{r sensitivity analysis obese}
+pseq.species.obese <- subset_samples(pseq.species, BMI > 30 & BMI <= 40) 
+
+bray.dist.m.species.obese <-
+    bray.dist.m.species[pseq.species.obese %>% meta %>% rownames,
+                        pseq.species.obese %>% meta %>% rownames]
+
+alphadiversity.obese <- calculate.alphadiversity(pseq.species.obese,
+                                                   list("max" = var.CL[var.CL != "BMI"],
+                                                        "min" = var.CL.min))
+
+betadiversity.obese <- calculate.betadiversity(pseq = pseq.species.obese,
+                                                matrix = bray.dist.m.species.obese,
+                                                vars = list("max" = var.CL[var.CL != "BMI"],
+                                                            "min" = var.CL.min),
+                                               npermutations = 999)
+
+diversities.helthy <- mergediversities(alphadiversity.obese,
+                                       betadiversity.obese,
+                                       names.dset = names.dset)
+
+plot.diversities(diversities.obese)
+```
+
 
