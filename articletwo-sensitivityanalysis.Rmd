@@ -109,7 +109,7 @@ diversities.askbp <- mergediversities(alphadiversity.askbp,
                                        betadiversity.askbp,
                                        names.dset = names.dset)
 
-plot.diversities(diversities.askbp)
+grid.arrange(plot.diversities(diversities.askbp))
 ```
 
 
@@ -139,7 +139,7 @@ diversities.healthy <- mergediversities(alphadiversity.healthy,
                                        betadiversity.healthy,
                                        names.dset = names.dset)
 
-plot.diversities(diversities.healthy)
+grid.arrange(plot.diversities(diversities.healthy))
 ```
 
 ## BMI
@@ -167,7 +167,7 @@ diversities.normalweight <- mergediversities(alphadiversity.normalweight,
                                        betadiversity.normalweight,
                                        names.dset = names.dset)
 
-plot.diversities(diversities.normalweight)
+grid.arrange(plot.diversities(diversities.normalweight))
 ```
 
 Obese
@@ -193,7 +193,7 @@ diversities.obese <- mergediversities(alphadiversity.obese,
                                        betadiversity.obese,
                                        names.dset = names.dset)
 
-plot.diversities(diversities.obese)
+grid.arrange(plot.diversities(diversities.obese))
 ```
 
 
