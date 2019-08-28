@@ -88,7 +88,7 @@ var.CL.min <- c("BL_AGE", "SEX")
 var.CL <- c("BL_AGE", "SEX", "BMI", "CURR_SMOKE", "Q57X", "PREVAL_DIAB",
             "BL_USE_RX_C03","BL_USE_RX_C07", "BL_USE_RX_C08", "BL_USE_RX_C09")
 var.CL.opt <- c("BL_AGE", "SEX", "BMI", "CURR_SMOKE", "Q57X", "PREVAL_DIAB", "BP_TREAT")
-permutations <- 3
+permutations <- 99
 ```
 
 
