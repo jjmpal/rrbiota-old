@@ -39,8 +39,6 @@ if (exists("args")) {
     if ("subset" %in% names(args))
         subset.run <- as.numeric(args$subset)
 }
-
-#packrat::opts$ignored.packages
 ```
 
 
@@ -78,6 +76,7 @@ library(gtable)
 library(car)
 library(M3C)
 library(emmeans)
+library(DESeq2)
 ```
 
 Session info
@@ -207,51 +206,6 @@ if (!file.exists("rds/pcoa.ordinate.rds")) {
 }
 ```
 
-```{r t-sne, eval = FALSE}
-sne.df <- pseq.genus %>%
-    microbiome::transform(transform = "clr") %>%
-    psmelt %>%
-    spread(OTU, Abundance)
-
-sne_names <- colnames(sne.df) %>% mygrep(word = "g_")
-
-
-sne.t <- sne.df %>% select(Sample, HYPERTENSION, sne_names[1:20]) %>%
-    mutate(HYPERTENSION = as.numeric(HYPERTENSION)) %>%
-    gather(variable, value, -Sample) %>% 
-    spread(Sample, value) %>%
-    column_to_rownames("variable")
-
-png("sample.png", 800, 800)
-tsne(sne.t[-1,], labels = as.factor(sne.t[1,]),
-     dotsize = 1)
-dev.off()
-
-### CONTINUOUS
-
-
-source("tsne.R")
-
-sne.t <- sne.df %>% select(Sample, oMAP, sne_names) %>%
-    gather(variable, value, -Sample) %>% 
-    spread(Sample, value) %>%
-    column_to_rownames("variable")
-
-tsne.g <- tsne(sne.t[rownames(sne.t) != "oMAP",],
-               labels = as.numeric(sne.t[rownames(sne.t) == "oMAP",]),
-               dotsize = 1,
-               controlscale = TRUE,
-               scale = 2,
-               low = "white")
-
-tsne.plot <- tsne.g +
-    scale_fill_gradientn(limits = c(-3,3),
-                         colours=c("navyblue", "darkmagenta", "darkorange1"),
-                         breaks=c(0,200), labels=format(c(0,200)))
-
-ggsave(file = "cache/tsne.png", plot=tsne.plot, height=6, width=9)
-
-
 ```{r maaslin runs, results = 'hide'} 
 if (!file.exists("rds/maaslin.rds")) {
      maaslin <- maaslinwrapper(pseq = pseq.genus.core,
@@ -265,6 +219,16 @@ if (!file.exists("rds/maaslin.rds")) {
  }
 ```
 
+```{r deseq2, eval = FALSE}
+pseq.genus.core.deseq <- pseq.genus %>% core(detection = 0.0001, prevalence = 0.01)
+
+dds.data <- phyloseq_to_deseq2(pseq.genus.core.deseq,
+                               as.formula(sprintf("~ %s + %s", "MAP", paste0(var.CL, collapse = "+"))))
+
+dds = DESeq(dds.data, test="Wald", fitType="parametric")
+resultsNames(dds)
+res = results(dds)
+```
 
 ## Characteristics of the study sample. (Table 1.)
 
@@ -785,6 +749,18 @@ df.genus.salt %>%
     mutate_if(is.numeric, round, 3) %>%
     kable()
 ```
+
+Required sub sample size 
+
+```{r required sodium subsample size}
+lapply(c2l(seq(1, 1.7, 0.05)), function(or) 
+    powerMediation::powerLogisticCon(n = nrow(df.genus.salt),
+                                     p1 = 0.4,
+                                     OR = or)) %>%
+    map_df(., ~as.data.frame(.x), .id = "or") %>%
+    kable
+```
+
 
 ### How sodium affects lactobacillus abundances?
 
