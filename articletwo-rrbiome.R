@@ -334,7 +334,7 @@ calculate.alphadiversity <- function(pseq, vars, modelstr = "%%s ~ %s + diversit
 calculate.betadiversity <- function(pseq, matrix, vars, npermutations = 9999) {
     lapply(vars, function(var)
         calculateadonis(dset = meta(pseq),
-                                      matrix = matrix,
-                                      covariates = var,
-                                      npermutations = npermutations))
+                        matrix = matrix,
+                        covariates = var,
+                        npermutations = npermutations))
 }

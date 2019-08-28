@@ -50,16 +50,45 @@ library(M3C)
 library(emmeans)
 ```
 
+### RR biome functions
+
+<details>
+  <summary>Open/Close</summary>
+  
+```{r RR biome functions, code=readLines("articletwo-rrbiome.R")}
+source("articletwo-rrbiome.R")
+```
+
+</details>
+
+### Plot functions
+
+<details>
+  <summary>Open/Close</summary>
+
+```{r Plot functions, code=readLines("articletwo-ggplot.R")}
+source("articletwo-ggplot.R")
+```
+
+</details>
+
 # Import previous session
 
 ```{r Import previous session}
-load(paste0("session/", sort(list.files("session"), decreasing = TRUE)[1]))
+pseq.species <- import_filter_data("data/phfinrisk_centrifuge_species_all_drop50k_2018-11-30_2019-06-03.RDs")
+bray.dist.m.species  <- readRDS("rds-20190828/bray.dist.m.species.rds")
+names.dset <- getdescriptions()
 ```
 
 ## Variables
 
 ```{r my variables}
+var.BP <- c("MAP", "SYSTM", "DIASM", "PULSEPRESSURE", "HYPERTENSION")
+var.CL.min <- c("BL_AGE", "SEX")
+var.CL <- c("BL_AGE", "SEX", "BMI", "CURR_SMOKE", "Q57X", "PREVAL_DIAB",
+            "BL_USE_RX_C03","BL_USE_RX_C07", "BL_USE_RX_C08", "BL_USE_RX_C09")
 var.CL.opt <- c("BL_AGE", "SEX", "BMI", "CURR_SMOKE", "Q57X", "PREVAL_DIAB", "BP_TREAT")
+permutations <- 3
 ```
 
 
@@ -74,9 +103,9 @@ betadiversity.askbp <- calculate.betadiversity(pseq = pseq.species,
                                                 matrix = bray.dist.m.species,
                                                 vars = list("max" = var.CL.opt,
                                                             "min" = var.CL.min),
-                                               npermutations = 999)
+                                               npermutations = permutations)
 
-diversities.helthy <- mergediversities(alphadiversity.askbp,
+diversities.askbp <- mergediversities(alphadiversity.askbp,
                                        betadiversity.askbp,
                                        names.dset = names.dset)
 
@@ -84,7 +113,8 @@ plot.diversities(diversities.askbp)
 ```
 
 
-Subjects with diabetes, cancer, kidney disease, and coronary disease are dropped. 
+Subjects with diabetes, cancer, and coronary disease are dropped. No
+easy variable was found for kidney disesase.
 
 ```{r sensitivity analysis only healthy}
 pseq.species.healthy <- subset_samples(pseq.species,
@@ -103,9 +133,9 @@ betadiversity.healthy <- calculate.betadiversity(pseq = pseq.species.healthy,
                                                 matrix = bray.dist.m.species.healthy,
                                                 vars = list("max" = var.CL[var.CL != "PREVAL_DIAB"],
                                                             "min" = var.CL.min),
-                                                npermutations = 999)
+                                                npermutations = permutations)
 
-diversities.helthy <- mergediversities(alphadiversity.healthy,
+diversities.healthy <- mergediversities(alphadiversity.healthy,
                                        betadiversity.healthy,
                                        names.dset = names.dset)
 
@@ -131,9 +161,9 @@ betadiversity.normalweight <- calculate.betadiversity(pseq = pseq.species.normal
                                                 matrix = bray.dist.m.species.normalweight,
                                                 vars = list("max" = var.CL[var.CL != "BMI"],
                                                             "min" = var.CL.min),
-                                                npermutations = 999)
+                                                npermutations = permutations)
 
-diversities.helthy <- mergediversities(alphadiversity.normalweight,
+diversities.normalweight <- mergediversities(alphadiversity.normalweight,
                                        betadiversity.normalweight,
                                        names.dset = names.dset)
 
@@ -157,9 +187,9 @@ betadiversity.obese <- calculate.betadiversity(pseq = pseq.species.obese,
                                                 matrix = bray.dist.m.species.obese,
                                                 vars = list("max" = var.CL[var.CL != "BMI"],
                                                             "min" = var.CL.min),
-                                               npermutations = 999)
+                                               npermutations = permutations)
 
-diversities.helthy <- mergediversities(alphadiversity.obese,
+diversities.obese <- mergediversities(alphadiversity.obese,
                                        betadiversity.obese,
                                        names.dset = names.dset)
 
@@ -167,3 +197,6 @@ plot.diversities(diversities.obese)
 ```
 
 
+```{r save session}
+save.image(file = "session/session-sensitivity.Rdata")
+```
