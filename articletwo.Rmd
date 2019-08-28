@@ -219,7 +219,7 @@ if (!file.exists("rds/maaslin.rds")) {
  }
 ```
 
-```{r deseq2, eval = FALSE}
+```{r deseq2,}
 pseq.genus.core.deseq <- pseq.genus %>% core(detection = 0.0001, prevalence = 0.01)
 
 dds.data <- phyloseq_to_deseq2(pseq.genus.core.deseq,
