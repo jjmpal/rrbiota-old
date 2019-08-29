@@ -269,7 +269,7 @@ diversities <- mergediversities(alphadiversity, adonis.species, names.dset = nam
 ```
 
 ```{r bptreat numbers}
-pseq.species %>% meta %>% pull(BP_TERAT) %>% summary
+pseq.species %>% meta %>% pull(BP_TREAT) %>% summary
 ```
 
 Hypertension prevalence

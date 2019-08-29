@@ -1,7 +1,7 @@
-local({r <- getOption("repos")
-       r["CRAN"] <- "http://cran.r-project.org" 
-       options(repos=r)
-})
+#local({r <- getOption("repos")
+#       r["CRAN"] <- "http://cran.r-project.org" 
+#       options(repos=r)
+#})
 
 myinstall.packages <- function(...) {
     if("gtools" %in% rownames(installed.packages()) == FALSE) {
