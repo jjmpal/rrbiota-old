@@ -34,8 +34,11 @@ if (exists("args")) {
     if ("tags" %in% names(args)) 
         rtags('~/phd/research/articletwo/', recursive = FALSE, pattern = '\\.[RrSs](rw|md)?$',
               ofile = '~/phd/research/articletwo/TAGS', verbose = TRUE, append = FALSE)
-    if ("loadlast" %in% names(args) )
-        load(paste0("session/", sort(list.files("session"), decreasing = TRUE)[1]))
+    if ("loadlast" %in% names(args) ) {
+        file <- paste0("session/", sort(list.files("session"), decreasing = TRUE)[1])
+        message("Loading variables from file", file)
+        load(file)
+    }
     if ("subset" %in% names(args))
         subset.run <- as.numeric(args$subset)
 }
@@ -225,9 +228,22 @@ pseq.genus.core.deseq <- pseq.genus %>% core(detection = 0.0001, prevalence = 0.
 dds.data <- phyloseq_to_deseq2(pseq.genus.core.deseq,
                                as.formula(sprintf("~ %s + %s", "MAP", paste0(var.CL, collapse = "+"))))
 
-dds = DESeq(dds.data, test="Wald", fitType="parametric")
-resultsNames(dds)
-res = results(dds)
+#dds = DESeq(dds.data, test="Wald", fitType="parametric")
+#resultsNames(dds)
+#res = results(dds)
+
+
+ds2 <- estimateSizeFactors(dds.data, type="poscounts")
+dds <- DESeq(ds2)
+
+res <- results(dds)
+df <- as.data.frame(res)
+df$taxon <- rownames(df)
+  #df <- df %>% arrange(pvalue) # TODO
+
+  df$model.str <- modelstr
+  df$covariate <- variables[nv]
+
 ```
 
 ## Characteristics of the study sample. (Table 1.)
@@ -250,6 +266,10 @@ alphadiversity <- calculate.alphadiversity(pseq.species,
                                                 "min" = var.CL.min))
 
 diversities <- mergediversities(alphadiversity, adonis.species, names.dset = names.dset)
+```
+
+```{r bptreat numbers}
+pseq.species %>% meta %>% pull(BP_TERAT) %>% summary
 ```
 
 Hypertension prevalence
@@ -1016,8 +1036,6 @@ core.names <- pseq.genus.core %>%
                              row_number()-1 < 3*n()/4 ~ 3,
                              TRUE ~ 4))
 
-core.names %>% pull(class) %>% as.factor %>% summary
-
 core.names.fourcols <- cbind(
     core.names %>% filter(class == 1) %>% pull(name),
     core.names %>% filter(class == 2) %>% pull(name),
@@ -1025,21 +1043,73 @@ core.names.fourcols <- cbind(
     core.names %>% filter(class == 4) %>% pull(name)) %>%
     as.data.frame
 
-core.names.fourcols %>% unlist %>% length
-
 core.names.flextable <- flextable(core.names.fourcols) %>%
     flextable::fontsize(size = 10, part = "header") %>%
     flextable::fontsize(size = 10, part = "body") %>%
     flextable::width(j=1:4, width = 1.8) %>%
     flextable::align(align = "left", part = "header") %>%
     flextable::align(align = "left")
-
-doc.s <- read_docx(path = "style/articlestyle.docx") %>%
-  body_remove()
-writetable(doc.s, core.names.flextable, number = "S1", "Core genera", "") %>%
-print(doc.s, target = paste0("report/articletwo-supplement.docx"))
 ```
 
+```{r supplement table for alpha diversity}
+alphadiversity.table <- cbind(alphadiversity$min %>% dplyr::rename_all(paste0, ".min"),
+                                  alphadiversity$max %>% dplyr::rename_all(paste0, ".max")) %>%
+    dplyr::filter(model_name.min == model_name.max) %>%
+    merge(names.dset, by.x ="response.min", by.y = "Covariate") %>%
+    mutate(mean_ci.min = sprintf("%.2f (%.2f - %.2f)", estimate.min, conf.low.min, conf.high.min),
+           pubp.min = pub.p(p.value.min),
+           mean_ci.max = sprintf("%.2f (%.2f - %.2f)", estimate.max, conf.low.max, conf.high.max),
+           pubp.max = pub.p(p.value.max)) %>%
+    arrange(match(response.min, c("SYSTM", "DIASM", "MAP", "PULSEPRESSURE", "HT"))) %>%
+    select(Name, mean_ci.min, pubp.min, mean_ci.max, pubp.max) 
+
+typology.tbls2 <- data.frame(
+    col_keys = colnames(alphadiversity.table),
+    what = c("", rep("Age- and sex adjusted model", 2), rep("Multivaraible adjusted model", 2)),
+    measure = c("", rep(c("beta (95%-CI)", "p"), 2)),
+    stringsAsFactors = FALSE)
+
+alphadiversity.flextable <-
+    typologyformatter(data = alphadiversity.table, font = 12, typology = typology.tbls2) %>%
+    flextable::width(j=1, width = 1.9) %>%
+    flextable::width(j=c(2:2,4:4), width = 1.8) %>%
+    flextable::width(j=c(3:3,5:5), width = 0.7)
+```
+
+
+```{r supplement table for beta diversity}
+betadiversity.table <- merge(diversities$min %>% dplyr::rename_all(paste0, ".min"),
+      diversities$max %>% dplyr::rename_all(paste0, ".max")) %>%
+    dplyr::filter(response.min == response.max) %>%
+    merge(names.dset, by.x ="response.min", by.y = "Covariate") %>%
+    mutate(R2.min = sprintf("%.3f%%", R2.min*100),
+           pubp.min = pub.p(R2.p.min),
+           R2.max = sprintf("%.3f%%", R2.max*100),
+           pubp.max = pub.p(R2.p.max)) %>%
+    arrange(match(response.min, c("SYSTM", "DIASM", "MAP", "PULSEPRESSURE", "HT"))) %>%
+    select(Name, R2.min, pubp.min, R2.max, pubp.max)
+
+typology.tbls3 <- data.frame(
+    col_keys = colnames(betadiversity.table),
+    what = c("", rep("Age- and sex adjusted model", 2), rep("Multivaraible adjusted model", 2)),
+    measure = c("", rep(c("R2", "p"), 2)),
+    stringsAsFactors = FALSE)
+
+betadiversity.flextable <-
+    typologyformatter(data = betadiversity.table, font = 12, typology = typology.tbls3) %>%
+    flextable::width(j=1, width = 1.9) %>%
+    flextable::width(j=c(2:5), width = 0.8)
+
+```
+
+```{r Write supplement}
+doc.s <- read_docx(path = "style/articlestyle.docx") %>%
+  body_remove()
+writetable(doc.s, core.names.flextable, number = "S1", "Core genera", "")
+writetable(doc.s, alphadiversity.flextable, number = "S2", "Alpha diverstity", "")
+writetable(doc.s, betadiversity.flextable, number = "S3", "Beta diverstity", "")
+print(doc.s, target = paste0("report/articletwo-supplement.docx"))
+```
 
 ```{r Write docx to file, include=FALSE}
 print(doc, target = paste0("report/articletwo-", now, ".docx"))

@@ -286,7 +286,7 @@ c2l <- function(...) {
 pub.p <- function(p, Nfdr = FALSE) {
     p <- as.numeric(p)
     if (Nfdr) p <- p.adjust(p, method="BH", n = Nfdr)
-    ifelse(p < 0.01, ifelse(p<0.001, sprintf("%.2e", p), sprintf("%.3f", p)), sprintf("%.2f", p))
+    ifelse(p < 0.01, ifelse(p<0.001, "<0.001", sprintf("%.3f", p)), sprintf("%.2f", p))
 }
 
 firstup <- function(x) {
@@ -331,7 +331,7 @@ calculate.alphadiversity <- function(pseq, vars, modelstr = "%%s ~ %s + diversit
 
 }
 
-calculate.betadiversity <- function(pseq, matrix, vars, npermutations = 9999) {
+calculate.betadiversity <- function(pseq, matrix, vars, npermutations = 999) {
     lapply(vars, function(var)
         calculateadonis(dset = meta(pseq),
                         matrix = matrix,
