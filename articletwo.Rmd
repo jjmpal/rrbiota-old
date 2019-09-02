@@ -229,7 +229,7 @@ dds.data <- phyloseq_to_deseq2(pseq.genus.core.deseq,
                                as.formula(sprintf("~ %s + %s", "MAP", paste0(var.CL, collapse = "+"))))
 
 ds2 <- estimateSizeFactors(dds.data, type="poscounts")
-dds <- DESeq(ds2)
+dds <- DESeq(ds2, parallel = TRUE, BPPARAM=MulticoreParam(16))
 
 res <- results(dds)
 df <- as.data.frame(res)
