@@ -670,7 +670,7 @@ scatterplot <- do.call("grid.arrange", c(scatterplots, ncol=4))
 ggsave(file = "cache/scatter.png", plot = scatterplot, height = 10, width = 10, dpi = 300)
 ```
 
-```{r maaslin means}
+```{r maaslin means, eval = FALSE}
 pseq.genus.core.table <- pseq.genus.core %>%
     prune_taxa(c("g_Adlercreutzia", "g_Anaerotruncus", "g_Sutterella"), .) %>%
     transform(transform = "compositional") %>%
