@@ -222,16 +222,11 @@ if (!file.exists("rds/maaslin.rds")) {
  }
 ```
 
-```{r deseq2, eval = FALSE}
+```{r deseq2}
 pseq.genus.core.deseq <- pseq.genus %>% core(detection = 0.0001, prevalence = 0.01)
 
 dds.data <- phyloseq_to_deseq2(pseq.genus.core.deseq,
                                as.formula(sprintf("~ %s + %s", "MAP", paste0(var.CL, collapse = "+"))))
-
-#dds = DESeq(dds.data, test="Wald", fitType="parametric")
-#resultsNames(dds)
-#res = results(dds)
-
 
 ds2 <- estimateSizeFactors(dds.data, type="poscounts")
 dds <- DESeq(ds2)
@@ -239,11 +234,11 @@ dds <- DESeq(ds2)
 res <- results(dds)
 df <- as.data.frame(res)
 df$taxon <- rownames(df)
-  #df <- df %>% arrange(pvalue) # TODO
 
-  df$model.str <- modelstr
-  df$covariate <- variables[nv]
+df$model.str <- modelstr
+df$covariate <- variables[nv]
 
+df %>% kable
 ```
 
 ## Characteristics of the study sample. (Table 1.)
