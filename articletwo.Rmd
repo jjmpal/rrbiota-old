@@ -232,6 +232,8 @@ ds2 <- estimateSizeFactors(dds.data, type="poscounts")
 
 dds <- DESeq(ds2, fitType='mean', parallel = TRUE, BPPARAM=MulticoreParam(16))
 
+saveRDS(dds, file = "rds/dds.rds")
+
 results(dds) %>%
     as.data.frame %>%
     kable
