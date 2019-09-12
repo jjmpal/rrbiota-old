@@ -232,8 +232,13 @@ ds2 <- estimateSizeFactors(dds.data, type="poscounts")
 
 dds <- DESeq(ds2, fitType='mean', parallel = TRUE, BPPARAM=MulticoreParam(16))
 
+dds <- readRDS(file = "rds/dds.rds")
+
 results(dds) %>%
     as.data.frame %>%
+    tibble::rownames_to_column("Feature") %>%
+    dplyr::mutate(qval = p.adjust(pvalue, method="BH")) %>%
+    dplyr::filter(qval < 0.05) %>%
     kable
 ```
 
