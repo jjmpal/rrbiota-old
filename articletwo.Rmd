@@ -226,21 +226,47 @@ if (!file.exists("rds/maaslin.rds")) {
 if (!file.exists("rds/dds.rds")) {
     pseq.genus.core.deseq <-  prune_taxa(taxa(pseq.genus.core), pseq.genus)
     dds.data <- phyloseq_to_deseq2(pseq.genus.core.deseq,
-                                   as.formula(sprintf("~ %s + %s", "HYPERTENSION", paste0(var.CL, collapse = "+"))))
-    ds2 <- estimateSizeFactors(dds.data, type="poscounts")
-    dds <- DESeq(ds2, fitType='mean', parallel = TRUE, BPPARAM=MulticoreParam(16))
+                                   as.formula(sprintf("~ %s + %s",
+                                                      paste0(var.CL, collapse = "+"),
+                                                      "HYPERTENSION")))
+
+    dds.data <- phyloseq_to_deseq2(pseq.genus.core.deseq, ~HYPERTENSION)
+
+    dds <- DESeq(dds.data, test="Wald", fitType="parametric", parallel = TRUE, BPPARAM=MulticoreParam(16))
     saveRDS(dds, file = "rds/dds.rds")
 } else {
     dds <- readRDS(file = "rds/dds.rds")
 }
+```
 
-results(dds) %>%
+## DeSeq
+
+```{r deseq results table}
+results(dds, contrast = c("HYPERTENSION", 0, 1)) %>%
     as.data.frame %>%
     tibble::rownames_to_column("Feature") %>%
     dplyr::mutate(qval = p.adjust(pvalue, method="BH")) %>%
     dplyr::filter(qval < 0.05) %>%
     kable
 ```
+
+```{r deseq plot}
+g.deseq <- results(dds, contrast = c("HYPERTENSION", 0, 1)) %>%
+    as.data.frame %>%
+    tibble::rownames_to_column("Feature") %>%
+    dplyr::mutate(qval = p.adjust(pvalue, method="BH")) %>%
+    dplyr::filter(qval < 0.05) %>%
+    ggplot(aes(x=Feature, y=log2FoldChange, color=qval)) +
+    geom_point(size=1) +
+    geom_hline(yintercept = 0, color = "gray") +
+    theme(axis.text.x = element_text(angle = -90, hjust = 0, vjust=0.5)) +
+    coord_flip() +
+    theme_classic()
+
+ggsave(file = "cache/deseq.png", plot=g.deseq, height=10, width=5)
+```
+
+<img src = "cache/deseq.png" />
 
 ## Characteristics of the study sample. (Table 1.)
 
