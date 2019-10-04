@@ -97,9 +97,13 @@ calculateglm <- function(dset,
         as.data.frame
 }
 
-import_filter_data <- function(file) {
+import_filter_data <- function(file, included) {
     pseq.full <- readRDS(file)
-    pseq.meta <- filter.phenotype.data(pseq.full)
+    if (missing(included)) {
+        pseq.meta <- filter.phenotype.data(pseq.full)
+    } else {
+        pseq.meta <- filter.phenotype.data(pseq.full, included = included)
+    }
     phyloseq::sample_data(pseq.full) <- phyloseq::sample_data(pseq.meta)
     return(pseq.full)
 }

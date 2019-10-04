@@ -167,7 +167,6 @@ for (key in names(rds)) {
     }
 
     if (length(missing) > 0) {
-
         pseq <- import_filter_data(rds[[key]],
                                    included = c("MEN", "BL_AGE", "SYSTM", "DIASM", "BMI",
                                                 "CURR_SMOKE", "BL_USE_RX_C09",
