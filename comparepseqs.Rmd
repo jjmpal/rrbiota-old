@@ -138,13 +138,13 @@ for (key in names(rds)) {
 ret <- list()
 
 for (key in names(rds)) {
-    pseq <- import_filter_data(rds[[key]],
+    pseq.species <- import_filter_data(rds[[key]],
                                included = c("MEN", "BL_AGE", "SYSTM", "DIASM", "BMI",
                                             "CURR_SMOKE", "BL_USE_RX_C09",
                                             "Q57X", "BL_USE_RX_C03",
                                             "BL_USE_RX_C07", "BL_USE_RX_C08"))
 
-    bray.dist.m.species <- calculate.beta.matrix(pseq)
+    bray.dist.m.species <- calculate.beta.matrix(pseq.species)
     
     adonis.species <- calculate.betadiversity(pseq = pseq.species,
                                                matrix = bray.dist.m.species,
