@@ -127,11 +127,6 @@ mclapply(c2l(names(rds)), function(key) {
                                                list("max" = var.CL,
                                                     "min" = var.CL.min))
 
-
-    alphadiversity <- calculate.alphadiversity(pseq.species,
-                                               list("max" = var.CL,
-                                                    "min" = var.CL.min))
-
     diversities <- mergediversities(alphadiversity, adonis.species, names.dset = names.dset)
 
     g4 <- plot.diversities(diversities)
