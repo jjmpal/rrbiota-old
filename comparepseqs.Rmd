@@ -138,218 +138,32 @@ for (key in names(rds)) {
 ret <- list()
 
 for (key in names(rds)) {
-    missing = list()
+    pseq <- import_filter_data(rds[[key]],
+                               included = c("MEN", "BL_AGE", "SYSTM", "DIASM", "BMI",
+                                            "CURR_SMOKE", "BL_USE_RX_C09",
+                                            "Q57X", "BL_USE_RX_C03",
+                                            "BL_USE_RX_C07", "BL_USE_RX_C08"))
 
-    if (!file.exists(paste0("rds-comparepseqs/alphadistribution-", key , ".rds"))) {
-        missing$alphadistribution = TRUE
-    } else {
-        alphadistribution <- readRDS(file =
-                                         paste0("rds-comparepseqs/alphadistribution-",
-                                                key , ".rds"))
-    }
-
-    if (!file.exists(paste0("rds-comparepseqs/alpha-", key , ".rds"))) {
-        missing$alpha = TRUE
-    } else {
-        alphadiversity <- readRDS(file = paste0("rds-comparepseqs/alpha-", key , ".rds"))
-    }
-
-    if (!file.exists(paste0("rds-comparepseqs/bray-", key , ".rds"))) {
-        missing$bray = TRUE
-    } else {
-        bray.dist.matrix <- readRDS(file = paste0("rds-comparepseqs/bray-", key , ".rds"))
-    }
+    bray.dist.m.species <- calculate.beta.matrix(pseq)
     
-    if (!file.exists(paste0("rds-comparepseqs/beta-", key , ".rds"))) {
-        missing$beta = TRUE
-    } else {
-        betadiversity <- readRDS(file = paste0("rds-comparepseqs/beta-", key , ".rds"))
-    }
-
-    if (length(missing) > 0) {
-        pseq <- import_filter_data(rds[[key]],
-                                   included = c("MEN", "BL_AGE", "SYSTM", "DIASM", "BMI",
-                                                "CURR_SMOKE", "BL_USE_RX_C09",
-                                                "Q57X", "BL_USE_RX_C03",
-                                                "BL_USE_RX_C07", "BL_USE_RX_C08"))
-        dset <- meta.merge.alphadiversity(pseq) %>%
-            mutate(diversities_shannon = as.numeric(scale(diversities_shannon)))
-
-        if ("alphadistribution" %in% names(missing)) {
-            message("Missing alpha distribution")
-            alphadistribution <- dset %>%
-                mutate(!!key := diversities_shannon) %>%
-                select(Sample_ID, key)
-            saveRDS(alphadistribution,
-                    file = paste0("rds-comparepseqs/alphadistribution-", key , ".rds"))
-        }
-
-        if ("alpha" %in% names(missing)) {
-            message("Missing alpha")
-            alphadiversity <- list(min =  calculateglm(dset, modelstring = fo.alpha.min),
-                                   full = calculateglm(dset, modelstring = fo.alpha.full))
-            saveRDS(alphadiversity, file = paste0("rds-comparepseqs/alpha-", key , ".rds"))
-        }
-
-        if ("bray" %in% names(missing)) {
-            message("Missing Bray")
-            bray.dist.matrix <- calculate.beta.matrix(pseq)
-            saveRDS(bray.dist.matrix, file = paste0("rds-comparepseqs/bray-", key , ".rds"))
-        }
+    adonis.species <- calculate.betadiversity(pseq = pseq.species,
+                                               matrix = bray.dist.m.species,
+                                               vars = list("max" = var.CL,
+                                                            "min" = var.CL.min))
     
-        if ("beta" %in% names(missing)) {
-            message("Missing beta")
-            betadiversity <- list(min = calculateadonis(dset = dset,
-                                                        matrix = bray.dist.matrix,
-                                                        covariates = covariates.min,
-                                                        npermutations = 1000),
-                                  full = calculateadonis(dset = dset,
-                                                         matrix = bray.dist.matrix,
-                                                         covariates = covariates.full,
-                                                         npermutations = 1000))
-            saveRDS(betadiversity, file = paste0("rds-comparepseqs/beta-", key , ".rds"))
-        }
-    }
+    alphadiversity <- calculate.alphadiversity(pseq.species,
+                                               list("max" = var.CL,
+                                                    "min" = var.CL.min))
 
-    ret[[key]] = list("alphadiversity" = alphadiversity,
-                      "betadiversity" = betadiversity,
-                      "alphadistribution" = alphadistribution)
+
+    alphadiversity <- calculate.alphadiversity(pseq.species,
+                                               list("max" = var.CL,
+                                                    "min" = var.CL.min))
+
+    diversities <- mergediversities(alphadiversity, adonis.species, names.dset = names.dset)
+
+    g4 <- plot.diversities(diversities)
+    ggsave(file = sprintf("cache/comparepseqs-%s.png", key), plot=g4, height=6, width=9)
 }
 ```
 
-```{r quit subruns}
-if (exists("subset.run")) {
-    quit()
-}
-```
-
-# Diversities for BP variables
-
-```{r plot alpha-beta}
-plotlist <- list()
-
-for (key in names(rds)) {
-    diversities <- mergediversities(ret[[key]][["alphadiversity"]],
-                                    ret[[key]][["betadiversity"]])
-
-    alpha.diversity.min <- plot.alpha(diversities$min, alphabreaks = c(-0.15, -0.10, -0.05, -0.01, 0))
-    alpha.diversity.full <- plot.alpha(diversities$full, alphabreaks = c(-0.15, -0.10, -0.05, -0.01, -0))
-
-    beta.diversity.min <- plot.beta(diversities$min)
-    beta.diversity.full <- plot.beta(diversities$full)
-
-    gs4 <- list(alpha.diversity.min$yaxis,
-                alpha.diversity.min$plot,
-                beta.diversity.min$plot,
-                alpha.diversity.min$legend,
-                alpha.diversity.min$xaxis,
-                beta.diversity.min$xaxis,
-                beta.diversity.min$xlab,
-                text_grob(sprintf("A. %s (%s)", key, paste(covariates.min, collapse = ", ")),
-                          size = 16,
-                          just = "left"),
-                alpha.diversity.full$yaxis,
-                alpha.diversity.full$plot,
-                beta.diversity.full$plot,  
-                alpha.diversity.full$xaxis,
-                beta.diversity.full$xaxis,
-                beta.diversity.full$xlab,
-                text_grob(sprintf("B. %s (%s)", key, paste(covariates.full %>%
-                                                           gsub("BL_USE_", "", .), collapse = ", ")),
-                          size = 16, just = "left"))
-    
-    g4 <- arrangeGrob(grobs = gs4,
-                      layout_matrix = rbind(
-                          c(8,    NA,    NA, NA,   NA, NA, NA),
-                          c(NA, 1,    2,    NA, 3, NA, NA),
-                          c(NA, 1,    2,    NA, 3, NA, 4),
-                          c(NA, NA, 5,    NA,6, NA, NA),
-                          c(NA, NA, NA, NA,7, NA, NA),
-                          c(15,    NA,    NA, NA,   NA, NA, NA),
-                          c(NA, 9,    10,  NA,  11, NA, NA),
-                          c(NA, 9,    10,  NA,  11, NA, NA),
-                          c(NA, NA, 12,   NA, 13, NA, NA),
-                          c(NA, NA, NA, NA,14, NA, NA)),
-                      widths=c(0.7, 4, 0.7, 0.1, 5, 0.7, 3),
-                      heights=rep(c(1, 1, 6, 1, 2), 2))
-
-    ggsave(file = paste0("cache/alpha-beta-", key , ".png"), plot=g4, height=6, width=9)
-    
-    plotlist[[key]] = g4
-}
-
-g <- arrangeGrob(grobs = plotlist, ncol=2)
-ggsave(file="cache/plotlist.png", g, height=8*length(plotlist)/1.5, width=10*2)
-```
-
-<img src="cache/plotlist.png"/>
-
-# Alpha scatter
-
-```{r draw alpha distribution scatter plot}
-scatterplot.df <- lapply(ret, function(x) x$alphadistribution) %>%
-    Reduce(function(x, y) merge(x, y, all=TRUE, by="Sample_ID"), .) %>%
-    select(-Sample_ID) %>%
-    na.omit()
-
-galphascatter <- ggpairs(scatterplot.df,
-                         lower = list(continuous = wrap("points",
-                                                        alpha = 0.3,
-                                                        size=0.1), 
-                                      combo = wrap("dot",
-                                                   alpha = 0.4,
-                                                   size=0.2))) +
-    theme(legend.position = "none", 
-          panel.grid.major = element_blank(), 
-          axis.ticks = element_blank(), 
-          panel.border = element_rect(linetype = "dashed", colour = "black", fill = NA))
-
-
-ggsave(file = paste0("cache/ggpairs-alphas.png"),
-       plot= galphascatter,
-       height=6,
-       width=9,
-       unit = "in",
-       dpi = 300)
-```
-
-<img src="cache/ggpairs-alphas.png"/>
-
-# Beta diversity
-
-Beta diversity R2
-
-```{r beta diversity r2}
-betadf <- data.frame()
-for (key in names(rds)) {
-    moddf.full <- Reduce(function(...) merge(..., all=T), ret[[key]][["betadiversity"]]$full) %>%
-        dplyr::filter(response == term) %>%
-        mutate(model = key, covariates = "full") %>%
-        select(term, model, covariates, R2)
-    moddf.min <- Reduce(function(...) merge(..., all=T), ret[[key]][["betadiversity"]]$min) %>%
-        dplyr::filter(response == term) %>%
-        mutate(model = key, covariates = "min") %>%
-        select(term, model, covariates, R2)
-    betadf <- rbind(betadf, moddf.full, moddf.min)
-}
-
-betadf %>% arrange(term) %>% spread(model, R2) %>% kable
-```
-
-Beta diversity p.values
-
-```{r beta diversity pvalue}
-betadf <- data.frame()
-for (key in names(rds)) {
-    moddf.full <- Reduce(function(...) merge(..., all=T), ret[[key]][["betadiversity"]]$full) %>%
-        dplyr::filter(response == term) %>%
-        mutate(model = key, covariates = "full") %>%
-        select(term, model, covariates, `Pr(>F)`)
-    moddf.min <- Reduce(function(...) merge(..., all=T), ret[[key]][["betadiversity"]]$min) %>%
-        dplyr::filter(response == term) %>%
-        mutate(model = key, covariates = "min") %>%
-        select(term, model, covariates, `Pr(>F)`)
-    betadf <- rbind(betadf, moddf.full, moddf.min)
-}
-betadf %>% arrange(term) %>% spread(model, `Pr(>F)`) %>% kable
-```
