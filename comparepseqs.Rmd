@@ -135,9 +135,7 @@ for (key in names(rds)) {
 # Calculate alpha and beta diversity
 
 ```{R models}
-ret <- list()
-
-for (key in names(rds)) {
+mclapply(c2l(names(rds)), function(key) {
     pseq.species <- import_filter_data(rds[[key]],
                                included = c("MEN", "BL_AGE", "SYSTM", "DIASM", "BMI",
                                             "CURR_SMOKE", "BL_USE_RX_C09",
@@ -164,6 +162,6 @@ for (key in names(rds)) {
 
     g4 <- plot.diversities(diversities)
     ggsave(file = sprintf("cache/comparepseqs-%s.png", key), plot=g4, height=6, width=9)
-}
+}, mc.cores = length(rds))
 ```
 
