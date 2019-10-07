@@ -230,8 +230,6 @@ if (!file.exists("rds/dds.rds")) {
                                                       paste0(var.CL, collapse = "+"),
                                                       "HYPERTENSION")))
 
-    dds.data <- phyloseq_to_deseq2(pseq.genus.core.deseq, ~HYPERTENSION)
-
     dds <- DESeq(dds.data, test="Wald", fitType="parametric", parallel = TRUE, BPPARAM=MulticoreParam(16))
     saveRDS(dds, file = "rds/dds.rds")
 } else {
@@ -256,14 +254,16 @@ g.deseq <- results(dds, contrast = c("HYPERTENSION", 0, 1)) %>%
     tibble::rownames_to_column("Feature") %>%
     dplyr::mutate(qval = p.adjust(pvalue, method="BH")) %>%
     dplyr::filter(qval < 0.05) %>%
-    ggplot(aes(x=Feature, y=log2FoldChange, color=qval)) +
+    dplyr::mutate(group = dplyr::ntile(row_number(), 3)) %>%
+    ggplot(aes(x=Feature, y=log2FoldChange, color=qval, group = group)) +
+    facet_wrap(~group, scales = "free_y") +
     geom_point(size=1) +
     geom_hline(yintercept = 0, color = "gray") +
     theme(axis.text.x = element_text(angle = -90, hjust = 0, vjust=0.5)) +
     coord_flip() +
     theme_classic()
 
-ggsave(file = "cache/deseq.png", plot=g.deseq, height=10, width=5)
+ggsave(file = "cache/deseq.png", plot=g.deseq, height=10, width=15)
 ```
 
 <img src = "cache/deseq.png" />
