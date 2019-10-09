@@ -272,10 +272,15 @@ ggsave(file = "cache/deseq.png", plot=g.deseq, height=8, width=5)
 <img src = "cache/deseq.png" />
 
 ```{r deseq boxplot}
-g.boxplot <- dset.deseq.boxplot %>% 
+g.boxplot <- dset.deseq.boxplot %>%
+    filter(OTU %in% pull(dset.deseq.signf  %>% dplyr::filter(abs(log2FoldChange) > 1), Feature)) %>%
+    group_by(OTU) %>%
+    mutate(outlier = abs(Abundance) > median(Abundance) + IQR(Abundance) * 1.5) %>%
     ggplot(aes(x=HYPERTENSION, y=Abundance, color = OTU)) +
-    geom_boxplot(lwd=0.1, outlier.size = 0.1) +
-    scale_y_continuous(limits = c(0, 0.5)) +
+    geom_boxplot(lwd=0.1, outlier.shape = NA) +
+    geom_point(data = function(x) dplyr::filter_(x, ~ outlier),
+               position = position_jitterdodge(jitter.width = 0.2), size = 0.01, alpha = 0.4) +
+    scale_y_continuous(limits = c(0, 0.1)) +
     scale_x_discrete(labels=c("0" = "Normotensive", "1" = "Hypertensive")) +
     ylab("Sqrt For Relative Abundances") +
     theme_classic() +
@@ -285,7 +290,7 @@ g.boxplot <- dset.deseq.boxplot %>%
           legend.text  = element_text(size = 4),
           legend.key.size = unit(1, "lines"),
           legend.position="bottom")
-ggsave(file = "cache/dds-test.png", plot=g.boxplot, height=7, width=6, units = "in", dpi = 300)
+ggsave(file = "cache/dds-test.png", plot=g.boxplot, height=4, width=6, units = "in", dpi = 300)
 ```
 
 <img src = "cache/dds-test.png" />
