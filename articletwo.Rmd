@@ -154,7 +154,7 @@ dimensions (`r dim(meta(pseq.genus))`) and there ntaxa is
 
 ```{r defining genus core}
 pseq.genus.core <- microbiome::transform(pseq.genus, "compositional") %>%
-    core(detection = 0.001, prevalence = 0.01)
+    core(detection = 0.1/100, prevalence = 1/100)
 ```
 
 At genus-core level meta has dimensions (`r dim(meta(pseq.genus.core))`) 
