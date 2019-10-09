@@ -225,12 +225,17 @@ if (!file.exists("rds/maaslin.rds")) {
 ```{r deseq2}
 if (!file.exists("rds/dds.rds")) {
     pseq.genus.core.deseq <-  prune_taxa(taxa(pseq.genus.core), pseq.genus)
-    dds.data <- phyloseq_to_deseq2(pseq.genus.core.deseq,
-                                   as.formula(sprintf("~ %s + %s",
-                                                      paste0(var.CL, collapse = "+"),
-                                                      "HYPERTENSION")))
 
-    dds <- DESeq(dds.data, test="Wald", fitType="parametric", parallel = TRUE, BPPARAM=MulticoreParam(16))
+    dds <- lapply(c2l(var.BP), function(x) {
+        dds.data <- phyloseq_to_deseq2(pseq.genus.core.deseq,
+                                       as.formula(sprintf("~ %s + %s",
+                                                          paste0(var.CL, collapse = "+"), x)))
+        DESeq(dds.data,
+              test="Wald",
+              fitType="parametric",
+                     parallel = TRUE,
+                     BPPARAM=MulticoreParam(16))})
+
     saveRDS(dds, file = "rds/dds.rds")
 } else {
     dds <- readRDS(file = "rds/dds.rds")
@@ -240,7 +245,7 @@ if (!file.exists("rds/dds.rds")) {
 ## DeSeq
 
 ```{r deseq results}
-dset.deseq.signf <- results(dds, contrast = c("HYPERTENSION", 0, 1)) %>%
+dset.deseq.signf <- results(dds$HYPERTENSION, contrast = c("HYPERTENSION", 0, 1)) %>%
     as.data.frame %>%
     tibble::rownames_to_column("Feature") %>%
     dplyr::mutate(qval = p.adjust(pvalue, method="BH")) %>%
@@ -266,23 +271,25 @@ g.deseq <- dset.deseq.signf %>%
     coord_flip() +
     xlab("Feature") +
     theme_classic()
-ggsave(file = "cache/deseq.png", plot=g.deseq, height=8, width=5)
+ggsave(file = "cache/deseq.png", plot=g.deseq, height=4, width=5)
 ```
 
 <img src = "cache/deseq.png" />
 
 ```{r deseq boxplot}
 g.boxplot <- dset.deseq.boxplot %>%
-    filter(OTU %in% pull(dset.deseq.signf  %>% dplyr::filter(abs(log2FoldChange) > 1), Feature)) %>%
     group_by(OTU) %>%
     mutate(outlier = abs(Abundance) > median(Abundance) + IQR(Abundance) * 1.5) %>%
-    ggplot(aes(x=HYPERTENSION, y=Abundance, color = OTU)) +
+    ggplot(aes(x = HYPERTENSION, y = Abundance, color = OTU)) +
     geom_boxplot(lwd=0.1, outlier.shape = NA) +
     geom_point(data = function(x) dplyr::filter_(x, ~ outlier),
-               position = position_jitterdodge(jitter.width = 0.2), size = 0.01, alpha = 0.4) +
-    scale_y_continuous(limits = c(0, 0.1)) +
+               position = position_jitterdodge(jitter.width = 0.02),
+               size = 0.1,
+               alpha = 0.4, shape = ".") +
+    scale_y_continuous(limits = c(0, 0.2), expand = c(0, 0)) +
     scale_x_discrete(labels=c("0" = "Normotensive", "1" = "Hypertensive")) +
-    ylab("Sqrt For Relative Abundances") +
+    ylab("Abundance (Hellinger)") +
+    xlab("") +
     theme_classic() +
     guides(shape = guide_legend(override.aes = list(size = 0.1)),
            color = guide_legend(override.aes = list(size = 0.1))) +
