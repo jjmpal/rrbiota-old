@@ -173,3 +173,36 @@ plot.diversities <- function(diversities) {
                       heights=rep(c(1.5, 1, 6, 1, 2), 2))
     return(g4)
 }
+
+deseqhaetmap <- function(df, legend.name = "Log Base Two\nFold Change") {
+    ggplot(df,
+           aes(x = Feature,
+               y = reorder(Name, deseqplotorder(Name)),
+               fill = log2FoldChange)) +
+        geom_tile(aes(fill = 1)) +
+        geom_tile(colour="white", size=0.25) +
+        scale_fill_distiller(palette = "RdBu",
+                             name = legend.name,
+                             limits=c(-1, 1),
+                             breaks = c(-1, -0.5, 0.5, 0, 1),
+                             na.value="grey30") +
+        coord_fixed() +
+        xlab("") +
+        ylab("") +
+        theme_classic() +  
+        theme(axis.text.x = element_text(angle=90, size=10, hjust=1.0,vjust=0.5),
+              axis.text.y = element_text(size=10),
+              legend.title=element_text(size=10),
+              legend.position = c(-0.09, -1))
+}
+
+
+deseqplotorder <- function(x) {
+    y <- seq(length(x))
+    y[x == "Systolic BP"] = 4
+    y[x == "Diastolic BP"] = 3
+    y[x == "Pulse pressure"] = 2
+    y[x == "Mean arterial pressure"] = 1
+    y[x == "Hypertension"] = 0
+    y
+}

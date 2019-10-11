@@ -242,67 +242,6 @@ if (!file.exists("rds/dds.rds")) {
 }
 ```
 
-## DeSeq
-
-```{r deseq results}
-dset.deseq.signf <- results(dds$HYPERTENSION, contrast = c("HYPERTENSION", 0, 1)) %>%
-    as.data.frame %>%
-    tibble::rownames_to_column("Feature") %>%
-    dplyr::mutate(qval = p.adjust(pvalue, method="BH")) %>%
-    dplyr::filter(qval < 0.05)
-
-dset.deseq.boxplot <- pseq.genus %>%
-    microbiome::transform(., transform = "compositional") %>%
-    prune_taxa(pull(dset.deseq.signf, Feature), .) %>%
-    psmelt %>%
-    mutate(Abundance = sqrt(Abundance))
-```
-
-```{r deseq results numerical}
-dset.deseq.signf %>% kable
-```
-
-```{r deseq plot}
-g.deseq <- dset.deseq.signf %>%
-    ggplot(aes(x=gsub("g_", "", Feature), y=log2FoldChange, color=qval)) +
-    geom_point(size=1) +
-    geom_hline(yintercept = 0, color = "gray") +
-    theme(axis.text.x = element_text(angle = -90, hjust = 0, vjust=0.5)) +
-    coord_flip() +
-    xlab("Feature") +
-    theme_classic()
-ggsave(file = "cache/deseq.png", plot=g.deseq, height=4, width=5)
-```
-
-<img src = "cache/deseq.png" />
-
-```{r deseq boxplot}
-g.boxplot <- dset.deseq.boxplot %>%
-    group_by(OTU) %>%
-    mutate(outlier = abs(Abundance) > median(Abundance) + IQR(Abundance) * 1.5) %>%
-    ggplot(aes(x = HYPERTENSION, y = Abundance, color = OTU)) +
-    geom_boxplot(lwd=0.1, outlier.shape = NA) +
-    geom_point(data = function(x) dplyr::filter_(x, ~ outlier),
-               position = position_jitterdodge(jitter.width = 0.02),
-               size = 0.1,
-               alpha = 0.4, shape = ".") +
-    scale_y_continuous(limits = c(0, 0.2), expand = c(0, 0)) +
-    scale_x_discrete(labels=c("0" = "Normotensive", "1" = "Hypertensive")) +
-    ylab("Abundance (Hellinger)") +
-    xlab("") +
-    theme_classic() +
-    guides(shape = guide_legend(override.aes = list(size = 0.1)),
-           color = guide_legend(override.aes = list(size = 0.1))) +
-    theme(legend.title = element_text(size = 4), 
-          legend.text  = element_text(size = 4),
-          legend.key.size = unit(1, "lines"),
-          legend.position="bottom")
-ggsave(file = "cache/dds-test.png", plot=g.boxplot, height=4, width=6, units = "in", dpi = 300)
-```
-
-<img src = "cache/dds-test.png" />
-
-
 ## Characteristics of the study sample. (Table 1.)
 
 ```{r Characteristics}
@@ -533,234 +472,59 @@ writeimage(doc, 2, "cache/pcoa-species.png", fig2head, fig2foot)
 
 ## Direct associations between genus level and blood pressure variables (figure 3)
 
-For magnitude, age, sex, and BMI explain `r round(summary(lm(MAP ~ BL_AGE +
-SEX + BMI, data = meta(pseq.genus)))$adj.r.squared * 100, 1)`% of MAP.
-
-```{r maaslin clean results}
-maas.results.df.signf <- maaslin %>%
-    merge(names.dset %>% select(Covariate, Category, Name), by.x ="Variable", by.y = "Covariate") %>%
-    dplyr::mutate(Qval = p.adjust(P.value, method="BH"),
-                  Feature = gsub("[gs]_", "", Feature),
-                  beta = Coefficient) %>%
-    dplyr::filter(Qval < 0.05) %>%
-    arrange(Feature)
+```{r deseq continuous}
+dset.deseq.signf <- deseqresults(dds, names.dset)
 ```
 
-```{r maaslin insignif, include = FALSE, eval = FALSE}
- maaslin %>%
-    dplyr::mutate(Qval = p.adjust(P.value, method="BH"),
-                  Feature = gsub("[gs]_", "", Feature),
-                  beta = Coefficient) %>%
-     arrange(Feature) %>%
-     select(Variable, Feature, Qval) %>%
-     spread(Variable, Qval)
+```{r deseq heatmap}
+g.deseq <- deseqhaetmap(dset.deseq.signf)
+ggsave(file = "cache/deseq.png", plot = g.deseq, height = 3, width = 12, unit = "in", dpi = 300)
 ```
 
-```{r maaslin plot}
-my.plot.order <- function(x) {
-    y <- seq(length(x))
-    y[x == "Systolic BP"] = 4
-    y[x == "Diastolic BP"] = 3
-    y[x == "Pulse pressure"] = 2
-    y[x == "Mean arterial pressure"] = 1
-    y[x == "Hypertension"] = 0
-    y
-}
+<img src = "cache/deseq.png" />
 
-maas.all.pairs <- expand.grid(Feature = maas.results.df.signf %>% pull(Feature),
-                         Name = maas.results.df.signf %>% pull(Name))
-
-maas.tables.df <- merge(maas.results.df.signf,
-                        maas.all.pairs,
-                        all.y=TRUE,
-                        by.y=c('Feature', 'Name'),
-                        by.x=c('Feature', 'Name')) %>%
-    mutate(p.groups = cut(P.value*ifelse(Coefficient < 0, -1, 1),
-                          breaks = c(-0.05, -0.01, -0.001, 0, 0.001, 0.01, 0.05),
-                          labels = c("beta < 0, p < 0.05",
-                                     "beta < 0, p < 0.01",
-                                     "beta < 0, p < 0.001",
-                                     "beta > 0, p < 0.001",
-                                     "beta > 0, p < 0.01",
-                                     "beta > 0, p < 0.05")))
-
-mycolors <- c("beta < 0, p < 0.05" = "#B2182B",
-              "beta < 0, p < 0.01" = "#EF8A62",
-              "beta < 0, p < 0.001" = "#FDDBC7",
-              "beta > 0, p < 0.001" = "#D1E5F0",
-              "beta > 0, p < 0.01" = "#67A9CF",
-              "beta > 0, p < 0.05" = "#2166AC",
-              "NA" = "gray50")
-
-
-maaslinplot <- ggplot(maas.tables.df, aes(x = Feature, y = reorder(Name, my.plot.order(Name)), fill = beta)) +
-    geom_tile(aes(fill = 1)) +
-    geom_tile(colour="white", size=0.25) +
-    scale_fill_distiller(palette = "RdBu", name = "Effect size",
-                         limits=c(-0.003, 0.003), breaks = c(-0.003, 0, 0.003), na.value="grey30") +
-    coord_fixed() +
-    xlab("") +
-    ylab("") +
-    theme_classic(10) +  
-    theme(axis.text.x = element_text(angle = 90, hjust = 1.0, vjust=0.5, size=10),
-          axis.text.y = element_text(size=10))
-
-ggsave(file = "cache/maaslin.png", plot = maaslinplot, height = 3, width = 4, unit = "in", dpi = 300)
-```
-
-Max value of abs beta is `r maas.results.df.signf %>% pull(Coefficient) %>% abs %>% max`.
-
-```{r maaslin table}
-maas.results.df.signf %>%
-    select(Feature, Value, Coefficient, Qval) %>%
-    arrange(Qval) %>%
-    kable
-```
-
-```{r multi model, eval = FALSE, include = FALSE}
-abund.genus.systm <- pseq.genus %>%
-    abundances(., transform = "compositional") %>%
-    t %>%
-    as.data.frame %>%
-    tibble::rownames_to_column("id")
-
-df.genus.systm <- meta(pseq.genus) %>%
-    tibble::rownames_to_column("id") %>%
-    full_join(., abund.genus.systm, by = "id") %>%
-    mutate(Anaerotruncus = scale(asin(sqrt(g_Anaerotruncus))),
-           Sutterella = scale(asin(sqrt(g_Sutterella))))
-
-fo.genus.systm <- sprintf("oSYSTM ~ Anaerotruncus + Sutterella + Anaerotruncus:Sutterella + %s",
-                          paste0(var.CL, collapse = " + "))
-
-lm(as.formula(fo.genus.systm), data = df.genus.systm) %>% summary
-
-df.genus.systm %>%
-    mutate(diff = -0.75418 * Anaerotruncus + 0.89265 * Sutterella) %>%
-    pull(diff) %>%
-    summary
-```
-
-```{r scatter plots, eval = FALSE, include = FALSE}
-scatter.signf.bacteria <- maas.results.df.signf %>% pull(Feature) %>% unique
-
-scatter.meta <- meta(pseq.genus) %>%
-    tibble::rownames_to_column("id") %>%
-      mutate(MAP = oMAP,
-           PULSEPRESSURE = oPULSEPRESSURE,
-           SYSTM = oSYSTM,
-           DIASM = oDIASM)
-
-scatter.abund <- abundances(pseq.genus, transform = "clr") %>%
-    t %>%
-    as.data.frame %>%
-    tibble::rownames_to_column("id") %>%
-    select(id, scatter.signf.bacteria) %>%
-    mutate_at(.vars = vars(scatter.signf.bacteria), .funs = funs(myscale(.)))
-
-scatter.full <- full_join(scatter.meta, scatter.abund, by = "id")
-
-scatter.combinations <- expand.grid(cc("SYSTM", "DIASM", "PULSEPRESSURE", "MAP"),
-                                    c2l(scatter.signf.bacteria)) %>%
-    setNames(c("rr", "abund"))
-
-scatter.plot <- function(df,
-                         maas.results,
-                         rr,
-                         abund,
-                         covariates = c("BL_AGE", "SEX", "BMI", "CURR_SMOKE", "Q57X", "PREVAL_DIAB",
-                                        "BL_USE_RX_C03", "BL_USE_RX_C07", "BL_USE_RX_C08",
-                                        "BL_USE_RX_C09"),
-                         prediction = TRUE,
-                         plots = TRUE) {
-    fo <- sprintf("%s ~ %s + %s", rr, abund, paste0(covariates, collapse="+"))
-    model <- lm(as.formula(fo), data = df)
-
-    if (prediction == FALSE) return(model %>% summary)
-    
-    df.predict <- data.frame(BPV = seq(-5,5,0.1)) %>%
-        mutate(SEX = as.factor(0),
-               BL_AGE = df %>% pull(BL_AGE) %>% mean,
-               BMI = df %>% pull(BMI) %>% mean,
-               CURR_SMOKE = as.factor(0),
-               Q57X = as.factor(1),
-               PREVAL_DIAB = as.factor(0),
-               BL_USE_RX_C03 = as.factor(0),
-               BL_USE_RX_C07 = as.factor(0),
-               BL_USE_RX_C08 = as.factor(0),
-               BL_USE_RX_C09 = as.factor(0),
-               !!abund := seq(-5,5,0.1)
-               )
-    prediction <- cbind(df.predict, predict(model, df.predict, interval = 'confidence'))
-
-    if (plots == FALSE) return(prediction)
-
-    feature <- replace.brackets(abund)
-
-    qval.maaslin <- maas.results %>%
-        dplyr::filter(Feature == feature, Value == rr) %>%
-        nrow
-
-    if (qval.maaslin == 0) { return (ggplot() + ggplot2::theme_minimal()) }
-    pval <- pub.p(summary(model)$coef[2,4])
-    rsqr <- signif(summary(model)$adj.r.squared, 2)
-    slope <- signif(model$coef[[2]], 2)
-
-    ggplot(prediction, aes_string(x = abund, y = "fit")) +
-        geom_line() +
-        geom_point(size=0.1, shape=1, aes_string(x = abund, y = rr, color = "SEX"),
-                   data = df) +
-        labs(title = sprintf("Adj R2 = %s, Slope = %s, p = %s", rsqr, slope, pval)) +
-        xlab(feature) +
-        ylab(rr) +
-        ylim(0,200) +
-        ggplot2::theme_minimal() +
-        theme(plot.title = element_text(size=8)) +
-        theme(legend.position="none")
-}
-
-scatterplots <- lapply(data.frame(t(scatter.combinations)),
-                       function(x)
-                           scatter.plot(scatter.full, maas.results.df.signf, x$rr, x$abund))
-
-scatterplot <- do.call("grid.arrange", c(scatterplots, ncol=4))
-ggsave(file = "cache/scatter.png", plot = scatterplot, height = 10, width = 10, dpi = 300)
-```
-
-```{r maaslin means, eval = FALSE}
-pseq.genus.core.table <- pseq.genus.core %>%
-    prune_taxa(c("g_Adlercreutzia", "g_Anaerotruncus", "g_Sutterella"), .) %>%
-    transform(transform = "compositional") %>%
+```{r deseq abundances for boxplot}
+dset.deseq.boxplot <- pseq.genus %>%
+    microbiome::transform(., transform = "compositional") %>%
+    prune_taxa(unique(pull(dset.deseq.signf, Feature)), .) %>%
     psmelt %>%
-    mutate(map_groups = relevel(factor(dplyr::ntile(MAP, 3)), ref='1'),
-           systm_groups = relevel(factor(dplyr::ntile(SYSTM, 3)), ref='1'),
-           Abundance = myscale(Abundance))
-
-table_bp_abund <- function(pseq, group) {
-    pseq %>%
-        group_by(.dots = c(group, "OTU")) %>%
-        summarize(mean = mean(Abundance), sd = sd(Abundance)) %>%
-        mutate(beta_sd = sprintf("%.2f ± %.2f", mean, sd)) %>%
-        select(OTU, beta_sd) %>%
-        spread(OTU, beta_sd) %>%
-        ungroup %>%
-        dplyr::rename("grp" = group) %>%
-        mutate("grp" = paste0(group, "_", grp))
-}
-
-rbind(table_bp_abund(pseq.genus.core.table, "map_groups"),
-             table_bp_abund(pseq.genus.core.table, "systm_groups")) %>%
-    tibble::column_to_rownames("grp") %>%
-    t %>%
-    as.data.frame %>%
-    kable
-
+    mutate(Abundance = sqrt(Abundance))
 ```
+
+```{r deseq boxplot}
+g.boxplot <- dset.deseq.boxplot %>%
+    group_by(OTU) %>%
+    mutate(outlier = abs(Abundance) > median(Abundance) + IQR(Abundance) * 1.5) %>%
+    ggplot(aes(x = HYPERTENSION, y = Abundance, color = OTU)) +
+    geom_boxplot(lwd=0.1, outlier.shape = NA) +
+    geom_point(data = function(x) dplyr::filter_(x, ~ outlier),
+               position = position_jitterdodge(jitter.width = 0.02),
+               size = 0.1,
+               alpha = 0.4, shape = ".") +
+    scale_y_continuous(limits = c(0, 0.2), expand = c(0, 0)) +
+    scale_x_discrete(labels=c("0" = "Normotensive", "1" = "Hypertensive")) +
+    ylab("Abundance (Hellinger)") +
+    xlab("") +
+    theme_classic() +
+    guides(shape = guide_legend(override.aes = list(size = 0.1)),
+           color = guide_legend(override.aes = list(size = 0.1))) +
+    theme(legend.title = element_text(size = 4), 
+          legend.text  = element_text(size = 4),
+          legend.key.size = unit(1, "lines"),
+          legend.position="bottom")
+
+ggsave(file = "cache/dds-test.png", plot=g.boxplot, height=4, width=6, units = "in", dpi = 300)
+```
+
+<img src = "cache/dds-test.png" />
+
+
+
 
 ```{r Write figure 3, include=FALSE}
 fig3head <- "Associations between genus level abundances and blood pressure variables."
 fig3foot <- "Only bacteria with significant associations are shown. Blood pressure variables are normalized and abundances are arcsin-square root transformed. Dark gray color represents insignificant associations."
-writeimage(doc, 3, "cache/maaslin.png", fig3head, fig3foot)
+writeimage(doc, 3, "cache/deseq.png", fig3head, fig3foot)
 ```
 
 ## Lactobacillus (figure 4)
