@@ -206,3 +206,23 @@ deseqplotorder <- function(x) {
     y[x == "Hypertension"] = 0
     y
 }
+
+saltplot <- function(dset) {
+    ggplot(data = dset, aes(x = NA., y = g_Lactobacillus)) +
+        geom_point(aes(color = SEX), size = 0.05, position = "jitter") +
+        geom_line(data = lm_ribbon(dset)) +
+        geom_ribbon(data = lm_ribbon(dset), aes(ymin=conf.low, ymax=conf.high), alpha=0.15) +
+        scale_x_continuous(limits=c(20, 205), expand = c(0, 0)) +
+        scale_y_continuous(limits=c(4.5, 8), expand = c(0, 0)) +
+        scale_colour_manual(name = "SEX",
+                            labels = c("Male", "Female"),
+                            breaks=c("0", "1"),
+                            values = c("blue", "red")) +
+        xlab("24-hour urinary sodium") +
+        ylab("CLR-transformed Lactobacillus abundance") +
+        guides(colour = guide_legend(override.aes = list(size=4, alpha = 0.4))) +
+        theme_classic() +
+        theme(plot.title = element_blank(),
+              legend.title = element_blank(),
+              legend.position = c(0.9,0.95))
+}

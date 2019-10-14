@@ -356,3 +356,39 @@ deseqresults <- function(modellist, names.dset) {
         dplyr::filter(qval < 0.05) %>%
         merge(names.dset %>% select(Covariate, Name), by.x ="name", by.y = "Covariate")
 }
+
+prune_lactobacillus <- function(pseq, transform = "compositional", drop = TRUE) {
+    microbiome::transform(pseq, transform = transform) %>%
+        prune_taxa(c("g_Lactobacillus"), .) %>%
+        psmelt %>%
+        spread(OTU, Abundance) %>%
+        dplyr::mutate(lacto.prevalent = ifelse(g_Lactobacillus > 0.001, TRUE, FALSE),
+                      duna.present = ifelse(is.na(NA.), 0, 1)) %>%
+        { if (drop == TRUE) dplyr::filter(., duna.present == 1) else . }
+}
+
+lm_ribbon <- function(dset, model = "g_Lactobacillus ~ NA. + BL_AGE + SEX", term = "NA.", taxon = "g_Lactobacillus") {
+    ret <- lm(as.formula(model), data=dset)
+    ggpredict(ret, terms = term) %>%
+        dplyr::rename(!!term := x, !!taxon := predicted)
+}
+
+mytableone <- function(dset, variables) {
+    { if (!missing(variables)) dplyr::select(dset, variables) else dset } %>%
+        select(-Sample) %>% 
+        gather(key,value) %>%
+        group_by(key) %>%
+        summarise_all(funs(N = n(),
+                           Mean = mean(as.numeric(value), na.rm = TRUE),
+                           ones = sum(value == 1, na.rm = TRUE),
+                           sd = sd(as.numeric(value), na.rm = TRUE),
+                           NAs = sum(is.na(value))))  %>%
+        mutate_if(is.numeric, round, 3)
+}
+
+deseq.formula <- function(..., fo = "~ %s") {
+    vars <- c(...)
+    if ("HYPERTENSION" %in% vars)
+        vars <- vars[!grepl("BL_USE", vars)]
+    as.formula(sprintf(fo, paste0(vars, collapse = "+")))
+}
