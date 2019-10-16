@@ -13,6 +13,7 @@ knitr::opts_chunk$set(cache.path = 'cache/', output.dir="cache/",
 
 options(max.print=100)
 
+dir.create("cache/", showWarnings = FALSE)
 dir.create("rds/", showWarnings = FALSE)
 dir.create("session/", showWarnings = FALSE)
 ```
@@ -239,55 +240,21 @@ writetable(doc, tbl1, number = 1, tbl1head, tbl1foot)
 ## Alpha & Beta plot (Figure 1.)
 
 ```{r alphabeta definitions}
-alphadiversity <- calculate.alphadiversity(pseq.species,
-                                           list("max" = var.CL,
-                                                "min" = var.CL.min))
-
-diversities <- mergediversities(alphadiversity, adonis.species, names.dset = names.dset)
+diversities <- diversities(pseq = pseq.species,
+                           vars = list("max" = var.CL, "min" = var.CL.min),
+                           betadiversity = adonis.species,
+                           names.dset = names.dset)
 ```
 
-```{r bptreat numbers}
-pseq.species %>% meta %>% pull(BP_TREAT) %>% summary
-```
 
 Results in minimum model of alpha diversity
 
 ```{r talbe alpha div min}
-alphadiversity$min %>%
-    select(response, estimate, p.value, conf.low, conf.high) %>%
-    mutate(mean_ci = sprintf("p=%s; 95%%-CI %.2f-%.2f",
-                              pub.p(p.value), conf.low, conf.high)) %>%
+diversities %>%
+    map_df(., ~as.data.frame(.x), .id = "covariates") %>%
     mutate_if(is.numeric, round, 3) %>%
-    arrange(p.value) %>%
     kable
 ```
-
-Results for full model of alpha diversity
-
-```{r talbe alpha div max}
-alphadiversity$max %>%
-    select(response, estimate, p.value, conf.low, conf.high) %>%
-    mutate(mean_ci = sprintf("p=%s; 95%%-CI %.2f-%.2f",
-                              pub.p(p.value), conf.low, conf.high)) %>%
-    mutate_if(is.numeric, round, 3) %>%
-    arrange(p.value) %>%
-    kable
-```
-
-Difference of R2 between full and minimal models
-
-```{r difference in beta diversity}
-merge(diversities$min %>%
-      select(response, R2, R2.p) %>%
-      dplyr::rename(R2.min = R2, p.min = R2.p),
-      diversities$max %>%
-      select(response, R2, R2.p) %>%
-      dplyr::rename(R2.full = R2, p.full = R2.p),
-      by = "response") %>%
-    mutate(R2.diff = R2.full - R2.min) %>%
-    kable
-```
-
 
 ```{r save grob}
 g4 <- plot.diversities(diversities)
@@ -506,6 +473,8 @@ pseq.genus.salt <- pseq.genus %>%
 dset.genus.salt <- prune_lactobacillus(pseq.genus.salt, transform = "clr")
 ```
 
+General linear models for associations between dU-NA and hypertension indices
+
 ```{r salt hypertension}
 ret.salt <- calculateglm(dset.genus.salt, covariates = c("NA.", var.CL), filterstr = "NA.")
 ret.salt %>% select(response, term, estimate, p.value) %>% kable
@@ -544,6 +513,8 @@ Deseq for lactobacillus
 dds.data.salt <- phyloseq_to_deseq2(pseq.genus.salt, deseq.formula("NA.", var.CL))
 
 dds.salt <- DESeq(dds.data.salt, test="Wald", fitType="parametric")
+
+dset.genus.salt %>% pull(NA.) %>% mean
 
 results(dds.salt, name = "NA.") %>%
     as.data.frame %>%

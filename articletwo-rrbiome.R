@@ -67,7 +67,11 @@ meta.merge.alphadiversity <- function(pseq, index = "shannon") {
     alphadiversity  <- microbiome::alpha(pseq, index = index)
     base::merge(meta(pseq), alphadiversity, by=0, all=TRUE) %>%
         dplyr::rename(Sample_ID = Row.names) %>%
-            dplyr::mutate(BL_AGE_GROUP = group_age(BL_AGE))
+        dplyr::mutate(diversity_shannon = scale(diversity_shannon),
+                      MAP = oMAP,
+                      PULSEPRESSURE = oPULSEPRESSURE,
+                      SYSTM = oSYSTM,
+                      DIASM = oDIASM)
 }
 
 calculate.beta.matrix <- function(pseq) {
@@ -85,12 +89,9 @@ calculateglm <- function(dset,
                          covariates = c(),
                          filterstr = ".") {
     glmlist <- lapply(responses, function(response) {
-        vars <- covariates
-        if (response == "HYPERTENSION")
-            vars <- vars[!grepl("BL_USE", vars)]
         is.logistic <- length(unique(pull(dset, response))) < min_n_for_continuous
         fo.family <- ifelse(is.logistic, stats::binomial, stats::gaussian)
-        fo <- sprintf("%s ~ %s", response, paste0(vars, collapse = "+"))
+        fo <- sprintf("%s ~ %s", response, paste0(covariates, collapse = "+"))
         stats::glm(formula = as.formula(fo), family = fo.family, data = dset) %>%
             broom::tidy(conf.int = TRUE, conf.level = 0.95, exponentiate = is.logistic) %>%
                 dplyr::filter(grepl(filterstr, term)) %>%
@@ -145,10 +146,7 @@ calculateadonis <- function(dset,
                             npermutations = 99,
                             maxcores = 100) {
     mclapply(responses, function(response) {
-        vars <- covariates
-        if ("HYPERTENSION" %in% vars)
-            vars <- vars[!grepl("BL_USE", vars)]
-        fo <- sprintf("matrix ~ %s + %s", paste(vars, collapse = " + "), response)
+        fo <- sprintf("matrix ~ %s + %s", paste(covariates, collapse = " + "), response)
         ad <- adonis(formula = as.formula(fo), data = dset, permutations = npermutations)
         ad$aov.tab %>%
             as.data.frame %>%
@@ -212,22 +210,6 @@ vectortolist <- function(c) {
   l <- as.list(c)
   names(l) <- l
   l
-}
-
-mergediversities <- function(alphadiversity, betadiversity,
-                             responses = c("MAP", "SYSTM", "DIASM", "PULSEPRESSURE", "HYPERTENSION"),
-                             names.dset) {
-    lapply(vectortolist(names(alphadiversity)), function(x) {
-        alpha.select <- alphadiversity[[x]] %>% select(estimate, p.value, response)
-        beta.rbind <- betadiversity[[x]] %>%
-            data.table::rbindlist(id = "model_name") %>%
-            dplyr::filter(term %in% responses) %>%
-            dplyr::rename(R2.p = `Pr(>F)`) %>%
-            dplyr::select(response, R2, R2.p)
-        merge( alpha.select , beta.rbind, by = "response") %>%
-            merge(names.dset %>% select(Covariate, Category, Name), by.x ="response", by.y = "Covariate") %>%
-            mutate(Qstar = ifelse(p.value < 0.05, '*', ' '))
-    })
 }
 
 getdescriptions <- function() {
@@ -326,19 +308,19 @@ mydropna <- function(...) {
 }
 
 
-calculate.alphadiversity <- function(pseq, vars, modelstr = "%%s ~ %s + diversity_shannon") {
-    dset <- meta.merge.alphadiversity(pseq) %>%
-        mutate(diversity_shannon = scale(diversity_shannon),
-               MAP = oMAP,
-               PULSEPRESSURE = oPULSEPRESSURE,
-               SYSTM = oSYSTM,
-               DIASM = oDIASM)
-
-    lapply(vars, function(var)
-        min = calculateglm(dset,
-                           covariates = var,
-                           filterstr = "shannon"))
-
+diversities <- function(pseq, vars, betadiversity, names.dset) {
+    lapply(c2l(names(vars)), function(var) {
+        alphadiversity <- calculateglm(meta.merge.alphadiversity(pseq),
+                                       covariates = c("diversity_shannon", vars[[var]]),
+                                       filterstr = "shannon") %>%
+            select(response, alpha.p = p.value, alpha.effect = estimate)
+        betadiversity <- betadiversity[[var]] %>%
+            map_df(., ~as.data.frame(.x %>%
+                                     dplyr::filter(term %in% var.BP) %>%
+                                     select(response, beta.R2 = R2, beta.p=`Pr(>F)`)))
+        full_join(alphadiversity, betadiversity, by = "response") %>%
+            merge(names.dset %>% select(Covariate, Name), by.x = "response", by.y = "Covariate") %>%
+    })
 }
 
 calculate.betadiversity <- function(pseq, matrix, vars, npermutations = 999) {
@@ -393,8 +375,5 @@ mytableone <- function(dset, variables) {
 }
 
 deseq.formula <- function(..., fo = "~ %s") {
-    vars <- c(...)
-    if ("HYPERTENSION" %in% vars)
-        vars <- vars[!grepl("BL_USE", vars)]
-    as.formula(sprintf(fo, paste0(vars, collapse = "+")))
+    as.formula(sprintf(fo, paste0(c(...), collapse = "+")))
 }

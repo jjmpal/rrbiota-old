@@ -1,8 +1,11 @@
 plot.alpha <- function(diversity,
                        alphabreaks = c(-Inf, -1, -0.1, -0.01, 0)) {
     diversity <- diversity %>%
-        mutate(estimate_fac =  cut(estimate, breaks = alphabreaks))
-    plot.alpha.diversity <- ggplot(diversity, aes(x=reorder(Name, R2),
+        mutate(estimate = ifelse(response == "HYPERTENSION", log(alpha.effect), alpha.effect),
+               estimate_fac =  cut(estimate, breaks = alphabreaks),
+               Qstar = ifelse(alpha.p < 0.05, '*', ' '))
+
+    plot.alpha.diversity <- ggplot(diversity, aes(x = reorder(Name, deseqplotorder(Name)),
                                                   y = 1,
                                                   fill = estimate_fac)) +
         geom_bar(stat="identity", color="black") +
@@ -11,12 +14,6 @@ plot.alpha <- function(diversity,
                           name = 'Regression coefficient \nin linear model \nfor Shannon index',
                           drop=FALSE,
                           direction = -1) +
-        #scale_color_discrete_sequential(palette = "Blues", nmax = 6, order = 2:6) +
-#        scale_fill_gradientn(colours = c("blue", "white"),
-#                             breaks = c(-colorlimit, 0),
-#                             name = 'Regression coefficient \nin linear model \nfor Shannon index',
-#                             limits = c(-colorlimit, 0),
-#                             na.value = "black") +
         theme_classic(20) +
         geom_point(aes(Name, y=0.5, shape=Qstar), show.legend=FALSE, color='black', size=20) +
         scale_shape_manual(name="",
@@ -57,13 +54,15 @@ plot.alpha <- function(diversity,
 }
 
 plot.beta <- function(diversity,
-                      fig.permar2.text = "R2 of variable \nin Bray-Curtis distance",
+                      fig.permar2.text = "Coefficient of determination\nfor beta diversity",
                       fig.textsize = 15,
                       ymax = 0.0016) {
-    diversity <- diversity %>% mutate(color = as.factor(ifelse(R2.p < 0.05, 1, 0)))
-    plot.beta.diversity <- ggplot(diversity, aes(x = reorder(Name, R2), y= R2, color = color)) +
-        geom_bar(stat="identity") +
-        scale_color_manual(values = c("0" = "black", "1" = "red")) +
+    diversity <- diversity %>% mutate(Qstar = ifelse(beta.p < 0.05, "*", "-"))
+    plot.beta.diversity <- ggplot(diversity,
+                                  aes(x = reorder(Name, deseqplotorder(Name)), y = beta.R2)) +
+        geom_bar(stat="identity", color = "black", fill = "white") +
+        geom_point(aes(y = 0.0001, shape=Qstar), show.legend=FALSE, color='black', size=20) +
+        scale_shape_manual(values=c('*'='*', '-'='')) +
         coord_flip() +
         theme_classic(fig.textsize) +
         ylab(fig.permar2.text) +
@@ -207,13 +206,13 @@ deseqplotorder <- function(x) {
     y
 }
 
-saltplot <- function(dset) {
+saltplot <- function(dset, ymax = 2) {
     ggplot(data = dset, aes(x = NA., y = g_Lactobacillus)) +
         geom_point(aes(color = SEX), size = 0.05, position = "jitter") +
         geom_line(data = lm_ribbon(dset)) +
         geom_ribbon(data = lm_ribbon(dset), aes(ymin=conf.low, ymax=conf.high), alpha=0.15) +
         scale_x_continuous(limits=c(20, 205), expand = c(0, 0)) +
-        scale_y_continuous(limits=c(-1,2), expand = c(0, 0)) +
+        scale_y_continuous(limits=c(-1, ymax), expand = c(0, 0)) +
         scale_colour_manual(name = "SEX",
                             labels = c("Male", "Female"),
                             breaks=c("0", "1"),
