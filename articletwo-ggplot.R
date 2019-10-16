@@ -213,7 +213,7 @@ saltplot <- function(dset) {
         geom_line(data = lm_ribbon(dset)) +
         geom_ribbon(data = lm_ribbon(dset), aes(ymin=conf.low, ymax=conf.high), alpha=0.15) +
         scale_x_continuous(limits=c(20, 205), expand = c(0, 0)) +
-        scale_y_continuous(limits=c(4.5, 8), expand = c(0, 0)) +
+        scale_y_continuous(limits=c(-1,2), expand = c(0, 0)) +
         scale_colour_manual(name = "SEX",
                             labels = c("Male", "Female"),
                             breaks=c("0", "1"),

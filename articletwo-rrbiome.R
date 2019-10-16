@@ -368,7 +368,7 @@ prune_lactobacillus <- function(pseq, transform = "compositional", drop = TRUE) 
         prune_taxa(c("g_Lactobacillus"), .) %>%
         psmelt %>%
         spread(OTU, Abundance) %>%
-        dplyr::mutate(lacto.prevalent = ifelse(g_Lactobacillus > 0.001, TRUE, FALSE),
+        dplyr::mutate(lacto.prevalent = ifelse(g_Lactobacillus > 0.001, 1, 0),
                       duna.present = ifelse(is.na(NA.), 0, 1)) %>%
         { if (drop == TRUE) dplyr::filter(., duna.present == 1) else . }
 }
