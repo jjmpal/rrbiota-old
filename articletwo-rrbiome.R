@@ -82,12 +82,15 @@ calculateglm <- function(dset,
                          responses = list(model_1 = "MAP", model_2 = "SYSTM", model_3 = "DIASM",
                                           model_4 = "PULSEPRESSURE", model_5 = "HYPERTENSION"),
                          min_n_for_continuous = 10,
-                         modelstring = "%s ~ BL_AGE + SEX",
+                         covariates = c(),
                          filterstr = ".") {
     glmlist <- lapply(responses, function(response) {
+        vars <- covariates
+        if (response == "HYPERTENSION")
+            vars <- vars[!grepl("BL_USE", vars)]
         is.logistic <- length(unique(pull(dset, response))) < min_n_for_continuous
         fo.family <- ifelse(is.logistic, stats::binomial, stats::gaussian)
-        fo <- sprintf(modelstring, response)
+        fo <- sprintf("%s ~ %s", response, paste0(vars, collapse = "+"))
         stats::glm(formula = as.formula(fo), family = fo.family, data = dset) %>%
             broom::tidy(conf.int = TRUE, conf.level = 0.95, exponentiate = is.logistic) %>%
                 dplyr::filter(grepl(filterstr, term)) %>%
@@ -142,7 +145,10 @@ calculateadonis <- function(dset,
                             npermutations = 99,
                             maxcores = 100) {
     mclapply(responses, function(response) {
-        fo <- sprintf("matrix ~ %s + %s", paste(covariates, collapse = " + "), response)
+        vars <- covariates
+        if ("HYPERTENSION" %in% vars)
+            vars <- vars[!grepl("BL_USE", vars)]
+        fo <- sprintf("matrix ~ %s + %s", paste(vars, collapse = " + "), response)
         ad <- adonis(formula = as.formula(fo), data = dset, permutations = npermutations)
         ad$aov.tab %>%
             as.data.frame %>%
@@ -330,7 +336,7 @@ calculate.alphadiversity <- function(pseq, vars, modelstr = "%%s ~ %s + diversit
 
     lapply(vars, function(var)
         min = calculateglm(dset,
-                           modelstring = sprintf(modelstr, paste0(var, collapse = " + ")),
+                           covariates = var,
                            filterstr = "shannon"))
 
 }

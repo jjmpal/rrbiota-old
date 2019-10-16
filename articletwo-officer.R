@@ -173,3 +173,12 @@ text.normal <- fp_text(font.size = 12, font.family = "Arial")
     body_add_par(footer, style = "footnote text") %>%
     body_add_break(pos = "after")
 }
+
+myspread <- function(ret, list = c2l("lfc_se", "p.value"), term  = "Feature", key = "Name") {
+    lapply(list, function(x) ret %>%
+                             select(term, key, x) %>%
+                             spread(key, x) %>%
+                             rename_at(vars(-term), funs(paste0(., "_", x)))) %>%
+        Reduce(function(...) full_join(..., by = term), .) %>%
+        dplyr::select(term, noquote(order(colnames(.))))
+}

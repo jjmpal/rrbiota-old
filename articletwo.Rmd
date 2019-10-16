@@ -89,13 +89,6 @@ Session info
 pander(sessionInfo(), compact = TRUE)
 ```
 
-```{r Initialize docx, include = FALSE, cache = FALSE}
-doc <- read_docx(path = "style/articlestyle.docx") %>%
-  body_remove()
-dir.create("rds", showWarnings = FALSE)
-dir.create("cache", showWarnings = FALSE)
-```
-
 # Sources
 
 ### Officer functions
@@ -194,12 +187,6 @@ if (!file.exists("rds/bray.dist.m.species.rds")) {
  }
 ```
 
-```{r quit subruns, include = FALSE}
-if (exists("subset.run")) {
-    quit()
-}
-```
-
 ```{r pcoa calculate}
 if (!file.exists("rds/pcoa.ordinate.rds")) {
     pcoa.abundances <- microbiome::transform(pseq.species, 'compositional')
@@ -208,19 +195,6 @@ if (!file.exists("rds/pcoa.ordinate.rds")) {
 } else {
     pcoa.ordinate <- readRDS("rds/pcoa.ordinate.rds")
 }
-```
-
-```{r maaslin runs, results = 'hide'} 
-if (!file.exists("rds/maaslin.rds")) {
-     maaslin <- maaslinwrapper(pseq = pseq.genus.core,
-                                    looped = var.BP,
-                                    forced = var.CL,
-                              taxa = taxa(pseq.genus.core))
-
-    saveRDS(maaslin, file = "rds/maaslin.rds")
-} else {
-    maaslin <- readRDS(file = "rds/maaslin.rds")
- }
 ```
 
 ```{r deseq2}
@@ -239,6 +213,15 @@ if (!file.exists("rds/dds.rds")) {
 } else {
     dds <- readRDS(file = "rds/dds.rds")
 }
+```
+
+## Officer
+
+```{r Initialize docx, include = FALSE, cache = FALSE}
+doc <- read_docx(path = "style/articlestyle.docx") %>%
+  body_remove()
+dir.create("rds", showWarnings = FALSE)
+dir.create("cache", showWarnings = FALSE)
 ```
 
 ## Characteristics of the study sample. (Table 1.)
@@ -444,25 +427,6 @@ pcoa.top.table <- pcoa.top.names %>%
     mutate_if(is.numeric, round, 3)
 ```
 
-Significant associations between BP-variables and top PCoA axes
-
-```{r pcoa analysis main axis}
-glm.pcoa <- lapply(c2l(paste0("Axis.", seq(1,3))), function(axis)
-    calculateglm(pcoa.df,
-                 modelstring = sprintf("%%s ~ %s + %s", axis, paste(var.CL, collapse = "+")),
-                 responses = list(model_1 = "oMAP", model_2 = "oSYSTM", model_3 = "oDIASM",
-                                          model_4 = "oPULSEPRESSURE", model_5 = "HYPERTENSION"),
-                 filterstr = "Axis"))
-
-do.call(rbind, glm.pcoa) %>% 
-    select(response, term, estimate, std.error, p.value, conf.low, conf.high) %>%
-    dplyr::mutate(Qval = p.adjust(p.value, method="BH")) %>%
-    mutate_if(is.numeric, round, 3) %>%
-    arrange(Qval) %>%
-    kable
-
-```
-
 ```{r Write figure 2, include=FALSE}
 fig2head <- "Principal coordinate analysis for bacterial abundances."
 fig2foot <- sprintf("Principal coordinate analysis for bacterial abundances at species level. Bray-Curtis distances are calculated for abundances after compositional transformation. First two axes explain %.1f%% of the variation.", round(100*sum(eig.fracs[1:3]),1))
@@ -473,7 +437,7 @@ writeimage(doc, 2, "cache/pcoa-species.png", fig2head, fig2foot)
 
 ```{r deseq continuous}
 dset.deseq.signf <- deseqresults(dds, names.dset)
-dset.deseq.signf %>% kable
+dset.deseq.signf %>% pull(qval) %>% length
 ```
 
 ```{r deseq heatmap}
@@ -542,6 +506,11 @@ pseq.genus.salt <- pseq.genus %>%
 dset.genus.salt <- prune_lactobacillus(pseq.genus.salt, transform = "clr")
 ```
 
+```{r salt hypertension}
+ret.salt <- calculateglm(dset.genus.salt, covariates = c("NA.", var.CL), filterstr = "NA.")
+ret.salt %>% select(response, term, estimate, p.value) %>% kable
+```
+
 ```{r salt characteristics}
 dset.genus.salt %>%
     mytableone() %>%
@@ -571,7 +540,8 @@ writeimage(doc, 4, "cache/gsalt.png", fig4head, fig4foot)
 Deseq for lactobacillus
 
 ```{r lacto deseq}
-dds.data.salt <- phyloseq_to_deseq2(pseq.genus.salt, ~ BL_AGE + SEX + NA.)
+#dds.data.salt <- phyloseq_to_deseq2(pseq.genus.salt, ~ BL_AGE + SEX + NA.)
+dds.data.salt <- phyloseq_to_deseq2(pseq.genus.salt, deseq.formula("NA.", var.CL))
 
 dds.salt <- DESeq(dds.data.salt, test="Wald", fitType="parametric")
 
@@ -665,12 +635,38 @@ betadiversity.flextable <-
 
 ```
 
+```{r supplement table deseq}
+deseq.table <- deseqresults(dds, names.dset) %>%
+    mutate(lfc_se = sprintf("%.2f±%.2f", log2FoldChange, lfcSE),
+           p.value = pub.p(qval)) %>%
+    myspread %>%
+    select(Feature, starts_with("Systolic"), starts_with("Diastolic"), starts_with("PULSE PRESSURE"),
+           starts_with("Mean arterial pressure"), starts_with("Hypertension"))
+
+typology.tbls4 <- data.frame(
+    col_keys = colnames(deseq.table),
+    what = c("", rep("Systolic BP", 2), rep("Diastolic BP", 2),
+             rep("Pulse pressure", 2), rep("Mean arterial pressure", 2), rep("Hypertension", 2)),
+    measure = c("", rep(c("Log2FC±SE", "p"), 5)),
+    stringsAsFactors = FALSE)
+
+deseq.flextable <-
+    typologyformatter(data = deseq.table, font = 9, typology = typology.tbls4) %>%
+    flextable::width(j = 1, width = 1.2) %>%
+    flextable::width(j = seq(2, 11, 2), width = 0.75) %>%
+    flextable::width(j = seq(3, 11, 2), width = 0.55)
+
+deseqresults(dds, names.dset) %>% pull(qval) %>% max
+
+```
+
 ```{r Write supplement}
 doc.s <- read_docx(path = "style/articlestyle.docx") %>%
   body_remove()
-writetable(doc.s, core.names.flextable, number = "S1", "Core genera", "")
-writetable(doc.s, alphadiversity.flextable, number = "S2", "Alpha diverstity", "")
-writetable(doc.s, betadiversity.flextable, number = "S3", "Beta diverstity", "")
+#writetable(doc.s, core.names.flextable, number = "S1", "Core genera", "")
+#writetable(doc.s, alphadiversity.flextable, number = "S2", "Alpha diverstity", "")
+#writetable(doc.s, betadiversity.flextable, number = "S3", "Beta diverstity", "")
+writetable(doc.s, deseq.flextable, number = "S4", "Deseq", "")
 print(doc.s, target = paste0("report/articletwo-supplement.docx"))
 ```
 
