@@ -92,10 +92,9 @@ names.dset <- getdescriptions()
 fo.alpha.min <- "%s ~ BL_AGE + SEX  + diversities_shannon"
 fo.alpha.full <- "%s ~ BL_AGE + SEX + BMI + CURR_SMOKE + Q57X + BL_USE_RX_C03 + BL_USE_RX_C07 + BL_USE_RX_C08 + BL_USE_RX_C09 + diversities_shannon" # MISSING DIAB
 
-covariates.min <- c("BL_AGE", "SEX")
-covariates.full <- c("BL_AGE", "SEX", "BMI", "CURR_SMOKE",
-                         "Q57X", "BL_USE_RX_C03", "BL_USE_RX_C07",
-                         "BL_USE_RX_C08", "BL_USE_RX_C09")
+var.CL.min <- c("BL_AGE", "SEX")
+var.CL <- c("BL_AGE", "SEX", "BMI", "CURR_SMOKE", "Q57X", 
+            "BL_USE_RX_C03","BL_USE_RX_C07", "BL_USE_RX_C08", "BL_USE_RX_C09")
 ```
 
 ```{r rds files}
@@ -109,7 +108,7 @@ rds <- list("shogun" = "data/phfinrisk_species_all_drop50k_2018-12-21.RDs",
 # Calculate alpha and beta diversity
 
 ```{R models}
-mclapply(c2l(names(rds)), function(key) {
+plots <- mclapply(c2l(names(rds)), function(key) {
     pseq.species <- import_filter_data(rds[[key]],
                                included = c("MEN", "BL_AGE", "SYSTM", "DIASM", "BMI",
                                             "CURR_SMOKE", "BL_USE_RX_C09",
@@ -131,6 +130,10 @@ mclapply(c2l(names(rds)), function(key) {
 
     g4 <- plot.diversities(diversities)
     ggsave(file = sprintf("cache/comparepseqs-%s.png", key), plot=g4, height=6, width=9)
+	g4
 }, mc.cores = length(rds))
 ```
 
+```{r save session}
+save.image(file = "session/comparepseq.Rdata")
+```

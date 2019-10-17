@@ -319,7 +319,7 @@ diversities <- function(pseq, vars, betadiversity, names.dset) {
                                      dplyr::filter(term %in% var.BP) %>%
                                      select(response, beta.R2 = R2, beta.p=`Pr(>F)`)))
         full_join(alphadiversity, betadiversity, by = "response") %>%
-            merge(names.dset %>% select(Covariate, Name), by.x = "response", by.y = "Covariate") %>%
+            merge(names.dset %>% select(Covariate, Name), by.x = "response", by.y = "Covariate")
     })
 }
 
