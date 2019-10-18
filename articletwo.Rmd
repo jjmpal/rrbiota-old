@@ -536,14 +536,13 @@ writeimage(doc, 4, "cache/gsalt.png", fig4head, fig4foot)
 Deseq for lactobacillus
 
 ```{r lacto deseq}
-#dds.data.salt <- phyloseq_to_deseq2(pseq.genus.salt, ~ BL_AGE + SEX + NA.)
 dds.data.salt <- phyloseq_to_deseq2(pseq.genus.salt, deseq.formula("NA.", var.CL))
+dds.salt <- DESeq(dds.data.salt, test="Wald", fitType="parametric") 
+```
 
-dds.salt <- DESeq(dds.data.salt, test="Wald", fitType="parametric")
-
-dset.genus.salt %>% pull(NA.) %>% mean
-
-results(dds.salt, name = "NA.") %>%
+```{r lacto deseq results}
+dds.salt %>%
+    results(., name = "NA.") %>%
     as.data.frame %>%
     tibble::rownames_to_column("Feature") %>%
     dplyr::mutate(qval = p.adjust(pvalue, method="BH")) %>%
@@ -551,6 +550,15 @@ results(dds.salt, name = "NA.") %>%
     kable
 ```
 
+```{r lacto deseq diagnostic}
+png("cache/salt-ma.png", width = 1200, height = 800, pointsize = 20)
+par(mfrow=c(1,2))
+plotMA(dds.salt)
+plotDispEsts(dds.salt)
+dev.off()
+```
+
+<img src = "cache/salt-ma.png" />
 
 # Supplements
 
