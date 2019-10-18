@@ -216,6 +216,22 @@ if (!file.exists("rds/dds.rds")) {
 }
 ```
 
+```{r comparing deseq2}
+if (!file.exists("rds/dds3.rds")) {
+    pseq.genus.core.deseq <-  prune_taxa(taxa(pseq.genus.core), pseq.genus)
+    dds3 <- lapply(deseq.list(var.CL, var.CL.min), function(x, dds) {
+        dds.data <- phyloseq_to_deseq2(dds, deseq.formula(x, "HYPERTENSION"))
+        DESeq(dds.data,
+              test="Wald",
+              fitType="parametric",
+              parallel = TRUE,
+              BPPARAM=MulticoreParam(16))}, dds = pseq.genus.core.deseq)
+    saveRDS(dds3, file = "rds/dds3.rds")
+} else {
+    dds3 <- readRDS(file = "rds/dds3.rds")
+}
+```
+
 ## Officer
 
 ```{r Initialize docx, include = FALSE, cache = FALSE}
@@ -251,7 +267,7 @@ Results in minimum model of alpha diversity
 
 ```{r talbe alpha div min}
 diversities %>%
-    map_df(., ~as.data.frame(.x), .id = "covariates") %>%
+    map_df(~as.data.frame(.x), .id = "covariates") %>%
     mutate_if(is.numeric, round, 3) %>%
     kable
 ```
@@ -401,6 +417,17 @@ writeimage(doc, 2, "cache/pcoa-species.png", fig2head, fig2foot)
 ```
 
 ## Direct associations between genus level and blood pressure variables (figure 3)
+
+Comparing how adding additional covariate to basic model for age, sex,
+and hypertension changes number of significant associations found for
+hypertension.
+
+```{r results compare deseq2}
+map(dds3, ~sum(results(.x, name = "HYPERTENSION_1_vs_0")$padj < 0.05)) %>%
+    map_df(~as.data.frame(.x) %>% dplyr::rename(qval = .x), .id = "included") %>%
+    kable
+```
+
 
 ```{r deseq continuous}
 dset.deseq.signf <- deseqresults(dds, names.dset)

@@ -15,7 +15,7 @@ plot.alpha <- function(diversity,
                           drop=FALSE,
                           direction = -1) +
         theme_classic(20) +
-        geom_point(aes(Name, y=0.5, shape=Qstar), show.legend=FALSE, color='black', size=20) +
+        geom_point(aes(Name, y=0.5, shape=Qstar), show.legend=FALSE, color='black', size=14) +
         scale_shape_manual(name="",
                            values=c('*'='*', ' '=' '),
                            labels=c("*"="significant at\nFDR 0.05", ' '=' '),
@@ -54,22 +54,19 @@ plot.alpha <- function(diversity,
 }
 
 plot.beta <- function(diversity,
-                      fig.permar2.text = "Coefficient of determination\nfor beta diversity",
                       fig.textsize = 15,
                       ymax = 0.0016) {
     diversity <- diversity %>% mutate(Qstar = ifelse(beta.p < 0.05, "*", "-"))
     plot.beta.diversity <- ggplot(diversity,
                                   aes(x = reorder(Name, deseqplotorder(Name)), y = beta.R2)) +
-        geom_bar(stat="identity", color = "black", fill = "white") +
-        geom_point(aes(y = 0.0001, shape=Qstar), show.legend=FALSE, color='black', size=20) +
+        geom_bar(stat="identity", color = "black", fill = "gray96") +
+        geom_point(aes(y = beta.R2 - 0.00007, shape=Qstar), show.legend=FALSE, color='black', size=14) +
         scale_shape_manual(values=c('*'='*', '-'='')) +
         coord_flip() +
         theme_classic(fig.textsize) +
-        ylab(fig.permar2.text) +
+        ylab("Coefficient of determination for\nbeta diversity") +
         scale_y_continuous(limits = c(0, ymax)) +
-        theme(axis.text.y = element_text(color="black"),
-              axis.text.x = element_text(color="black"),
-              legend.position="right",
+        theme(legend.position="right",
               legend.direction="vertical",
               legend.box.margin=margin(0,0,0,0,"pt"),
               legend.margin=margin(0,0,0,0,"pt"),

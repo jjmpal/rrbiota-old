@@ -377,3 +377,10 @@ mytableone <- function(dset, variables) {
 deseq.formula <- function(..., fo = "~ %s") {
     as.formula(sprintf(fo, paste0(c(...), collapse = "+")))
 }
+
+deseq.list <- function(var.CL, var.CL.min) {
+    l <- lapply(c2l(var.CL), function(x) {
+        unique(c(var.CL.min, x))
+    })
+    l[!duplicated(l)]
+}
