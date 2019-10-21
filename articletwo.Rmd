@@ -246,6 +246,7 @@ dir.create("cache", showWarnings = FALSE)
 
 ```{r Characteristics}
 tbl1 <- tableone(meta(pseq.species))
+tbl1
 ```
 
 ```{r Write characteristics, include=FALSE, eval = FALSE}
@@ -556,6 +557,7 @@ core.names.flextable <- flextable(core.names.fourcols) %>%
     flextable::width(j=1:4, width = 1.8) %>%
     flextable::align(align = "left", part = "header") %>%
     flextable::align(align = "left")
+core.names.flextable
 ```
 
 Listing results for alpha diversity
@@ -579,6 +581,7 @@ alphadiversity.flextable <-
     flextable::width(j=1, width = 1.9) %>%
     flextable::width(j=c(2:2,4:4), width = 1.8) %>%
     flextable::width(j=c(3:3,5:5), width = 0.7)
+alphadiversity.flextable 
 ```
 
 
@@ -601,6 +604,7 @@ betadiversity.flextable <-
     flextable::width(j=1, width = 1.9) %>%
     flextable::width(j=c(2:5), width = 0.8)
 
+betadiversity.flextable
 ```
 
 ```{r supplement table deseq}
@@ -624,8 +628,7 @@ deseq.flextable <-
     flextable::width(j = seq(2, 11, 2), width = 0.75) %>%
     flextable::width(j = seq(3, 11, 2), width = 0.55)
 
-deseqresults(dds, names.dset) %>% pull(qval) %>% max
-
+deseq.flextable
 ```
 
 ```{r Write supplement, eval = FALSE}
@@ -635,6 +638,7 @@ writetable(doc.s, core.names.flextable, number = "S1", "Core genera", "")
 writetable(doc.s, alphadiversity.flextable, number = "S2", "Alpha diverstity", "")
 writetable(doc.s, betadiversity.flextable, number = "S3", "Beta diverstity", "")
 writetable(doc.s, deseq.flextable, number = "S4", "Deseq", "")
+
 print(doc.s, target = paste0("report/articletwo-supplement.docx"))
 ```
 
