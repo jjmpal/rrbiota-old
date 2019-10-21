@@ -434,10 +434,15 @@ map(dds3, ~sum(results(.x, name = "HYPERTENSION_1_vs_0")$padj < 0.05, na.rm = TR
     kable
 ```
 
-
 ```{r deseq continuous}
 dset.deseq.signf <- deseqresults(dds, names.dset)
 ```
+
+
+Number of significant associations `r sum(pull(dset.deseq.signf, qval) < 0.05)` for 
+`r pull(dset.deseq.signf, Feature)  %>% unique %>% length` features. Largest p.value is 
+`r max(pull(dset.deseq.signf, qval))`
+
 
 ```{r deseq heatmap}
 g.deseq <- deseqhaetmap(dset.deseq.signf)
@@ -481,7 +486,7 @@ dset.genus.salt %>%
 ```
 
 ```{r lactobacillus prevalence}
-dset.genus.salt %>%
+prune_lactobacillus(pseq.genus.salt, drop = FALSE) %>%
     summarize(lacto_detected = sum(lacto.prevalent),
               n = n(),
               ratio = lacto_detected/n) %>%
