@@ -10,6 +10,7 @@ characteristics <- function(dset, tableone.names, tableone.factors, extras = lis
                       digits = 1,
                       pDigits = 3,
                       contDigits=1)
+
     tableone.fullnames <- c(tableone.names, extras)
     tablecsv %>%
         as.data.frame %>%
@@ -152,14 +153,14 @@ riskmodel.joincolumns <- function(rset, riskmodels, idforn = "fwdbonf_riskclass"
 }
 
 writetable <- function(doc, tbl, number = 0, head, foot) {
-	text.bold <- fp_text(font.size = 12, bold = TRUE, font.family = "Arial")
-	text.normal <- fp_text(font.size = 12, font.family = "Arial")
+    text.bold <- fp_text(font.size = 12, bold = TRUE, font.family = "Arial")
+    text.normal <- fp_text(font.size = 12, font.family = "Arial")
 
-  doc <- doc %>%
-    body_add_fpar(fpar(ftext(paste0("Table ", number, ". "), prop = text.bold), ftext(head, prop = text.normal)), style = "Table Caption") %>%
-    body_add_flextable(tbl, align = "left") %>%
-    body_add_par(foot, style = "footnote text") %>%
-    body_add_break(pos = "after")
+    doc <- doc %>%
+        body_add_fpar(fpar(ftext(paste0("Table ", number, ". "), prop = text.bold), ftext(head, prop = text.normal)), style = "Table Caption") %>%
+        body_add_flextable(tbl, align = "left") %>%
+        body_add_par(foot, style = "footnote text") %>%
+        body_add_break(pos = "after")
 }
 
 writeimage <- function(doc, number = 0, filename, header, footer, width = 7) {

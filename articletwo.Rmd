@@ -236,7 +236,8 @@ if (!file.exists("rds/dds3.rds")) {
 
 ```{r Initialize docx, include = FALSE, cache = FALSE}
 doc <- read_docx(path = "style/articlestyle.docx") %>%
-  body_remove()
+    body_remove()
+
 dir.create("rds", showWarnings = FALSE)
 dir.create("cache", showWarnings = FALSE)
 ```
@@ -247,7 +248,7 @@ dir.create("cache", showWarnings = FALSE)
 tbl1 <- tableone(meta(pseq.species))
 ```
 
-```{r Write characteristics, include=FALSE}
+```{r Write characteristics, include=FALSE, eval = FALSE}
 tbl1head <- "Characteristics of the study sample."
 tbl1foot <- "Continuous variables are presented as mean (standard deviation). Categorical variables reported as absolute and relative frequencies. BP indicates blood pressure, BMI, body mass index, RAS, renin-angiotensin system."
 writetable(doc, tbl1, number = 1, tbl1head, tbl1foot)
