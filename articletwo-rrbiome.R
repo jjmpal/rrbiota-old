@@ -313,7 +313,8 @@ diversities <- function(pseq, vars, betadiversity, names.dset) {
         alphadiversity <- calculateglm(meta.merge.alphadiversity(pseq),
                                        covariates = c("diversity_shannon", vars[[var]]),
                                        filterstr = "shannon") %>%
-            select(response, alpha.p = p.value, alpha.effect = estimate)
+            select(response, alpha.p = p.value, alpha.effect = estimate,
+                   alpha.low = conf.low, alpha.high = conf.high)
         betadiversity <- betadiversity[[var]] %>%
             map_df(., ~as.data.frame(.x %>%
                                      dplyr::filter(term %in% var.BP) %>%

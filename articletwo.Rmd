@@ -257,7 +257,7 @@ writetable(doc, tbl1, number = 1, tbl1head, tbl1foot)
 ## Alpha & Beta plot (Figure 1.)
 
 ```{r alphabeta definitions}
-diversities <- diversities(pseq = pseq.species,
+diversity <- diversities(pseq = pseq.species,
                            vars = list("max" = var.CL, "min" = var.CL.min),
                            betadiversity = adonis.species,
                            names.dset = names.dset)
@@ -267,14 +267,14 @@ diversities <- diversities(pseq = pseq.species,
 Results in minimum model of alpha diversity
 
 ```{r talbe alpha div min}
-diversities %>%
+diversity %>%
     map_df(~as.data.frame(.x), .id = "covariates") %>%
     mutate_if(is.numeric, round, 3) %>%
     kable
 ```
 
 ```{r save grob}
-g4 <- plot.diversities(diversities)
+g4 <- plot.diversities(diversity)
 ggsave(file = "cache/alpha-beta.png", plot=g4, height=6, width=9)
 ```
 
@@ -421,7 +421,11 @@ writeimage(doc, 2, "cache/pcoa-species.png", fig2head, fig2foot)
 
 Comparing how adding additional covariate to basic model for age, sex,
 and hypertension changes number of significant associations found for
-hypertension.
+hypertension. Full model has
+
+`r sum(results(dds$HYPERTENSION, name = "HYPERTENSION_1_vs_0")$padj < 0.05, na.rm = TRUE)`
+
+associations for hypertension.
 
 ```{r results compare deseq2}
 map(dds3, ~sum(results(.x, name = "HYPERTENSION_1_vs_0")$padj < 0.05, na.rm = TRUE)) %>%
@@ -524,6 +528,8 @@ dev.off()
 
 # Supplements
 
+Listing our "core" genera
+
 ```{r write supplement}
 core.names <- pseq.genus.core %>%
     taxa %>%
@@ -552,17 +558,15 @@ core.names.flextable <- flextable(core.names.fourcols) %>%
     flextable::align(align = "left")
 ```
 
+Listing results for alpha diversity
+
 ```{r supplement table for alpha diversity}
-alphadiversity.table <- cbind(alphadiversity$min %>% dplyr::rename_all(paste0, ".min"),
-                                  alphadiversity$max %>% dplyr::rename_all(paste0, ".max")) %>%
-    dplyr::filter(model_name.min == model_name.max) %>%
-    merge(names.dset, by.x ="response.min", by.y = "Covariate") %>%
-    mutate(mean_ci.min = sprintf("%.2f (%.2f - %.2f)", estimate.min, conf.low.min, conf.high.min),
-           pubp.min = pub.p(p.value.min),
-           mean_ci.max = sprintf("%.2f (%.2f - %.2f)", estimate.max, conf.low.max, conf.high.max),
-           pubp.max = pub.p(p.value.max)) %>%
-    arrange(match(response.min, c("SYSTM", "DIASM", "MAP", "PULSEPRESSURE", "HT"))) %>%
-    select(Name, mean_ci.min, pubp.min, mean_ci.max, pubp.max) 
+alphadiversity.table <- diversity %>% map_df(~as.data.frame(.x), .id = "model") %>%
+    mutate(mean_ci = sprintf("%.2f (%.2f - %.2f)", alpha.effect, alpha.low, alpha.high),
+           pubp = pub.p(alpha.p)) %>%
+    myspread(list = c2l("mean_ci", "pubp"), term = "Name", key = "model") %>%
+    arrange(match(Name, c("Systolic BP", "Diastolic BP", "Mean arterial pressure", "Pulse pressure", "Hypertension"))) %>%
+        select(Name, min_mean_ci, min_pubp, max_mean_ci, max_pubp)
 
 typology.tbls2 <- data.frame(
     col_keys = colnames(alphadiversity.table),
@@ -579,16 +583,12 @@ alphadiversity.flextable <-
 
 
 ```{r supplement table for beta diversity}
-betadiversity.table <- merge(diversities$min %>% dplyr::rename_all(paste0, ".min"),
-      diversities$max %>% dplyr::rename_all(paste0, ".max")) %>%
-    dplyr::filter(response.min == response.max) %>%
-    merge(names.dset, by.x ="response.min", by.y = "Covariate") %>%
-    mutate(R2.min = sprintf("%.3f%%", R2.min*100),
-           pubp.min = pub.p(R2.p.min),
-           R2.max = sprintf("%.3f%%", R2.max*100),
-           pubp.max = pub.p(R2.p.max)) %>%
-    arrange(match(response.min, c("SYSTM", "DIASM", "MAP", "PULSEPRESSURE", "HT"))) %>%
-    select(Name, R2.min, pubp.min, R2.max, pubp.max)
+betadiversity.table <- diversity %>% map_df(~as.data.frame(.x), .id = "model") %>%
+    mutate(rsquared = sprintf("%.3f%%", beta.R2*100),
+           pubp = pub.p(beta.p)) %>%
+    myspread(list = c2l("rsquared", "pubp"), term = "Name", key = "model") %>%
+    arrange(match(Name, c("Systolic BP", "Diastolic BP", "Mean arterial pressure", "Pulse pressure", "Hypertension"))) %>%
+    select(Name, min_rsquared, min_pubp, max_rsquared, max_pubp)
 
 typology.tbls3 <- data.frame(
     col_keys = colnames(betadiversity.table),
@@ -631,9 +631,9 @@ deseqresults(dds, names.dset) %>% pull(qval) %>% max
 ```{r Write supplement}
 doc.s <- read_docx(path = "style/articlestyle.docx") %>%
   body_remove()
-#writetable(doc.s, core.names.flextable, number = "S1", "Core genera", "")
-#writetable(doc.s, alphadiversity.flextable, number = "S2", "Alpha diverstity", "")
-#writetable(doc.s, betadiversity.flextable, number = "S3", "Beta diverstity", "")
+writetable(doc.s, core.names.flextable, number = "S1", "Core genera", "")
+writetable(doc.s, alphadiversity.flextable, number = "S2", "Alpha diverstity", "")
+writetable(doc.s, betadiversity.flextable, number = "S3", "Beta diverstity", "")
 writetable(doc.s, deseq.flextable, number = "S4", "Deseq", "")
 print(doc.s, target = paste0("report/articletwo-supplement.docx"))
 ```
