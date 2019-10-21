@@ -628,7 +628,7 @@ deseqresults(dds, names.dset) %>% pull(qval) %>% max
 
 ```
 
-```{r Write supplement}
+```{r Write supplement, eval = FALSE}
 doc.s <- read_docx(path = "style/articlestyle.docx") %>%
   body_remove()
 writetable(doc.s, core.names.flextable, number = "S1", "Core genera", "")
