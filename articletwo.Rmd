@@ -202,7 +202,7 @@ if (!file.exists("rds/pcoa.ordinate.rds")) {
 if (!file.exists("rds/dds.rds")) {
     pseq.genus.core.deseq <-  prune_taxa(taxa(pseq.genus.core), pseq.genus)
     
-    lapply(c2l(var.BP), function(x) {
+    dds <- lapply(c2l(var.BP), function(x) {
         dds.data <- phyloseq_to_deseq2(pseq.genus.core.deseq, deseq.formula(x, var.CL))
         DESeq(dds.data,
               test="Wald",
