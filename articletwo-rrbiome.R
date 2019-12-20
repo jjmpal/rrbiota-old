@@ -218,7 +218,7 @@ getdescriptions <- function() {
     bind_rows(names.dset,
               data.frame(Covariate = c("MAP", "PULSEPRESSURE", "HYPERTENSION", "SEX"),
                          Category = rep("Physical", 4),
-                         Name =c( "Mean arterial pressure", "Pulse pressure", "Hypertension", "Female"),
+                         Name = c("MAP", "Pulse pressure", "Hypertension", "Female"),
                          Desc = c("Mean arterial presure, 2./3.*DIASM + 1./3.*SYSTM)",
                                   "Pulse pressure, SYSTM - DIASM",
                                   "Hypertension, SYSTM >=140 or DIAS >= 90 or BP mediaction",
@@ -354,12 +354,6 @@ prune_lactobacillus <- function(pseq, transform = "compositional", drop = TRUE) 
         dplyr::mutate(lacto.prevalent = ifelse(g_Lactobacillus > 0.1/100, 1, 0),
                       duna.present = ifelse(is.na(NA.), 0, 1)) %>%
         { if (drop == TRUE) dplyr::filter(., duna.present == 1) else . }
-}
-
-lm_ribbon <- function(dset, model = "g_Lactobacillus ~ NA. + BL_AGE + SEX", term = "NA.", taxon = "g_Lactobacillus") {
-    ret <- lm(as.formula(model), data=dset)
-    ggpredict(ret, terms = term) %>%
-        dplyr::rename(!!term := x, !!taxon := predicted)
 }
 
 mytableone <- function(dset, variables) {

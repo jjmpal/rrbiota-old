@@ -172,8 +172,8 @@ plot.diversities <- function(diversities) {
 
 deseqhaetmap <- function(df, legend.name = "Log Base Two\nFold Change") {
     ggplot(df,
-           aes(x = Feature,
-               y = reorder(Name, deseqplotorder(Name)),
+           aes(x = reorder(Name, deseqplotorder(Name)),
+               y = ordered(Feature, levels=rev(unique(Feature))),
                fill = log2FoldChange)) +
         geom_tile(aes(fill = 1)) +
         geom_tile(colour="white", size=0.25) +
@@ -182,40 +182,38 @@ deseqhaetmap <- function(df, legend.name = "Log Base Two\nFold Change") {
                              limits=c(-1, 1),
                              breaks = c(-1, -0.5, 0.5, 0, 1),
                              na.value="grey30") +
-        coord_fixed() +
         xlab("") +
         ylab("") +
         theme_classic() +  
         theme(axis.text.x = element_text(angle=90, size=10, hjust=1.0,vjust=0.5),
               axis.text.y = element_text(size=10),
-              legend.title=element_text(size=10),
-              legend.position = c(-0.09, -1))
+              legend.title = element_text(size=10),
+              legend.position = "right")
 }
 
 
 deseqplotorder <- function(x) {
     y <- seq(length(x))
-    y[x == "Systolic BP"] = 4
-    y[x == "Diastolic BP"] = 3
+    y[x == "Systolic BP"] = 0
+    y[x == "Diastolic BP"] = 1
     y[x == "Pulse pressure"] = 2
-    y[x == "Mean arterial pressure"] = 1
-    y[x == "Hypertension"] = 0
+    y[x == "MAP"] = 3
+    y[x == "Hypertension"] = 4
     y
 }
 
 saltplot <- function(dset, ymax = 2) {
     ggplot(data = dset, aes(x = NA., y = g_Lactobacillus)) +
         geom_point(aes(color = SEX), size = 0.05, position = "jitter") +
-        geom_line(data = lm_ribbon(dset)) +
-        geom_ribbon(data = lm_ribbon(dset), aes(ymin=conf.low, ymax=conf.high), alpha=0.15) +
+        geom_smooth(method='lm', formula= y~x, colour = "black", size = 0.4) +
         scale_x_continuous(limits=c(20, 205), expand = c(0, 0)) +
-        scale_y_continuous(limits=c(-1, ymax), expand = c(0, 0)) +
+        scale_y_log10(limits = c(100, 10000), expand = c(0, 0)) +
         scale_colour_manual(name = "SEX",
                             labels = c("Male", "Female"),
                             breaks=c("0", "1"),
                             values = c("blue", "red")) +
-        xlab("24-hour urinary sodium") +
-        ylab("CLR-transformed Lactobacillus abundance") +
+        xlab("24-hour urinary sodium [mmol]") +
+        ylab("Normalized Lactobacillus abundance count") +
         guides(colour = guide_legend(override.aes = list(size=4, alpha = 0.4))) +
         theme_classic() +
         theme(plot.title = element_blank(),
