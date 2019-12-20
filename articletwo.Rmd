@@ -1,0 +1,606 @@
+---
+title: "Hypertension and microbiome"
+author: "Joonatan Palmu"
+date: "`r format(Sys.time(), '%d.%m.%Y')`"
+output: html_document
+---
+	
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(include = TRUE, xecho = TRUE, message = FALSE, results='asis',
+                      cache=FALSE, warning=FALSE)
+knitr::opts_chunk$set(cache.path = 'cache/', output.dir="cache/",
+                      file.path = 'cache/', fig.path = 'cache/')
+
+options(max.print=100)
+
+dir.create("cache/", showWarnings = FALSE)
+dir.create("rds/", showWarnings = FALSE)
+dir.create("session/", showWarnings = FALSE)
+```
+
+# Command line arguments
+
+Calculations ran at
+
+```{r Command line arguments}
+now <- format(Sys.time(), '%Y%m%d-%H%M%S')
+
+if (exists("args")) {
+    if ("time" %in% names(args)) now <- args$time
+    
+    if("clean" %in% names(args)) {
+        unlink("rds", recursive=TRUE)
+        unlink("cache", recursive=TRUE)
+    }
+    if ("tags" %in% names(args)) 
+        rtags('~/phd/research/articletwo/', recursive = FALSE, pattern = '\\.[RrSs](rw|md)?$',
+              ofile = '~/phd/research/articletwo/TAGS', verbose = TRUE, append = FALSE)
+    if ("loadlast" %in% names(args) ) {
+        file <- paste0("session/", sort(list.files("session"), decreasing = TRUE)[1])
+        message("Loading variables from file", file)
+        load(file)
+    }
+    if ("subset" %in% names(args))
+        subset.run <- as.numeric(args$subset)
+}
+```
+
+
+# Importing libraries:
+
+```{r libraries, cache = FALSE}
+library(dplyr)
+library(tibble)
+library(phyloseq)
+library(nortest)
+library(microbiome)
+library(knitr)
+library(tidyr)
+library(vegan)
+library(reshape)
+library(parallel)
+library(officer)
+library(flextable)
+library(xtable)
+library(rvg)
+!library(tableone)
+library(scales)
+library(ggplot2)
+library(gridExtra)
+library(png)
+library(ggpubr)
+library(broom)
+library(ggfortify)
+library(RColorBrewer)
+library(gvlma)
+library(purrr)
+library(gtable)
+library(car)
+library(M3C)
+library(emmeans)
+library(DESeq2)
+library(ggeffects)
+```
+
+Session info
+ 
+```{r Session info}
+pander(sessionInfo(), compact = TRUE)
+```
+
+# Sources
+
+<details><summary>Functions</summary>
+
+```{r Functions}
+sourcefiles <- c("articletwo-officer.R",
+                 "articletwo-rrbiome.R",
+                 "articletwo-ggplot.R")
+```
+
+```{r import files, echo = FALSE}
+for (f in sourcefiles) {
+    source(f)
+}
+```
+
+```{r embbed files, echo = FALSE}
+xfun::embed_files(c("rrnmr.Rmd", sourcefiles))
+```
+
+</details>
+
+
+# Loading data
+	
+Loading descriptions for clinical data
+
+```{r variables, warning = FALSE}
+names.dset <- getdescriptions()
+```
+
+eLoading phyloseq object
+
+```{r data}
+pseq.genus <- import_filter_data("data/phfinrisk_centrifuge_genus_d50k_2019-06-02.rds")
+pseq.species <- import_filter_data("data/phfinrisk_centrifuge_species_all_drop50k_2018-11-30_2019-06-03.RDs")
+```
+
+Species has average number of reads `r pseq.species %>% sample_sums %>% mean` and
+genus `r pseq.genus %>% sample_sums %>% mean`.
+
+At species level meta has dimensions (`r dim(meta(pseq.species))`) and
+there ntaxa is `r ntaxa(pseq.species)`. At genus level meta has
+dimensions (`r dim(meta(pseq.genus))`) and there ntaxa is 
+`r ntaxa(pseq.genus)`. 
+
+```{r defining genus core}
+pseq.genus.core <- microbiome::transform(pseq.genus, "compositional") %>%
+    core(detection = 0.1/100, prevalence = 1/100)
+```
+
+At genus-core level meta has dimensions (`r dim(meta(pseq.genus.core))`) 
+and there ntaxa is `r ntaxa(pseq.genus.core)`.
+
+## Variables
+
+```{r my variables}
+var.BP <- c("MAP", "SYSTM", "DIASM", "PULSEPRESSURE", "HYPERTENSION")
+var.CL.min <- c("BL_AGE", "SEX")
+var.CL <- c("BL_AGE", "SEX", "BMI", "CURR_SMOKE", "Q57X", "PREVAL_DIAB",
+            "BL_USE_RX_C03","BL_USE_RX_C07", "BL_USE_RX_C08", "BL_USE_RX_C09")
+```
+
+## MODELS
+
+```{r matrix calculation}
+if (!file.exists("rds/bray.dist.m.species.rds")) {
+    bray.dist.m.species <- calculate.beta.matrix(pseq.species)
+    saveRDS(bray.dist.m.species, file = "rds/bray.dist.m.species.rds")
+} else {
+    bray.dist.m.species  <- readRDS("rds/bray.dist.m.species.rds")
+}
+```
+
+ ```{r adonis calculation}
+ if (!file.exists("rds/adonis.species.rds")) {
+     adonis.species <- calculate.betadiversity(pseq = pseq.species,
+                                               matrix = bray.dist.m.species,
+                                               vars = list("max" = var.CL,
+                                                            "min" = var.CL.min))
+
+     saveRDS(adonis.species, file = "rds/adonis.species.rds")
+ } else {
+     adonis.species  <- readRDS("rds/adonis.species.rds")
+ }
+```
+
+```{r pcoa calculate}
+if (!file.exists("rds/pcoa.ordinate.rds")) {
+    pcoa.abundances <- microbiome::transform(pseq.species, 'compositional')
+    pcoa.ordinate <- ordinate(pcoa.abundances, method="PCoA", distance="bray")
+    saveRDS(pcoa.ordinate, file = "rds/pcoa.ordinate.rds")
+} else {
+    pcoa.ordinate <- readRDS("rds/pcoa.ordinate.rds")
+}
+```
+
+```{r deseq2}
+if (!file.exists("rds/dds.rds")) {
+    pseq.genus.core.deseq <-  prune_taxa(taxa(pseq.genus.core), pseq.genus)
+    
+    dds <- lapply(c2l(var.BP), function(x) {
+        dds.data <- phyloseq_to_deseq2(pseq.genus.core.deseq, deseq.formula(x, var.CL))
+        DESeq(dds.data,
+              test="Wald",
+              fitType="parametric",
+              parallel = TRUE,
+              BPPARAM=MulticoreParam(16))})
+
+    saveRDS(dds, file = "rds/dds.rds")
+} else {
+    dds <- readRDS(file = "rds/dds.rds")
+}
+```
+
+```{r comparing deseq2}
+if (!file.exists("rds/dds3.rds")) {
+    pseq.genus.core.deseq <-  prune_taxa(taxa(pseq.genus.core), pseq.genus)
+    dds3 <- lapply(deseq.list(var.CL, var.CL.min), function(x, dds) {
+        dds.data <- phyloseq_to_deseq2(dds, deseq.formula(x, "HYPERTENSION"))
+        DESeq(dds.data,
+              test="Wald",
+              fitType="parametric",
+              parallel = TRUE,
+              BPPARAM=MulticoreParam(16))}, dds = pseq.genus.core.deseq)
+    saveRDS(dds3, file = "rds/dds3.rds")
+} else {
+    dds3 <- readRDS(file = "rds/dds3.rds")
+}
+```
+
+## Officer
+
+```{r Initialize docx, include = FALSE, cache = FALSE}
+doc <- read_docx(path = "style/articlestyle.docx") %>%
+    body_remove()
+
+dir.create("rds", showWarnings = FALSE)
+dir.create("cache", showWarnings = FALSE)
+```
+
+## Characteristics of the study sample. (Table 1.)
+
+```{r Characteristics}
+tbl1 <- tableone(meta(pseq.species))
+```
+
+```{r Write characteristics, include=FALSE, eval = FALSE}
+tbl1head <- "Characteristics of the study sample."
+tbl1foot <- "Continuous variables are presented as mean (standard deviation). Categorical variables reported as absolute and relative frequencies. BP indicates blood pressure, BMI, body mass index, RAS, renin-angiotensin system."
+writetable(doc, tbl1, number = 1, tbl1head, tbl1foot)
+```
+
+## Alpha & Beta plot (Figure 1.)
+
+```{r alphabeta definitions}
+diversity <- diversities(pseq = pseq.species,
+                           vars = list("max" = var.CL, "min" = var.CL.min),
+                           betadiversity = adonis.species,
+                           names.dset = names.dset)
+```
+
+
+Results in minimum model of alpha diversity
+
+```{r talbe alpha div min}
+diversity %>%
+    map_df(~as.data.frame(.x), .id = "covariates") %>%
+    mutate_if(is.numeric, round, 3) %>%
+    kable
+```
+
+```{r save grob}
+g4 <- plot.diversities(diversity)
+ggsave(file = "cache/alpha-beta.png", plot=g4, height=6, width=9)
+```
+
+```{r Write figure 1, include=FALSE}
+fig1head <- "Associations between BP variables and microbial diversity."
+fig1foot <- "Results in panel A are calculated using minimal model using only age and sex for covariates. Panel B has the full model where covariates are age, sex, BMI, smoker, exercise, and four antihypertensive medications. The blue tinted box on the left represents four linear and one logistic model where blood pressure variables are dependent variables and Shannon's index is included in covariates. The gray tinted bars represent beta diversity i.e. analysis of variance for Bray-Curtis distance matrix where blood pressure variables are included in covariates. Result marked with asterisk are significant at FDR 0.05. Permutational analysis for beta diversity has 1000 permutations (p=0.01)."
+writeimage(doc, 1, "cache/alpha-beta.png", fig1head, fig1foot)
+```
+
+## Principal coordinate analysis (Figure 2.)
+
+```{r pcoa plot}
+pcoa.vectors <- pcoa.ordinate$vectors %>% as.data.frame
+eig.fracs <- pcoa.ordinate$values$Relative_eig
+
+pcoa.df <- merge(pcoa.vectors,
+                 meta(pseq.species), by=0, all = TRUE) %>%
+    mutate(STATETREATMENT = factor(paste0(HYPERTENSION, ANYDRUG),
+                                   levels = c("11", "10", "01", "00")),
+           gMAP = cut(oMAP, seq(60, 160, 15))) %>%
+    mutate_at(vars(starts_with("Axis.")), .funs = funs(myscale(.)))
+
+axis_labeller <- function(variable, value){
+    axis.labels <- list("Axis.2" = sprintf("PCoA Axis 2 (%.1f%%)", 100*eig.fracs[2]),
+                        "Axis.3" = sprintf("PCoA Axis 3 (%.1f%%)", 100*eig.fracs[3]))
+    return(axis.labels[value])
+}
+
+pcoa.plot <- ggplot(data=pcoa.df %>% gather(key, Axis, Axis.2, Axis.3),
+                    aes(x=Axis.1, y=Axis, color = HYPERTENSION)) +
+    facet_wrap(~key, scales = "free_y", strip.position = "left", labeller = axis_labeller) +
+    geom_jitter(size=4, alpha=0.4, shape = ".") +
+    xlab(sprintf("PCoA Axis 1 (%.1f%%)", 100*eig.fracs[1])) +
+    ylab(NULL) +
+    scale_colour_manual(name = "State and treatment",
+                        labels = c("Normotensive", "Hypertensive"),
+                        breaks=c(0, 1),
+                        values = c("blue", "red")) +   
+    scale_x_continuous(breaks=seq(-5, 5, 1)) +
+    scale_y_continuous(breaks=seq(-5, 5, 1)) +
+    theme_classic() +
+    guides(colour = guide_legend(override.aes = list(size=4, shape = 19))) +
+    coord_cartesian(clip = 'off') +
+    theme(text = element_text(size=10),
+          legend.position = c(0.35, 0.95),
+          legend.title = element_blank(),
+          legend.text = element_text(size = 10),
+          legend.key.size = unit(5, "mm"),
+          legend.background = element_blank(),
+          strip.background = element_blank(),
+          strip.placement = "outside",
+          aspect.ratio = 1,
+          strip.text = element_text(size = 12),
+          axis.title.x = element_text(size = 12))
+
+ggsave(file = "cache/pcoa-species.png", plot=pcoa.plot, height=3.0, width=6, units = "in", dpi = 300)
+```
+
+
+
+```{r pcoa top axes}
+axis_top_labeller <- function(variable, value){
+    index <- as.integer(gsub("Axis.", "", value))
+    return(sprintf("Axis %i (%.1f%%)", index, 100*eig.fracs[index]))
+}
+
+
+pcoa.plot.top <- ggplot(data=pcoa.df %>% gather(key, Axis, paste0("Axis.", seq(2,43))) %>%
+                       mutate(key = factor(key, levels=paste0("Axis.", seq(2,43)))),
+                    aes(x=Axis.1, y=Axis, color = HYPERTENSION)) +
+    facet_wrap(~key, scales = "free_y", labeller = axis_top_labeller) +
+    geom_point(size=0.1, alpha=0.2) +
+    xlab("PCoA 1") +
+    ylab(NULL) +
+    scale_colour_manual(name = "State and treatment",
+                        labels = c("Normotensive", "Hypertensive"),
+                        breaks=c(0, 1),
+                        values = c("blue", "red")) + 
+    theme_classic() +
+    theme(legend.position = "none")
+
+ggsave(file = "cache/pcoa-species-top-axes.png", plot=pcoa.plot.top,
+       height=10, width=10, units = "in", dpi = 300)
+```
+
+
+First three axis explain portion (`r sum(eig.fracs[1:3])`) of
+variation. Testing associations to blood pressure variables on PCoA
+axis 1
+
+```{r top pcoa genera, eval = FALSE}
+df.genus.abund <- abundances(pseq.genus, transform = "compositional") %>%
+    as.data.frame %>%
+    tibble::rownames_to_column() %>%
+    dplyr::mutate(rowname = make.names(rowname)) %>%
+    gather(id, value, -rowname) %>% 
+    spread(rowname, value)
+
+df.genus.pcoa <- merge(pcoa.vectors %>% tibble::rownames_to_column("id"),
+                         df.genus.abund,
+                         by = "id")
+
+pcoacorabund <- function(df,
+                         taxas,
+                         axis.names = c("Axis.1", "Axis.2", "Axis.3")) {
+    mclapply(c2l(taxas), function (taxa) 
+        lapply(c2l(axis.names), function(axis) {
+            fo <- sprintf("%s ~ %s", axis, taxa)
+            model <- lm(as.formula(fo), data = df)
+            summary(model)$r.squared
+        }), mc.cores = 20)
+}
+
+pcoa.correlations <- pcoacorabund(df.genus.pcoa, taxas = colnames(df.genus.abund)[-1])
+
+pcoa.correlations.df <- map_df(pcoa.correlations, ~as.data.frame(.x), .id="id")
+
+pcoa.correlations.df %>% head
+
+
+pcoa.top.names <- lapply(c2l("Axis.1", "Axis.2", "Axis.3"), function(x) {
+    top.names <- pcoa.correlations.df %>% arrange(desc(!!sym(x))) %>% head(10) %>% pull(id)
+    pcoa.correlations.df %>%
+        dplyr::filter(id %in% top.names) %>%
+        select(id, x) %>%
+        tibble::rownames_to_column(var = "number") %>%
+        dplyr::mutate(!! sprintf("taxa_%s", x) := gsub("g_", "", id)) %>%
+        select(one_of(sprintf("taxa_%s", x), x, "number"))
+    })
+
+pcoa.top.table <- pcoa.top.names %>%
+    reduce(left_join, by = "number") %>%
+    select(-number) %>%
+    mutate_if(is.numeric, round, 3)
+```
+
+```{r Write figure 2, include=FALSE}
+fig2head <- "Principal coordinate analysis for bacterial abundances."
+fig2foot <- sprintf("Principal coordinate analysis for bacterial abundances at species level. Bray-Curtis distances are calculated for abundances after compositional transformation. First two axes explain %.1f%% of the variation.", round(100*sum(eig.fracs[1:3]),1))
+writeimage(doc, 2, "cache/pcoa-species.png", fig2head, fig2foot)
+```
+
+## Direct associations between genus level and blood pressure variables (figure 3)
+
+Comparing how adding additional covariate to basic model for age, sex,
+and hypertension changes number of significant associations found for
+hypertension.
+
+```{r results compare deseq2}
+map(dds3, ~sum(results(.x, name = "HYPERTENSION_1_vs_0")$padj < 0.05, na.rm = TRUE)) %>%
+    map_df(~as.data.frame(.x) %>% dplyr::rename(qval = .x), .id = "included") %>%
+    kable
+```
+
+```{r deseq continuous}
+dset.deseq.signf <- deseqresults(dds, names.dset)
+```
+
+
+Number of significant associations `r sum(pull(dset.deseq.signf, qval) < 0.05)` for 
+`r pull(dset.deseq.signf, Feature)  %>% unique %>% length` features. Largest p.value is 
+`r max(pull(dset.deseq.signf, qval))`
+
+
+```{r deseq heatmap}
+g.deseq <- deseqhaetmap(dset.deseq.signf)
+ggsave(file = "cache/deseq.png", plot = g.deseq, height = 8, width = 4, unit = "in", dpi = 300)
+```
+
+<img src = "cache/deseq.png" />
+
+```{r Write figure 3, include=FALSE}
+fig3head <- "Associations between genus level abundances and blood pressure variables."
+fig3foot <- "Only bacteria with significant associations are shown. Blood pressure variables are normalized and abundances are arcsin-square root transformed. Dark gray color represents insignificant associations."
+writeimage(doc, 3, "cache/deseq.png", fig3head, fig3foot)
+```
+
+## Lactobacillus (figure 4)
+
+The fourth and final step is to study how the amount of dietary salt
+affect the lactobacillus abundances and how these abundances affect
+the odds for hypertension. We load genus data with dU-NA and combine
+it in a data frame with CLR transformed lactobacillus abundances.
+
+```{r lacto deseq}
+dds.data.salt <- phyloseq_to_deseq2(pseq.genus.salt, deseq.formula("NA.", var.CL))
+dds.salt <- DESeq(dds.data.salt, test="Wald", fitType="parametric") 
+```
+
+```{r lacto deseq results}
+dds.salt %>%
+    results(., name = "NA.") %>%
+    as.data.frame %>%
+    tibble::rownames_to_column("Feature") %>%
+    dplyr::mutate(qval = p.adjust(pvalue, method="BH")) %>%
+    filter(Feature %in% "g_Lactobacillus") %>%
+    kable
+```
+
+```{r scatter plot from deseq}
+df.mu <- assays(dds.salt)[["mu"]] %>%
+    as.data.frame %>%
+    tibble::rownames_to_column("rowname") %>%
+    gather(sampleid, value, -rowname) %>%
+    spread(rowname, value)
+
+df.countmu <- full_join(meta(pseq.genus.salt) %>% tibble::rownames_to_column("sampleid"),
+                        df.mu %>% select(sampleid, g_Lactobacillus),
+                        by = "sampleid") 
+
+g.salt <- saltplot(df.countmu)
+ggsave(file = "cache/gsalt.png", plot=g.salt, height=4, width=4, dpi = 300)
+```
+
+```{r Write figure 4, include=FALSE}
+fig4head <- "Associations between dietary salt, lactobacillus abundance, and odds for hypertension."
+fig4foot <- "In panel A we see lactobacillus abundances in different dietary salt groups. The mean value is adjusted using age and sex. In panel B we split participants in four groups by lactobacillus abundances and calculate odds ratio for hypertension. Age and sex are included in logistic model. A 95 % CI is drawn in both panels."
+writeimage(doc, 4, "cache/gsalt.png", fig4head, fig4foot)
+```
+
+# Supplements
+
+Listing our "core" genera
+
+```{r write supplement}
+core.names <- pseq.genus.core %>%
+    taxa %>%
+    gsub("g_", "", .) %>%
+    as.data.frame %>%
+    setNames("name") %>%
+    arrange(name) %>%
+    mutate(name = as.character(name)) %>%
+    mutate(class = case_when(row_number()-1 < n()/4 ~ 1,
+                             row_number()-1 < 2*n()/4 ~ 2,
+                             row_number()-1 < 3*n()/4 ~ 3,
+                             TRUE ~ 4))
+
+core.names.fourcols <- cbind(
+    core.names %>% filter(class == 1) %>% pull(name),
+    core.names %>% filter(class == 2) %>% pull(name),
+    core.names %>% filter(class == 3) %>% pull(name),
+    core.names %>% filter(class == 4) %>% pull(name)) %>%
+    as.data.frame
+
+core.names.flextable <- flextable(core.names.fourcols) %>%
+    flextable::fontsize(size = 10, part = "header") %>%
+    flextable::fontsize(size = 10, part = "body") %>%
+    flextable::width(j=1:4, width = 1.8) %>%
+    flextable::align(align = "left", part = "header") %>%
+    flextable::align(align = "left")
+core.names.flextable
+```
+
+Listing results for alpha diversity
+
+```{r supplement table for alpha diversity}
+alphadiversity.table <- diversity %>% map_df(~as.data.frame(.x), .id = "model") %>%
+    mutate(mean_ci = sprintf("%.2f (%.2f - %.2f)", alpha.effect, alpha.low, alpha.high),
+           pubp = pub.p(alpha.p)) %>%
+    myspread(list = c2l("mean_ci", "pubp"), term = "Name", key = "model") %>%
+    arrange(match(Name, c("Systolic BP", "Diastolic BP", "Mean arterial pressure", "Pulse pressure", "Hypertension"))) %>%
+        select(Name, min_mean_ci, min_pubp, max_mean_ci, max_pubp)
+
+typology.tbls2 <- data.frame(
+    col_keys = colnames(alphadiversity.table),
+    what = c("", rep("Age- and sex adjusted model", 2), rep("Multivaraible adjusted model", 2)),
+    measure = c("", rep(c("beta (95%-CI)", "p"), 2)),
+    stringsAsFactors = FALSE)
+
+alphadiversity.flextable <-
+    typologyformatter(data = alphadiversity.table, font = 12, typology = typology.tbls2) %>%
+    flextable::width(j=1, width = 1.9) %>%
+    flextable::width(j=c(2:2,4:4), width = 1.8) %>%
+    flextable::width(j=c(3:3,5:5), width = 0.7)
+alphadiversity.flextable 
+```
+
+
+```{r supplement table for beta diversity}
+betadiversity.table <- diversity %>% map_df(~as.data.frame(.x), .id = "model") %>%
+    mutate(rsquared = sprintf("%.3f%%", beta.R2*100),
+           pubp = pub.p(beta.p)) %>%
+    myspread(list = c2l("rsquared", "pubp"), term = "Name", key = "model") %>%
+    arrange(match(Name, c("Systolic BP", "Diastolic BP", "Mean arterial pressure", "Pulse pressure", "Hypertension"))) %>%
+    select(Name, min_rsquared, min_pubp, max_rsquared, max_pubp)
+
+typology.tbls3 <- data.frame(
+    col_keys = colnames(betadiversity.table),
+    what = c("", rep("Age- and sex adjusted model", 2), rep("Multivaraible adjusted model", 2)),
+    measure = c("", rep(c("R2", "p"), 2)),
+    stringsAsFactors = FALSE)
+
+betadiversity.flextable <-
+    typologyformatter(data = betadiversity.table, font = 12, typology = typology.tbls3) %>%
+    flextable::width(j=1, width = 1.9) %>%
+    flextable::width(j=c(2:5), width = 0.8)
+
+betadiversity.flextable
+```
+
+```{r supplement table deseq}
+deseq.table <- deseqresults(dds, names.dset) %>%
+    mutate(lfc_se = sprintf("%.2f±%.2f", log2FoldChange, lfcSE),
+           p.value = pub.p(qval)) %>%
+    myspread %>%
+    select(Feature, starts_with("Systolic"), starts_with("Diastolic"), starts_with("PULSE PRESSURE"),
+           starts_with("Mean arterial pressure"), starts_with("Hypertension"))
+
+typology.tbls4 <- data.frame(
+    col_keys = colnames(deseq.table),
+    what = c("", rep("Systolic BP", 2), rep("Diastolic BP", 2),
+             rep("Pulse pressure", 2), rep("Mean arterial pressure", 2), rep("Hypertension", 2)),
+    measure = c("", rep(c("Log2FC±SE", "p"), 5)),
+    stringsAsFactors = FALSE)
+
+deseq.flextable <-
+    typologyformatter(data = deseq.table, font = 9, typology = typology.tbls4) %>%
+    flextable::width(j = 1, width = 1.2) %>%
+    flextable::width(j = seq(2, 11, 2), width = 0.75) %>%
+    flextable::width(j = seq(3, 11, 2), width = 0.55)
+
+deseq.flextable
+```
+
+```{r Write supplement, eval = FALSE}
+doc.s <- read_docx(path = "style/articlestyle.docx") %>%
+  body_remove()
+writetable(doc.s, core.names.flextable, number = "S1", "Core genera", "")
+writetable(doc.s, alphadiversity.flextable, number = "S2", "Alpha diverstity", "")
+writetable(doc.s, betadiversity.flextable, number = "S3", "Beta diverstity", "")
+writetable(doc.s, deseq.flextable, number = "S4", "Deseq", "")
+
+print(doc.s, target = paste0("report/articletwo-supplement.docx"))
+```
+
+```{r Write docx to file, include=FALSE}
+print(doc, target = paste0("report/articletwo-", now, ".docx"))
+```
+
+```{r save session}
+save.image(file = paste0("session/session-", now, ".Rdata"))
+```
