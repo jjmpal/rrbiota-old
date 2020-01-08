@@ -53,7 +53,7 @@ filter.phenotype.data <- function(pseq,
                       PULSEPRESSURE = myscale(PULSEPRESSURE),
                       MAP = myscale(MAP),
                       SEX = as.factor(SEX),
-                      Q57X = as.factor(Q57X),
+                      Q57X = factor(Q57X, ordered = FALSE),
                       BL_USE_RX_C03 = as.factor(BL_USE_RX_C03),
                       BL_USE_RX_C07 = as.factor(BL_USE_RX_C07),
                       BL_USE_RX_C08 = as.factor(BL_USE_RX_C08),
@@ -378,4 +378,10 @@ deseq.list <- function(var.CL, var.CL.min) {
         unique(c(var.CL.min, x))
     })
     l[!duplicated(l)]
+}
+
+coretaxa <- function(pseq, detection = 0.1/100, prevalence = 1/100) {
+    microbiome::transform(pseq, "compositional") %>%
+        core(detection = detection, prevalence = prevalence) %>%
+        taxa
 }
