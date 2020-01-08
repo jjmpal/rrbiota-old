@@ -6,7 +6,7 @@ output: html_document
 ---
 	
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(include = TRUE, xecho = TRUE, message = FALSE, results='asis',
+knitr::opts_chunk$set(include = TRUE, echo = TRUE, message = FALSE, results='asis',
                       cache=FALSE, warning=FALSE)
 knitr::opts_chunk$set(cache.path = 'cache/', output.dir="cache/",
                       file.path = 'cache/', fig.path = 'cache/')
@@ -121,9 +121,9 @@ names.dset <- getdescriptions()
 
 eLoading phyloseq object
 
-```{r data}
-pseq.genus <- import_filter_data("data/phfinrisk_centrifuge_genus_d50k_2019-06-02.rds")
-pseq.species <- import_filter_data("data/phfinrisk_centrifuge_species_all_drop50k_2018-11-30_2019-06-03.RDs")
+```{r data
+pseq.genus <- import_filter_data("data/phfinrisk_genus_all_drop50k_2018-11-16.RDs")
+pseq.species <- import_filter_data("data/phfinrisk_species_all_drop50k_2018-12-21.RDs")
 ```
 
 Species has average number of reads `r pseq.species %>% sample_sums %>% mean` and
